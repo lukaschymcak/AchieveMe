@@ -42,7 +42,7 @@ export interface RawAchievement {
 export interface AppSettings {
   steamApiKey: string
   enabledSources: SourceId[]
-  customRoots: Partial<Record<SourceId, string[]>>
+  customWatchFolders: string[]
 }
 
 // One row in the `games` SQLite table

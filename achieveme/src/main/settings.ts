@@ -7,7 +7,19 @@ import type { AppSettings } from '../shared/types'
 const DEFAULT_SETTINGS: AppSettings = {
   steamApiKey: '',
   enabledSources: [...ALL_SOURCES],
-  customRoots: {}
+  customWatchFolders: []
+}
+
+function migrateCustomWatchFolders(parsed: Partial<AppSettings> & { customRoots?: Partial<Record<string, string[]>> }): string[] {
+  if (parsed.customWatchFolders) return parsed.customWatchFolders
+  if (!parsed.customRoots) return []
+  const folders = new Set<string>()
+  for (const paths of Object.values(parsed.customRoots)) {
+    for (const p of paths ?? []) {
+      if (p.trim()) folders.add(p.trim())
+    }
+  }
+  return [...folders]
 }
 
 function settingsPath(): string {
@@ -17,11 +29,11 @@ function settingsPath(): string {
 export function loadSettings(): AppSettings {
   try {
     const text = fs.readFileSync(settingsPath(), 'utf8')
-    const parsed = JSON.parse(text) as Partial<AppSettings>
+    const parsed = JSON.parse(text) as Partial<AppSettings> & { customRoots?: Partial<Record<string, string[]>> }
     return {
       steamApiKey: parsed.steamApiKey ?? DEFAULT_SETTINGS.steamApiKey,
       enabledSources: parsed.enabledSources ?? DEFAULT_SETTINGS.enabledSources,
-      customRoots: parsed.customRoots ?? DEFAULT_SETTINGS.customRoots
+      customWatchFolders: migrateCustomWatchFolders(parsed)
     }
   } catch {
     return { ...DEFAULT_SETTINGS, enabledSources: [...ALL_SOURCES] }

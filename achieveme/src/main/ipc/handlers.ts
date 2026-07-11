@@ -1,10 +1,11 @@
-import { ipcMain } from 'electron'
+import { ipcMain, dialog } from 'electron'
 import fs from 'node:fs'
 import path from 'node:path'
 import { app } from 'electron'
 import { getDb } from '../db/database'
-import { getAllGames, getGame, getAchievementsForGame } from '../db/repository'
+import { getAllGames, getGame, getAchievementsForGame, upsertAchievements } from '../db/repository'
 import { getStoreCoverUrl } from '../achievement/steamApiClient'
+import { ensureSteamDbHiddenDescriptions } from '../achievement/steamDbScraper'
 import { loadSettings, saveSettings } from '../settings'
 import { startWatcher } from '../achievement/watcherService'
 import { scanAllSources } from '../achievement/discoveryService'
@@ -25,6 +26,13 @@ export function registerIpcHandlers(): void {
   ipcMain.handle('get-all-games', async (): Promise<GameSummary[]> => {
     const db = getDb()
     const games = getAllGames(db)
+
+    for (const g of games) {
+      const achievements = getAchievementsForGame(db, g.appid)
+      const updated = await ensureSteamDbHiddenDescriptions(db, g.appid, achievements)
+      if (updated) upsertAchievements(db, achievements)
+    }
+
     const summaries: GameSummary[] = []
     for (const g of games) {
       const cover_url = await getStoreCoverUrl(db, g.appid)
@@ -73,5 +81,26 @@ export function registerIpcHandlers(): void {
         await processAppId(game.appid, settings, true)
       }
     }
+  })
+
+  ipcMain.handle('export-json', async (): Promise<void> => {
+    const { canceled, filePath } = await dialog.showSaveDialog({
+      title: 'Export AchieveMe data',
+      defaultPath: 'achieveme-export.json',
+      filters: [{ name: 'JSON', extensions: ['json'] }]
+    })
+    if (canceled || !filePath) return
+
+    const db = getDb()
+    const games = getAllGames(db)
+    const achievements = games.flatMap((g) => getAchievementsForGame(db, g.appid))
+
+    const data = {
+      exportedAt: new Date().toISOString(),
+      games,
+      achievements
+    }
+
+    fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf8')
   })
 }

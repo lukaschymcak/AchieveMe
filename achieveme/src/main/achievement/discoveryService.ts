@@ -52,8 +52,7 @@ const SOURCE_FILE: Record<SourceId, string> = {
 
 function getRootsForSource(source: SourceId, settings: AppSettings): string[] {
   const defaults = DEFAULT_ROOTS[source] ?? []
-  const custom = settings.customRoots[source] ?? []
-  return [...defaults, ...custom]
+  return [...defaults, ...settings.customWatchFolders]
 }
 
 // Empress saves at: {root}/{appid}/remote/{appid}/achievements.json

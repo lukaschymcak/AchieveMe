@@ -8,7 +8,6 @@ import {
 
 interface Props {
   appid: string
-  onBack: () => void
 }
 
 const TIER_COLOR: Record<string, string> = {
@@ -17,7 +16,7 @@ const TIER_COLOR: Record<string, string> = {
   bronze: '#cd7f32'
 }
 
-export default function GameDetailPage({ appid, onBack }: Props): React.ReactElement {
+export default function GameDetailPage({ appid }: Props): React.ReactElement {
   const [detail, setDetail] = useState<GameDetail | null>(null)
   const [showHidden, setShowHidden] = useState(false)
 
@@ -39,10 +38,6 @@ export default function GameDetailPage({ appid, onBack }: Props): React.ReactEle
 
   return (
     <div style={{ padding: 24 }}>
-      <button onClick={onBack} style={{ marginBottom: 16 }}>
-        ← Back
-      </button>
-
       <div style={{ display: 'flex', gap: 20, marginBottom: 24, alignItems: 'flex-start' }}>
         {detail.cover_url && (
           <img

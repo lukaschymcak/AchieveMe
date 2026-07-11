@@ -18,5 +18,8 @@ contextBridge.exposeInMainWorld('api', {
     ipcRenderer.invoke('save-settings', settings),
 
   refresh: (): Promise<void> =>
-    ipcRenderer.invoke('refresh')
+    ipcRenderer.invoke('refresh'),
+
+  exportJson: (): Promise<void> =>
+    ipcRenderer.invoke('export-json')
 })

@@ -9,6 +9,7 @@ declare global {
       getSettings(): Promise<AppSettings>
       saveSettings(settings: AppSettings): Promise<void>
       refresh(): Promise<void>
+      exportJson(): Promise<void>
     }
   }
 }

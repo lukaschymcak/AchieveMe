@@ -6,6 +6,7 @@ import {
   setCacheEntry,
   getGame
 } from '../db/repository'
+import { ensureSteamDbHiddenDescriptions } from './steamDbScraper'
 import type Database from 'better-sqlite3'
 
 const SCHEMA_TTL = 604800
@@ -242,6 +243,8 @@ export async function enrichApp(
       hidden: schemaEntry?.hidden === 1 ? 1 : 0
     })
   }
+
+  await ensureSteamDbHiddenDescriptions(db, appid, achievements, forceRefresh)
 
   const unlocked = achievements.filter((a) => a.earned === 1)
   const total = achievements.length

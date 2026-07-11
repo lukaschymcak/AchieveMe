@@ -19,11 +19,15 @@ export default function App(): React.ReactElement {
   if (selectedAppid) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
-        <nav style={{ padding: '8px 16px', background: '#1a1a22', display: 'flex', gap: 12 }}>
+        <nav style={{ padding: '8px 16px', background: '#1a1a22', display: 'flex', gap: 12, alignItems: 'center' }}>
           <button onClick={() => setSelectedAppid(null)}>← Library</button>
+          <div style={{ flex: 1 }} />
+          <button onClick={handleRefresh} disabled={refreshing}>
+            {refreshing ? 'Refreshing...' : 'Refresh'}
+          </button>
         </nav>
         <main style={{ flex: 1, overflow: 'auto' }}>
-          <GameDetailPage appid={selectedAppid} onBack={() => setSelectedAppid(null)} />
+          <GameDetailPage appid={selectedAppid} />
         </main>
       </div>
     )
@@ -42,9 +46,11 @@ export default function App(): React.ReactElement {
           Settings
         </button>
         <div style={{ flex: 1 }} />
-        <button onClick={handleRefresh} disabled={refreshing}>
-          {refreshing ? 'Refreshing...' : 'Refresh'}
-        </button>
+        {page === 'library' && (
+          <button onClick={handleRefresh} disabled={refreshing}>
+            {refreshing ? 'Refreshing...' : 'Refresh'}
+          </button>
+        )}
       </nav>
       <main style={{ flex: 1, overflow: 'auto' }}>
         {page === 'dashboard' && <DashboardPage />}
