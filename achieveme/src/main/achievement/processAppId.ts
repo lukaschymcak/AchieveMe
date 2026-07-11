@@ -7,7 +7,11 @@ import { enrichApp } from './steamApiClient'
 import { regenerateProfileStats } from './profileStatsService'
 import type { AppSettings } from '../../shared/types'
 
-export async function processAppId(appid: string, settings: AppSettings): Promise<void> {
+export async function processAppId(
+  appid: string,
+  settings: AppSettings,
+  forceRefresh = false
+): Promise<void> {
   const db = getDb()
 
   // 1. Find all save files on disk for this appid
@@ -26,7 +30,7 @@ export async function processAppId(appid: string, settings: AppSettings): Promis
 
   // 4. Enrich with Steam API data (schema, global %, cover art)
   //    Real implementation added in PLAN-03
-  const enriched = await enrichApp(appid, settings.steamApiKey, mergedRaw, db)
+  const enriched = await enrichApp(appid, settings.steamApiKey, mergedRaw, db, forceRefresh)
 
   // 5. Write to SQLite
   upsertGame(db, enriched.game)
