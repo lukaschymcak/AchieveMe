@@ -79,14 +79,3 @@ export async function startWatcher(settings: AppSettings): Promise<void> {
   // Process everything already on disk on startup
   await runInitialScan(settings)
 }
-
-export async function stopWatcher(): Promise<void> {
-  if (watcher) {
-    await watcher.close()
-    watcher = null
-  }
-  for (const timer of debounceTimers.values()) {
-    clearTimeout(timer)
-  }
-  debounceTimers.clear()
-}

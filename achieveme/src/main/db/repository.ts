@@ -6,16 +6,15 @@ import type { Game, Achievement } from '../../shared/types'
 export function upsertGame(db: Database.Database, game: Game): void {
   db.prepare(`
     INSERT INTO games (
-      appid, name, cover_path, total_achievements, unlocked_achievements,
+      appid, name, total_achievements, unlocked_achievements,
       completion_pct, has_platinum, last_unlocked_at, schema_fetched_at
     )
     VALUES (
-      @appid, @name, @cover_path, @total_achievements, @unlocked_achievements,
+      @appid, @name, @total_achievements, @unlocked_achievements,
       @completion_pct, @has_platinum, @last_unlocked_at, @schema_fetched_at
     )
     ON CONFLICT(appid) DO UPDATE SET
       name                  = excluded.name,
-      cover_path            = excluded.cover_path,
       total_achievements    = excluded.total_achievements,
       unlocked_achievements = excluded.unlocked_achievements,
       completion_pct        = excluded.completion_pct,
@@ -26,12 +25,22 @@ export function upsertGame(db: Database.Database, game: Game): void {
 }
 
 export function getGame(db: Database.Database, appid: string): Game | undefined {
-  return db.prepare('SELECT * FROM games WHERE appid = ?').get(appid) as Game | undefined
+  return db
+    .prepare(
+      `SELECT appid, name, total_achievements, unlocked_achievements,
+              completion_pct, has_platinum, last_unlocked_at, schema_fetched_at
+       FROM games WHERE appid = ?`
+    )
+    .get(appid) as Game | undefined
 }
 
 export function getAllGames(db: Database.Database): Game[] {
   return db
-    .prepare('SELECT * FROM games ORDER BY completion_pct DESC')
+    .prepare(
+      `SELECT appid, name, total_achievements, unlocked_achievements,
+              completion_pct, has_platinum, last_unlocked_at, schema_fetched_at
+       FROM games ORDER BY completion_pct DESC`
+    )
     .all() as Game[]
 }
 
@@ -41,11 +50,11 @@ export function upsertAchievements(db: Database.Database, achievements: Achievem
   const stmt = db.prepare(`
     INSERT INTO achievements (
       appid, api_name, display_name, description, icon_url,
-      icon_gray_url, global_percent, earned, earned_time, trophy_tier
+      icon_gray_url, global_percent, earned, earned_time, trophy_tier, hidden
     )
     VALUES (
       @appid, @api_name, @display_name, @description, @icon_url,
-      @icon_gray_url, @global_percent, @earned, @earned_time, @trophy_tier
+      @icon_gray_url, @global_percent, @earned, @earned_time, @trophy_tier, @hidden
     )
     ON CONFLICT(appid, api_name) DO UPDATE SET
       display_name   = excluded.display_name,
@@ -55,7 +64,8 @@ export function upsertAchievements(db: Database.Database, achievements: Achievem
       global_percent = excluded.global_percent,
       earned         = excluded.earned,
       earned_time    = excluded.earned_time,
-      trophy_tier    = excluded.trophy_tier
+      trophy_tier    = excluded.trophy_tier,
+      hidden         = excluded.hidden
   `)
 
   // Wrap in a transaction so all inserts happen in one disk write

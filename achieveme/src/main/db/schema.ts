@@ -1,11 +1,24 @@
 import type Database from 'better-sqlite3'
 
+function migrateAchievementsTable(db: Database.Database): void {
+  const columns = db.prepare('PRAGMA table_info(achievements)').all() as Array<{ name: string }>
+  if (!columns.some((col) => col.name === 'hidden')) {
+    db.exec('ALTER TABLE achievements ADD COLUMN hidden INTEGER NOT NULL DEFAULT 0')
+  }
+}
+
+function migrateGamesTable(db: Database.Database): void {
+  const columns = db.prepare('PRAGMA table_info(games)').all() as Array<{ name: string }>
+  if (columns.some((col) => col.name === 'cover_path')) {
+    db.exec('ALTER TABLE games DROP COLUMN cover_path')
+  }
+}
+
 export function createTables(db: Database.Database): void {
   db.exec(`
     CREATE TABLE IF NOT EXISTS games (
       appid                 TEXT    PRIMARY KEY,
       name                  TEXT    NOT NULL DEFAULT '',
-      cover_path            TEXT    NOT NULL DEFAULT '',
       total_achievements    INTEGER NOT NULL DEFAULT 0,
       unlocked_achievements INTEGER NOT NULL DEFAULT 0,
       completion_pct        REAL    NOT NULL DEFAULT 0,
@@ -36,4 +49,6 @@ export function createTables(db: Database.Database): void {
       PRIMARY KEY (appid, type)
     );
   `)
+  migrateGamesTable(db)
+  migrateAchievementsTable(db)
 }

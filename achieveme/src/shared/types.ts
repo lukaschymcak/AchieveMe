@@ -49,7 +49,6 @@ export interface AppSettings {
 export interface Game {
   appid: string
   name: string
-  cover_path: string
   total_achievements: number
   unlocked_achievements: number
   completion_pct: number
@@ -70,6 +69,7 @@ export interface Achievement {
   earned: number // 0 or 1
   earned_time: number // unix seconds
   trophy_tier: TrophyTier
+  hidden: number // 0 or 1 (SQLite has no boolean)
 }
 
 // Written to profile_stats.json for instant dashboard reads
@@ -90,7 +90,7 @@ export interface ProfileStats {
 export interface GameSummary {
   appid: string
   name: string
-  cover_path: string
+  cover_url: string
   total_achievements: number
   unlocked_achievements: number
   completion_pct: number
@@ -101,4 +101,5 @@ export interface GameSummary {
 export interface GameDetail {
   game: Game
   achievements: Achievement[]
+  cover_url: string
 }

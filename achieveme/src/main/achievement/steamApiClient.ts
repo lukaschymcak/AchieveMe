@@ -1,14 +1,16 @@
-import fs from 'node:fs'
-import path from 'node:path'
 import https from 'node:https'
-import { app } from 'electron'
 import type { Achievement, Game } from '../../shared/types'
-import { getCacheEntry, setCacheEntry } from '../db/repository'
+import { normalizeSteamIconUrl } from '../../shared/steamUrls'
+import {
+  getCacheEntry,
+  setCacheEntry,
+  getGame
+} from '../db/repository'
 import type Database from 'better-sqlite3'
 
-function ensureDir(dir: string): void {
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
-}
+const SCHEMA_TTL = 604800
+const PERCENTAGES_TTL = 86400
+const APPDETAILS_TTL = 604800
 
 function httpGet(url: string): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -22,26 +24,6 @@ function httpGet(url: string): Promise<string> {
       res.on('data', (chunk: Buffer) => chunks.push(chunk))
       res.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')))
       res.on('error', reject)
-    }).on('error', reject)
-  })
-}
-
-function downloadFile(url: string, destPath: string): Promise<void> {
-  return new Promise((resolve, reject) => {
-    if (fs.existsSync(destPath)) {
-      resolve()
-      return
-    }
-    https.get(url, (res) => {
-      if (res.statusCode !== 200) {
-        res.resume()
-        reject(new Error(`HTTP ${res.statusCode}`))
-        return
-      }
-      const file = fs.createWriteStream(destPath)
-      res.pipe(file)
-      file.on('finish', () => file.close(() => resolve()))
-      file.on('error', reject)
     }).on('error', reject)
   })
 }
@@ -67,9 +49,10 @@ function writeCache(db: Database.Database, appid: string, type: string, data: un
 interface SteamSchemaAchievement {
   name: string
   displayName: string
-  description: string
+  description?: string
   icon: string
   icongray: string
+  hidden?: number
 }
 
 interface SteamSchemaResponse {
@@ -83,12 +66,13 @@ interface SteamSchemaResponse {
 async function fetchSchema(
   db: Database.Database,
   appid: string,
-  apiKey: string
+  apiKey: string,
+  forceRefresh: boolean
 ): Promise<SteamSchemaAchievement[] | null> {
-  const TTL = 604800
-
-  const cached = readCache(db, appid, 'schema', TTL)
-  if (cached) return cached as SteamSchemaAchievement[]
+  if (!forceRefresh) {
+    const cached = readCache(db, appid, 'schema', SCHEMA_TTL)
+    if (cached) return cached as SteamSchemaAchievement[]
+  }
 
   if (!apiKey) return null
 
@@ -117,10 +101,8 @@ async function fetchPercentages(
   appid: string,
   forceRefresh: boolean
 ): Promise<Record<string, number> | null> {
-  const TTL = 86400
-
   if (!forceRefresh) {
-    const cached = readCache(db, appid, 'percentages', TTL)
+    const cached = readCache(db, appid, 'percentages', PERCENTAGES_TTL)
     if (cached) return cached as Record<string, number>
   }
 
@@ -145,66 +127,56 @@ async function fetchPercentages(
 interface AppDetailsResponse {
   [appid: string]: {
     success: boolean
-    data?: { name?: string }
+    data?: { name?: string; header_image?: string }
   }
 }
 
-async function fetchAppName(db: Database.Database, appid: string): Promise<string | null> {
-  const TTL = 604800
+interface AppDetailsData {
+  name: string
+  header_image?: string
+}
 
-  const cached = readCache(db, appid, 'appdetails', TTL)
-  if (cached) return (cached as { name: string }).name ?? null
+async function fetchAppDetails(
+  db: Database.Database,
+  appid: string,
+  forceRefresh: boolean
+): Promise<AppDetailsData | null> {
+  if (!forceRefresh) {
+    const cached = readCache(db, appid, 'appdetails', APPDETAILS_TTL) as AppDetailsData | null
+    if (cached?.name && cached.header_image) return cached
+  }
 
   try {
     const url = `https://store.steampowered.com/api/appdetails?appids=${appid}&filters=basic`
     const body = await httpGet(url)
     const parsed = JSON.parse(body) as AppDetailsResponse
-    const name = parsed?.[appid]?.data?.name ?? null
-    if (name) writeCache(db, appid, 'appdetails', { name })
-    return name
+    const data = parsed?.[appid]?.data
+    if (!data?.name) return null
+    const result: AppDetailsData = { name: data.name, header_image: data.header_image }
+    writeCache(db, appid, 'appdetails', result)
+    return result
   } catch {
     return null
   }
 }
 
-const COVER_URLS = (appid: string): string[] => [
-  `https://cdn.akamai.steamstatic.com/steam/apps/${appid}/library_600x900.jpg`,
-  `https://cdn.akamai.steamstatic.com/steam/apps/${appid}/library_600x900_2x.jpg`,
-  `https://cdn.cloudflare.steamstatic.com/steam/apps/${appid}/library_600x900.jpg`,
-  `https://cdn.akamai.steamstatic.com/steam/apps/${appid}/header.jpg`,
-  `https://cdn.cloudflare.steamstatic.com/steam/apps/${appid}/header.jpg`
-]
-
-async function downloadCover(appid: string): Promise<string> {
-  const coverDir = path.join(app.getPath('userData'), 'covers')
-  ensureDir(coverDir)
-  const destPath = path.join(coverDir, `${appid}.jpg`)
-
-  if (fs.existsSync(destPath)) return destPath
-
-  for (const url of COVER_URLS(appid)) {
-    try {
-      await downloadFile(url, destPath)
-      return destPath
-    } catch {
-      // try next
-    }
-  }
-
-  return ''
+function getCachedHeaderImage(db: Database.Database, appid: string): string {
+  const cached = readCache(db, appid, 'appdetails', APPDETAILS_TTL) as AppDetailsData | null
+  return cached?.header_image ?? ''
 }
 
-async function downloadIcon(appid: string, apiName: string, iconUrl: string): Promise<string> {
-  if (!iconUrl) return ''
-  const iconDir = path.join(app.getPath('userData'), 'icons', appid)
-  ensureDir(iconDir)
-  const destPath = path.join(iconDir, `${apiName}.jpg`)
-  try {
-    await downloadFile(iconUrl, destPath)
-    return destPath
-  } catch {
-    return ''
+/** Steam Store API header_image — sole source for game cover art. */
+export async function getStoreCoverUrl(
+  db: Database.Database,
+  appid: string,
+  forceRefresh = false
+): Promise<string> {
+  if (!forceRefresh) {
+    const cached = getCachedHeaderImage(db, appid)
+    if (cached) return cached
   }
+  const details = await fetchAppDetails(db, appid, forceRefresh)
+  return details?.header_image ?? ''
 }
 
 function getTrophyTier(globalPercent: number): 'gold' | 'silver' | 'bronze' {
@@ -225,24 +197,17 @@ export async function enrichApp(
   db: Database.Database,
   forceRefresh = false
 ): Promise<EnrichResult> {
-  const schema = await fetchSchema(db, appid, apiKey)
+  const existingGame = getGame(db, appid)
+  const isNewGame = !existingGame
+
+  const schema = await fetchSchema(db, appid, apiKey, forceRefresh)
   const percentages = await fetchPercentages(db, appid, forceRefresh)
 
-  let gameName = `Game ${appid}`
-  if (schema && schema.length > 0) {
-    // Schema doesn't include game name — fetch separately
-    const fetched = await fetchAppName(db, appid)
-    if (fetched) gameName = fetched
-  } else if (!schema) {
-    const fetched = await fetchAppName(db, appid)
-    if (fetched) gameName = fetched
-  }
-
-  const coverPath = await downloadCover(appid)
+  let gameName = existingGame?.name ?? `Game ${appid}`
+  const appDetails = await fetchAppDetails(db, appid, forceRefresh || isNewGame)
+  if (appDetails?.name) gameName = appDetails.name
 
   const achievements: Achievement[] = []
-
-  // Build achievement list from schema if we have it, otherwise from mergedRaw keys
   const schemaMap = new Map<string, SteamSchemaAchievement>()
   if (schema) {
     for (const s of schema) schemaMap.set(s.name, s)
@@ -259,26 +224,22 @@ export async function enrichApp(
     const globalPercent = percentages?.[apiName] ?? 0
     const tier = getTrophyTier(globalPercent)
 
-    const iconUrl = schemaEntry?.icon ?? ''
-    const iconGrayUrl = schemaEntry?.icongray ?? ''
-
-    // Only download icon for earned achievements
-    let localIconUrl = iconUrl
-    if (earned && iconUrl) {
-      localIconUrl = await downloadIcon(appid, apiName, iconUrl)
-    }
+    const colorIconUrl = normalizeSteamIconUrl(appid, schemaEntry?.icon ?? '')
+    const grayIconUrl =
+      normalizeSteamIconUrl(appid, schemaEntry?.icongray ?? '') || colorIconUrl
 
     achievements.push({
       appid,
       api_name: apiName,
       display_name: schemaEntry?.displayName ?? apiName,
       description: schemaEntry?.description ?? '',
-      icon_url: localIconUrl,
-      icon_gray_url: iconGrayUrl,
+      icon_url: earned ? colorIconUrl : '',
+      icon_gray_url: grayIconUrl,
       global_percent: globalPercent,
       earned,
       earned_time: earnedTime,
-      trophy_tier: tier
+      trophy_tier: tier,
+      hidden: schemaEntry?.hidden === 1 ? 1 : 0
     })
   }
 
@@ -292,13 +253,12 @@ export async function enrichApp(
   const game: Game = {
     appid,
     name: gameName,
-    cover_path: coverPath,
     total_achievements: total,
     unlocked_achievements: unlocked.length,
     completion_pct: completionPct,
     has_platinum: hasPlatinum,
     last_unlocked_at: lastUnlockedAt,
-    schema_fetched_at: schema ? Math.floor(Date.now() / 1000) : 0
+    schema_fetched_at: schema ? Math.floor(Date.now() / 1000) : existingGame?.schema_fetched_at ?? 0
   }
 
   return { game, achievements }

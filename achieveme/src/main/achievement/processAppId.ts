@@ -28,15 +28,13 @@ export async function processAppId(
   // 3. Merge across sources
   const mergedRaw = mergeRawAchievements(parsedRows)
 
-  // 4. Enrich with Steam API data (schema, global %, cover art)
-  //    Real implementation added in PLAN-03
+  // 4. Enrich with Steam API data (schema, global %, app name)
   const enriched = await enrichApp(appid, settings.steamApiKey, mergedRaw, db, forceRefresh)
 
   // 5. Write to SQLite
   upsertGame(db, enriched.game)
   upsertAchievements(db, enriched.achievements)
 
-  // 6. Rebuild the profile_stats.json summary file
-  //    Real implementation added in PLAN-03
+  // 6. Rebuild profile_stats.json
   regenerateProfileStats(db)
 }

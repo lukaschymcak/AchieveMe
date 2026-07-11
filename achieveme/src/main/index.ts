@@ -4,7 +4,7 @@ import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { initDb } from './db/database'
 import { loadSettings } from './settings'
 import { startWatcher } from './achievement/watcherService'
-
+import { registerIpcHandlers } from './ipc/handlers'
 let mainWindow: BrowserWindow | null = null
 
 function createWindow(): void {
@@ -16,7 +16,7 @@ function createWindow(): void {
     show: false,
     autoHideMenuBar: true,
     webPreferences: {
-      preload: path.join(__dirname, '../preload/index.js'),
+      preload: path.join(__dirname, '../preload/index.mjs'),
       sandbox: false
     }
   })
@@ -25,7 +25,6 @@ function createWindow(): void {
     mainWindow!.show()
   })
 
-  // Open external links in the system browser, not in Electron
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     shell.openExternal(url)
     return { action: 'deny' }
@@ -46,7 +45,7 @@ app.whenReady().then(() => {
   })
 
   initDb()
-
+  registerIpcHandlers()
   const settings = loadSettings()
   startWatcher(settings).catch(() => {})
 
