@@ -52,6 +52,7 @@ export async function importBundle(
     return {
       gamesImported: bundle.games.length,
       saveFilesWritten: 0,
+      filesWritten: 0,
       errors
     }
   }
@@ -115,6 +116,7 @@ export async function importBundle(
   return {
     gamesImported: bundle.games.length,
     saveFilesWritten,
+    filesWritten: saveFilesWritten,
     errors
   }
 }

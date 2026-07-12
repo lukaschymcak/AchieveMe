@@ -147,5 +147,24 @@ export interface SaveLocation {
 export interface ImportResult {
   gamesImported: number
   saveFilesWritten: number
+  filesWritten: number
   errors: string[]
+}
+
+export interface PortableFolder {
+  appid: string
+  source: SourceId
+  rootKind: 'default' | 'custom'
+  rootSource: SourceId
+  customRoot?: string
+  relativePath: string
+  archivePath: string
+}
+
+export interface FullBackupManifest {
+  formatVersion: 3
+  exportedAt: string
+  games: Game[]
+  achievements: Achievement[]
+  folders: PortableFolder[]
 }
