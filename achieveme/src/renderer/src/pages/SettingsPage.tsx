@@ -67,6 +67,17 @@ export default function SettingsPage(): React.ReactElement {
     })
   }
 
+  function importZip(): void {
+    window.api.importZip().then((result) => {
+      if (!result) return
+      const errNote = result.errors.length > 0 ? ` (${result.errors.length} warnings)` : ''
+      setImportMsg(
+        `Imported ${result.gamesImported} games, wrote ${result.filesWritten} files${errNote}`
+      )
+      setTimeout(() => setImportMsg(null), 4000)
+    })
+  }
+
   return (
     <div style={{ padding: 24, maxWidth: 640 }}>
       <h2 style={{ marginBottom: 24 }}>Settings</h2>
@@ -203,6 +214,36 @@ export default function SettingsPage(): React.ReactElement {
         </div>
       </section>
 
+      {/* Backup */}
+      <section style={{ marginBottom: 32 }}>
+        <h3 style={{ marginBottom: 8 }}>Backup &amp; Restore</h3>
+        <p style={{ fontSize: 12, color: '#888', marginBottom: 12 }}>
+          Export JSON for lightweight achievement progress only. Full Backup zips entire Goldberg/GSE
+          appid folders (including extra save files). Import merges file-by-file and does not delete
+          other games on disk.
+        </p>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+          <button
+            onClick={() => window.api.exportJson()}
+            style={{ padding: '8px 16px', fontSize: 13 }}
+          >
+            Export JSON
+          </button>
+          <button
+            onClick={() => window.api.exportZip()}
+            style={{ padding: '8px 16px', fontSize: 13 }}
+          >
+            Export Full Backup
+          </button>
+          <button onClick={importJson} style={{ padding: '8px 16px', fontSize: 13 }}>
+            Import JSON
+          </button>
+          <button onClick={importZip} style={{ padding: '8px 16px', fontSize: 13 }}>
+            Import Full Backup
+          </button>
+        </div>
+      </section>
+
       {/* Save */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
         <button
@@ -218,15 +259,6 @@ export default function SettingsPage(): React.ReactElement {
           }}
         >
           Save Settings
-        </button>
-        <button
-          onClick={() => window.api.exportJson()}
-          style={{ padding: '8px 16px', fontSize: 13 }}
-        >
-          Export JSON
-        </button>
-        <button onClick={importJson} style={{ padding: '8px 16px', fontSize: 13 }}>
-          Import JSON
         </button>
         {saved && <span style={{ fontSize: 13, color: '#4ade80' }}>Saved!</span>}
         {importMsg && <span style={{ fontSize: 13, color: '#4ade80' }}>{importMsg}</span>}

@@ -1,30 +1,55 @@
-# React + TypeScript + Vite
+# AchieveMe
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+AchieveMe is a desktop app (Electron) that tracks Steam achievements across multiple emulator save formats. It watches Goldberg, GSE, and other emulator save folders, merges progress into a local library, and enriches achievements with Steam Web API metadata.
 
-Currently, two official plugins are available:
+## Development
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type aware lint rules:
-
-- Configure the top-level `parserOptions` property like this:
-
-```js
-export default {
-  // other rules...
-  parserOptions: {
-    ecmaVersion: 'latest',
-    sourceType: 'module',
-    project: ['./tsconfig.json', './tsconfig.node.json'],
-    tsconfigRootDir: __dirname,
-  },
-}
+```bash
+cd achieveme
+npm install
+npm run dev
 ```
 
-- Replace `plugin:@typescript-eslint/recommended` to `plugin:@typescript-eslint/recommended-type-checked` or `plugin:@typescript-eslint/strict-type-checked`
-- Optionally add `plugin:@typescript-eslint/stylistic-type-checked`
-- Install [eslint-plugin-react](https://github.com/jsx-eslint/eslint-plugin-react) and add `plugin:react/recommended` & `plugin:react/jsx-runtime` to the `extends` list
+### Scripts
+
+| Command | Purpose |
+|---------|---------|
+| `npm run dev` | Start Electron in development mode |
+| `npm run build` | Production build |
+| `npm run typecheck` | TypeScript check (main + renderer) |
+| `npm run lint` | ESLint |
+| `npm run test` | Unit tests (`node:test`) |
+
+## Backup & restore
+
+Settings provides four backup actions:
+
+| Action | What it includes | Best for |
+|--------|------------------|----------|
+| **Export JSON** | SQLite games/achievements + Goldberg/GSE `achievements.json` progress (v2) | Lightweight transfer, version control |
+| **Export Full Backup** | Same metadata plus every file under each Goldberg/GSE `{appid}\` folder (v3 ZIP) | Moving extra save files alongside achievements |
+| **Import JSON** | Restores library and writes `achievements.json` files | Round-trip JSON backups |
+| **Import Full Backup** | Restores library and merges ZIP files **one-by-one** into emulator folders | Restoring full appid folders |
+
+### Full Backup ZIP layout
+
+```
+achieveme-backup.zip
+├── manifest.json          (formatVersion: 3)
+└── saves/gse/{appid}/
+    ├── achievements.json
+    └── (any other files in that appid folder)
+```
+
+### Import merge behavior
+
+Full Backup import **does not delete** emulator folders. It only overwrites files that exist in the backup. Other appid folders already on disk are left untouched.
+
+JSON import is unchanged from v2: it writes Goldberg/GSE achievement files only, not arbitrary sibling files.
+
+## Manual test checklist
+
+1. **Export Full Backup** — With at least one GSE game that has an extra file in its appid folder, export a ZIP and confirm `manifest.json` has `formatVersion: 3` and the zip contains both `achievements.json` and the extra file.
+2. **Import merge** — Keep a second appid folder on disk that is *not* in the backup. Import the ZIP and confirm the backed-up game is restored while the other appid folder is unchanged.
+3. **JSON round-trip** — Export JSON, import JSON; achievements restore without using ZIP.
+4. **Orphan prune** — Delete `achievements.json` for a game, restart the app; the game should disappear from the library (existing behavior).
