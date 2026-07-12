@@ -16,7 +16,6 @@ export function parseAchievementsBySource(
   switch (source) {
     case 'goldberg':
     case 'gse':
-    case 'empress':
       return parseGoldbergAchievements(filePath)
     case 'codex':
     case 'rune':

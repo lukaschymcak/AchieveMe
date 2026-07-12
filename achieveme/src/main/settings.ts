@@ -30,9 +30,12 @@ export function loadSettings(): AppSettings {
   try {
     const text = fs.readFileSync(settingsPath(), 'utf8')
     const parsed = JSON.parse(text) as Partial<AppSettings> & { customRoots?: Partial<Record<string, string[]>> }
+    const enabledSources = (parsed.enabledSources ?? DEFAULT_SETTINGS.enabledSources).filter((s) =>
+      ALL_SOURCES.includes(s)
+    )
     return {
       steamApiKey: parsed.steamApiKey ?? DEFAULT_SETTINGS.steamApiKey,
-      enabledSources: parsed.enabledSources ?? DEFAULT_SETTINGS.enabledSources,
+      enabledSources: enabledSources.length > 0 ? enabledSources : [...ALL_SOURCES],
       customWatchFolders: migrateCustomWatchFolders(parsed)
     }
   } catch {

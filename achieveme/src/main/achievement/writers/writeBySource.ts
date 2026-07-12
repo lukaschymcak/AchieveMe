@@ -1,7 +1,7 @@
 import type { RawAchievement, SourceId } from '../../../shared/types'
 import { writeGoldbergSave } from './goldbergWriter'
 
-const GOLDBERG_FAMILY: SourceId[] = ['goldberg', 'gse', 'empress']
+const GOLDBERG_FAMILY: SourceId[] = ['goldberg', 'gse']
 
 export function writeSaveBySource(
   source: SourceId,

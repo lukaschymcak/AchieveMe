@@ -1,7 +1,7 @@
 import path from 'node:path'
 import type { AppSettings, SourceId } from '../../shared/types'
 
-export const GOLDBERG_JSON_SOURCES: SourceId[] = ['goldberg', 'gse', 'empress']
+export const GOLDBERG_JSON_SOURCES: SourceId[] = ['goldberg', 'gse']
 
 export function expandEnv(value: string): string {
   return value.replace(/%([^%]+)%/g, (_, key: string) => process.env[key] ?? '')
@@ -11,7 +11,6 @@ export function expandEnv(value: string): string {
 export const DEFAULT_ROOTS: Record<SourceId, string[]> = {
   goldberg: [expandEnv('%APPDATA%\\Goldberg SteamEmu Saves')],
   gse: [expandEnv('%APPDATA%\\GSE Saves')],
-  empress: [expandEnv('%APPDATA%\\EMPRESS'), expandEnv('%PUBLIC%\\Documents\\EMPRESS')],
   codex: [expandEnv('%PUBLIC%\\Documents\\Steam\\CODEX')],
   rune: [expandEnv('%PUBLIC%\\Documents\\Steam\\RUNE')],
   onlinefix: [expandEnv('%PUBLIC%\\Documents\\OnlineFix')],
@@ -27,7 +26,6 @@ export const DEFAULT_ROOTS: Record<SourceId, string[]> = {
 export const SOURCE_FILE: Record<SourceId, string> = {
   goldberg: 'achievements.json',
   gse: 'achievements.json',
-  empress: 'achievements.json',
   codex: 'achievements.ini',
   rune: 'achievements.ini',
   onlinefix: 'achievements.ini',
@@ -50,9 +48,6 @@ export function getRootsForSource(source: SourceId, settings: AppSettings): stri
 
 /** Relative path from emulator root to the save file. */
 export function getRelativeSavePath(source: SourceId, appid: string): string {
-  if (source === 'empress') {
-    return path.join(appid, 'remote', appid, SOURCE_FILE.empress)
-  }
   return path.join(appid, SOURCE_FILE[source])
 }
 

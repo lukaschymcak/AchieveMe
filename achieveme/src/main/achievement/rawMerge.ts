@@ -12,7 +12,6 @@ const SOURCE_PRIORITY: SourceId[] = [
   'reloaded',
   'creamapi',
   'codex',
-  'empress',
   'gse',
   'goldberg'
 ]

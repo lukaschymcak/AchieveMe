@@ -2,7 +2,6 @@
 export type SourceId =
   | 'goldberg'
   | 'gse'
-  | 'empress'
   | 'codex'
   | 'rune'
   | 'onlinefix'
@@ -19,7 +18,6 @@ export type TrophyTier = 'bronze' | 'silver' | 'gold'
 export const ALL_SOURCES: SourceId[] = [
   'goldberg',
   'gse',
-  'empress',
   'codex',
   'rune',
   'onlinefix',

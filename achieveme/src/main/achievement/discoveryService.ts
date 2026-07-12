@@ -13,28 +13,6 @@ function isNumericAppId(name: string): boolean {
   return /^\d+$/.test(name)
 }
 
-// Empress saves at: {root}/{appid}/remote/{appid}/achievements.json
-function scanEmpressRoot(root: string): DiscoveredApp[] {
-  const results: DiscoveredApp[] = []
-  if (!fs.existsSync(root)) return results
-
-  let entries: string[] = []
-  try {
-    entries = fs.readdirSync(root)
-  } catch {
-    return results
-  }
-
-  for (const name of entries) {
-    if (!isNumericAppId(name)) continue
-    const filePath = path.join(root, name, 'remote', name, 'achievements.json')
-    if (!fs.existsSync(filePath)) continue
-    results.push({ appid: name, source: 'empress', filePath })
-  }
-
-  return results
-}
-
 function scanStandardRoot(source: SourceId, root: string): DiscoveredApp[] {
   const results: DiscoveredApp[] = []
   if (!fs.existsSync(root)) return results
@@ -64,11 +42,7 @@ export function scanAllSources(settings: AppSettings): DiscoveredApp[] {
     const roots = getRootsForSource(source, settings)
 
     for (const root of roots) {
-      if (source === 'empress') {
-        all.push(...scanEmpressRoot(root))
-      } else {
-        all.push(...scanStandardRoot(source, root))
-      }
+      all.push(...scanStandardRoot(source, root))
     }
   }
 
