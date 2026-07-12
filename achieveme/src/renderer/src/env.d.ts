@@ -9,8 +9,7 @@ declare global {
       getSettings(): Promise<AppSettings>
       saveSettings(settings: AppSettings): Promise<void>
       refresh(): Promise<void>
-      exportJson(): Promise<void>
-      importJson(): Promise<ImportResult | null>
+      deleteGame(appid: string): Promise<void>
       exportZip(): Promise<void>
       importZip(): Promise<ImportResult | null>
     }

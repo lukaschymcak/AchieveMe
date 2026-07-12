@@ -14,15 +14,13 @@ export function achievementDescription(
   description: string,
   hidden: number,
   earned: number,
-  showHidden: boolean
+  showDescriptions: boolean
 ): string | null {
   if (description.trim()) return description
   if (hidden && !earned) {
-    return showHidden ? 'Hidden achievement' : null
+    return showDescriptions ? 'Hidden achievement' : null
   }
-  if (hidden && earned) {
-    return 'Steam does not provide descriptions for hidden achievements'
-  }
+  if (hidden && earned) return null
   return null
 }
 

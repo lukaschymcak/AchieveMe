@@ -56,17 +56,6 @@ export default function SettingsPage(): React.ReactElement {
     })
   }
 
-  function importJson(): void {
-    window.api.importJson().then((result) => {
-      if (!result) return
-      const errNote = result.errors.length > 0 ? ` (${result.errors.length} warnings)` : ''
-      setImportMsg(
-        `Imported ${result.gamesImported} games, wrote ${result.saveFilesWritten} save files${errNote}`
-      )
-      setTimeout(() => setImportMsg(null), 4000)
-    })
-  }
-
   function importZip(): void {
     window.api.importZip().then((result) => {
       if (!result) return
@@ -218,28 +207,19 @@ export default function SettingsPage(): React.ReactElement {
       <section style={{ marginBottom: 32 }}>
         <h3 style={{ marginBottom: 8 }}>Backup &amp; Restore</h3>
         <p style={{ fontSize: 12, color: '#888', marginBottom: 12 }}>
-          Export JSON for lightweight achievement progress only. Full Backup zips entire Goldberg/GSE
-          appid folders plus the global emulator <code>settings</code> folder (including extra save
-          files). Import merges file-by-file and does not delete other games on disk.
+          Export creates a ZIP backup of Goldberg/GSE appid folders plus the global emulator{' '}
+          <code>settings</code> folder. Import merges file-by-file and does not delete other games
+          on disk.
         </p>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-          <button
-            onClick={() => window.api.exportJson()}
-            style={{ padding: '8px 16px', fontSize: 13 }}
-          >
-            Export JSON
-          </button>
           <button
             onClick={() => window.api.exportZip()}
             style={{ padding: '8px 16px', fontSize: 13 }}
           >
-            Export Full Backup
-          </button>
-          <button onClick={importJson} style={{ padding: '8px 16px', fontSize: 13 }}>
-            Import JSON
+            Export
           </button>
           <button onClick={importZip} style={{ padding: '8px 16px', fontSize: 13 }}>
-            Import Full Backup
+            Import
           </button>
         </div>
       </section>

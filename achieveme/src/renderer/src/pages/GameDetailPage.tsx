@@ -18,7 +18,7 @@ const TIER_COLOR: Record<string, string> = {
 
 export default function GameDetailPage({ appid }: Props): React.ReactElement {
   const [detail, setDetail] = useState<GameDetail | null>(null)
-  const [showHidden, setShowHidden] = useState(false)
+  const [showDescriptions, setShowDescriptions] = useState(false)
 
   useEffect(() => {
     window.api.getGameDetail(appid).then(setDetail)
@@ -29,12 +29,9 @@ export default function GameDetailPage({ appid }: Props): React.ReactElement {
   }
 
   const { game, achievements } = detail
-  const hiddenCount = achievements.filter((a) => isHiddenAchievement(a.hidden) && !a.earned).length
-
-  const visibleAchievements = achievements.filter((ach) => {
-    if (!isHiddenAchievement(ach.hidden) || ach.earned) return true
-    return showHidden
-  })
+  const hiddenWithoutDescription = achievements.filter(
+    (a) => isHiddenAchievement(a.hidden) && !a.earned && !a.description.trim()
+  ).length
 
   return (
     <div style={{ padding: 24 }}>
@@ -76,16 +73,21 @@ export default function GameDetailPage({ appid }: Props): React.ReactElement {
         }}
       >
         <h3>Achievements</h3>
-        {hiddenCount > 0 && (
-          <button onClick={() => setShowHidden((v) => !v)}>
-            {showHidden ? 'Hide hidden' : `Show hidden (${hiddenCount})`}
+        {hiddenWithoutDescription > 0 && (
+          <button onClick={() => setShowDescriptions((v) => !v)}>
+            {showDescriptions ? 'Hide descriptions' : 'Show descriptions'}
           </button>
         )}
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        {visibleAchievements.map((ach) => {
-          const desc = achievementDescription(ach.description, ach.hidden ?? 0, ach.earned, showHidden)
+        {achievements.map((ach) => {
+          const desc = achievementDescription(
+            ach.description,
+            ach.hidden ?? 0,
+            ach.earned,
+            showDescriptions
+          )
           const isHidden = isHiddenAchievement(ach.hidden)
 
           return (
@@ -119,8 +121,7 @@ export default function GameDetailPage({ appid }: Props): React.ReactElement {
                   <div
                     style={{
                       fontSize: 11,
-                      color:
-                        desc.includes('Steam does not') || desc === 'Hidden achievement' ? '#666' : '#888',
+                      color: desc === 'Hidden achievement' ? '#666' : '#888',
                       fontStyle: desc === 'Hidden achievement' ? 'italic' : 'normal',
                       marginTop: 2
                     }}

@@ -83,6 +83,7 @@ export interface GameSummary {
   unlocked_achievements: number
   completion_pct: number
   has_platinum: boolean
+  last_unlocked_at: number
 }
 
 // Sent over IPC to renderer for the game detail page

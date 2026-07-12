@@ -3,16 +3,21 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { app } from 'electron'
 import { getDb } from '../db/database'
-import { getAllGames, getGame, getAchievementsForGame } from '../db/repository'
+import {
+  getAllGames,
+  getGame,
+  getAchievementsForGame,
+  getSaveLocationsForApp,
+  deleteGame
+} from '../db/repository'
 import { getStoreCoverUrl } from '../achievement/steamApiClient'
 import { loadSettings, saveSettings } from '../settings'
-import { startWatcher } from '../achievement/watcherService'
+import { startWatcher, pruneOrphanedGames } from '../achievement/watcherService'
 import { scanAllSources } from '../achievement/discoveryService'
 import { processAppId } from '../achievement/processAppId'
-import { buildExportBundle } from '../achievement/exportService'
 import { buildFullBackupZip } from '../achievement/exportZipService'
-import { importBundle } from '../achievement/importService'
 import { importFullBackupZip } from '../achievement/importZipService'
+import { regenerateProfileStats } from '../achievement/profileStatsService'
 import type { ProfileStats, GameSummary, GameDetail, AppSettings, ImportResult } from '../../shared/types'
 
 export function registerIpcHandlers(): void {
@@ -40,7 +45,8 @@ export function registerIpcHandlers(): void {
         total_achievements: g.total_achievements,
         unlocked_achievements: g.unlocked_achievements,
         completion_pct: g.completion_pct,
-        has_platinum: g.has_platinum === 1
+        has_platinum: g.has_platinum === 1,
+        last_unlocked_at: g.last_unlocked_at
       })
     }
     return summaries
@@ -67,6 +73,9 @@ export function registerIpcHandlers(): void {
   ipcMain.handle('refresh', async (): Promise<void> => {
     const settings = loadSettings()
     const db = getDb()
+
+    pruneOrphanedGames(settings)
+
     const discovered = scanAllSources(settings)
     const appids = [...new Set(discovered.map((d) => d.appid))]
     for (const appid of appids) {
@@ -80,43 +89,28 @@ export function registerIpcHandlers(): void {
     }
   })
 
-  ipcMain.handle('export-json', async (): Promise<void> => {
-    const { canceled, filePath } = await dialog.showSaveDialog({
-      title: 'Export AchieveMe data',
-      defaultPath: 'achieveme-export.json',
-      filters: [{ name: 'JSON', extensions: ['json'] }]
-    })
-    if (canceled || !filePath) return
-
+  ipcMain.handle('delete-game', async (_event, appid: string): Promise<void> => {
     const db = getDb()
-    const settings = loadSettings()
-    const data = buildExportBundle(db, settings)
+    const locations = getSaveLocationsForApp(db, appid)
+    const deletedFolders = new Set<string>()
 
-    fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf8')
-  })
-
-  ipcMain.handle('import-json', async (): Promise<ImportResult | null> => {
-    const { canceled, filePaths } = await dialog.showOpenDialog({
-      title: 'Import AchieveMe data',
-      filters: [{ name: 'JSON', extensions: ['json'] }],
-      properties: ['openFile']
-    })
-    if (canceled || filePaths.length === 0) return null
-
-    const text = fs.readFileSync(filePaths[0], 'utf8')
-    const bundle = JSON.parse(text)
-    if (!bundle?.games || !bundle?.achievements) {
-      throw new Error('Invalid export file: missing games or achievements')
+    for (const loc of locations) {
+      const folder = path.dirname(loc.file_path)
+      const folderKey = folder.toLowerCase()
+      if (deletedFolders.has(folderKey)) continue
+      if (fs.existsSync(folder)) {
+        fs.rmSync(folder, { recursive: true, force: true })
+        deletedFolders.add(folderKey)
+      }
     }
 
-    const db = getDb()
-    const settings = loadSettings()
-    return importBundle(db, bundle, settings)
+    deleteGame(db, appid)
+    regenerateProfileStats(db)
   })
 
   ipcMain.handle('export-zip', async (): Promise<void> => {
     const { canceled, filePath } = await dialog.showSaveDialog({
-      title: 'Export Full Backup',
+      title: 'Export Backup',
       defaultPath: 'achieveme-backup.zip',
       filters: [{ name: 'ZIP', extensions: ['zip'] }]
     })
@@ -129,7 +123,7 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle('import-zip', async (): Promise<ImportResult | null> => {
     const { canceled, filePaths } = await dialog.showOpenDialog({
-      title: 'Import Full Backup',
+      title: 'Import Backup',
       filters: [{ name: 'ZIP', extensions: ['zip'] }],
       properties: ['openFile']
     })

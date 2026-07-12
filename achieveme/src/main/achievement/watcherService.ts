@@ -36,7 +36,7 @@ function scheduleProcess(appid: string, settings: AppSettings): void {
   debounceTimers.set(appid, timer)
 }
 
-function pruneOrphanedGames(settings: AppSettings): void {
+export function pruneOrphanedGames(settings: AppSettings): void {
   const db = getDb()
   const onDisk = new Set(scanAllSources(settings).map((d) => d.appid))
   let removed = 0

@@ -36,16 +36,14 @@ npm run dev
 
 ## Backup & restore
 
-Settings provides four backup actions:
+Settings provides two backup actions:
 
-| Action | What it includes | Best for |
-|--------|------------------|----------|
-| **Export JSON** | SQLite games/achievements + Goldberg/GSE `achievements.json` progress (v2) | Lightweight transfer, version control |
-| **Export Full Backup** | Same metadata plus every file under each Goldberg/GSE `{appid}\` folder and the emulator-root `settings\` folder (v3 ZIP) | Moving extra save files alongside achievements |
-| **Import JSON** | Restores library and writes `achievements.json` files | Round-trip JSON backups |
-| **Import Full Backup** | Restores library and merges ZIP files **one-by-one** into emulator folders | Restoring full appid folders |
+| Action | What it includes |
+|--------|------------------|
+| **Export** | Full ZIP backup: library metadata plus every file under each Goldberg/GSE `{appid}\` folder and the emulator-root `settings\` folder (v3) |
+| **Import** | Restores library and merges ZIP files **one-by-one** into emulator folders |
 
-### Full Backup ZIP layout
+### Backup ZIP layout
 
 ```
 achieveme-backup.zip
@@ -61,11 +59,11 @@ achieveme-backup.zip
 
 Full Backup import **does not delete** emulator folders. It only overwrites files that exist in the backup. Other appid folders already on disk are left untouched.
 
-JSON import writes Goldberg/GSE achievement files only, not arbitrary sibling files.
-
 ## Manual test checklist
 
-1. **Export Full Backup** — With at least one GSE game that has an extra file in its appid folder, export a ZIP and confirm `manifest.json` has `formatVersion: 3` and the zip contains both `achievements.json` and the extra file.
+1. **Export** — With at least one GSE game that has an extra file in its appid folder, export a ZIP and confirm `manifest.json` has `formatVersion: 3` and the zip contains both `achievements.json` and the extra file.
 2. **Import merge** — Keep a second appid folder on disk that is *not* in the backup. Import the ZIP and confirm the backed-up game is restored while the other appid folder is unchanged.
-3. **JSON round-trip** — Export JSON, import JSON; achievements restore without using ZIP.
-4. **Orphan prune** — Delete `achievements.json` for a game, restart the app; the game should disappear from the library (existing behavior).
+3. **Refresh prune** — Delete `achievements.json` for a game, click Refresh; the game should disappear from the library.
+4. **Delete game** — Click **Delete** in the library toolbar (cursor becomes crosshair), click a game card, confirm on the inline "Are you sure?" overlay; verify the game is removed from the app and its save folder is deleted from disk.
+5. **Library search/sort** — Search by name and switch sort modes (least complete, most unlocked, recently unlocked).
+6. **Hidden descriptions** — Open a game with hidden achievements; all achievements are visible, descriptions toggle with Show/Hide descriptions.

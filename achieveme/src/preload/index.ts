@@ -20,11 +20,8 @@ contextBridge.exposeInMainWorld('api', {
   refresh: (): Promise<void> =>
     ipcRenderer.invoke('refresh'),
 
-  exportJson: (): Promise<void> =>
-    ipcRenderer.invoke('export-json'),
-
-  importJson: (): Promise<ImportResult | null> =>
-    ipcRenderer.invoke('import-json'),
+  deleteGame: (appid: string): Promise<void> =>
+    ipcRenderer.invoke('delete-game', appid),
 
   exportZip: (): Promise<void> =>
     ipcRenderer.invoke('export-zip'),
