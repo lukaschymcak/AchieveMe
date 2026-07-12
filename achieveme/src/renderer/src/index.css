@@ -19,8 +19,49 @@ button {
   padding: 6px 14px;
   border-radius: 6px;
   font-size: 13px;
+  transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
 }
 
 button:hover {
   background: #35354a;
+}
+
+@keyframes pulse-red {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(248, 113, 113, 0);
+  }
+
+  50% {
+    box-shadow: 0 0 0 6px rgba(248, 113, 113, 0.35);
+  }
+}
+
+@keyframes fade-delete {
+  from {
+    opacity: 0.5;
+  }
+
+  to {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+}
+
+@keyframes fill-bar {
+  from {
+    width: 0;
+  }
+
+  to {
+    width: var(--bar-width);
+  }
+}
+
+.achievement-row {
+  transition: background 150ms ease, border-color 150ms ease;
+}
+
+.achievement-row:hover {
+  background: #212130 !important;
 }

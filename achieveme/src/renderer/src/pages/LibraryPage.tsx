@@ -182,24 +182,34 @@ export default function LibraryPage({ onSelect, onGoToSettings }: Props): React.
       ) : (
         <div
           style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',
-            gap: 16,
-            cursor: deleteMode ? 'crosshair' : 'default'
+            background: deleteMode ? 'rgba(248, 113, 113, 0.03)' : 'transparent',
+            borderTop: deleteMode ? '1px solid rgba(248, 113, 113, 0.25)' : '1px solid transparent',
+            transition: 'background 200ms ease, border-color 200ms ease',
+            paddingTop: 12,
+            borderRadius: 8
           }}
         >
-          {displayedGames.map((game) => (
-            <GameCard
-              key={game.appid}
-              game={game}
-              deleteMode={deleteMode}
-              isPending={pendingDelete?.appid === game.appid}
-              deleting={deletingAppid === game.appid}
-              onCardClick={() => handleCardClick(game)}
-              onConfirmDelete={() => handleDelete(game.appid)}
-              onCancelDelete={() => setPendingDelete(null)}
-            />
-          ))}
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',
+              gap: 16,
+              cursor: deleteMode ? 'crosshair' : 'default'
+            }}
+          >
+            {displayedGames.map((game) => (
+              <GameCard
+                key={game.appid}
+                game={game}
+                deleteMode={deleteMode}
+                isPending={pendingDelete?.appid === game.appid}
+                deleting={deletingAppid === game.appid}
+                onCardClick={() => handleCardClick(game)}
+                onConfirmDelete={() => handleDelete(game.appid)}
+                onCancelDelete={() => setPendingDelete(null)}
+              />
+            ))}
+          </div>
         </div>
       )}
     </div>
@@ -223,11 +233,25 @@ function GameCard({
   onConfirmDelete: () => void
   onCancelDelete: () => void
 }): React.ReactElement {
-  const borderColor = isPending ? '#f87171' : game.has_platinum ? '#7b68ee' : '#2a2a35'
+  const [hovered, setHovered] = useState(false)
+
+  const baseBorderColor = isPending ? '#f87171' : game.has_platinum ? '#7b68ee' : '#2a2a35'
+  let borderColor = baseBorderColor
+  let boxShadow = 'none'
+
+  if (hovered && deleteMode) {
+    borderColor = '#f87171'
+    boxShadow = '0 0 12px rgba(248, 113, 113, 0.4)'
+  } else if (hovered && !deleteMode) {
+    borderColor = '#4a4a60'
+    boxShadow = '0 0 10px rgba(88, 101, 242, 0.2)'
+  }
 
   return (
     <div
       onClick={onCardClick}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
       style={{
         position: 'relative',
         background: '#1a1a22',
@@ -236,7 +260,13 @@ function GameCard({
         overflow: 'hidden',
         display: 'flex',
         flexDirection: 'column',
-        opacity: deleting ? 0.5 : 1,
+        boxShadow,
+        transition: 'border-color 150ms ease, box-shadow 150ms ease',
+        animation: deleting
+          ? 'fade-delete 300ms ease forwards'
+          : isPending
+            ? 'pulse-red 1.2s ease-in-out infinite'
+            : 'none',
         cursor: deleteMode ? 'pointer' : 'pointer'
       }}
     >

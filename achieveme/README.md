@@ -65,5 +65,5 @@ Full Backup import **does not delete** emulator folders. It only overwrites file
 2. **Import merge** — Keep a second appid folder on disk that is *not* in the backup. Import the ZIP and confirm the backed-up game is restored while the other appid folder is unchanged.
 3. **Refresh prune** — Delete `achievements.json` for a game, click Refresh; the game should disappear from the library.
 4. **Delete game** — Click **Delete** in the library toolbar (cursor becomes crosshair), click a game card, confirm on the inline "Are you sure?" overlay; verify the game is removed from the app and its save folder is deleted from disk.
-5. **Library search/sort** — Search by name and switch sort modes (least complete, most unlocked, recently unlocked).
-6. **Hidden descriptions** — Open a game with hidden achievements; all achievements are visible, descriptions toggle with Show/Hide descriptions.
+5. **Library search/sort** — Search by name and switch sort modes (least complete, most unlocked, recently unlocked). Hover game cards for a blue glow; enable **Delete** mode to see the red grid tint, red card hover, pending pulse, and delete fade-out.
+6. **Hidden descriptions** — Open a game with hidden achievements; all achievements are visible, descriptions toggle with Show/Hide descriptions. Earned rows show tier-colored left accents and pill badges; the header progress bar animates on load.

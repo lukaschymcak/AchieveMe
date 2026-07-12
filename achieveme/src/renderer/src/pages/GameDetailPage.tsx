@@ -57,6 +57,29 @@ export default function GameDetailPage({ appid }: Props): React.ReactElement {
             {game.unlocked_achievements} / {game.total_achievements} achievements (
             {Math.round(game.completion_pct)}%)
           </p>
+          <div
+            style={{
+              marginTop: 10,
+              width: 240,
+              maxWidth: '100%',
+              height: 6,
+              background: '#2a2a35',
+              borderRadius: 3,
+              overflow: 'hidden'
+            }}
+          >
+            <div
+              style={
+                {
+                  height: '100%',
+                  '--bar-width': `${Math.round(game.completion_pct)}%`,
+                  animation: 'fill-bar 600ms ease forwards',
+                  background: game.has_platinum === 1 ? '#7b68ee' : '#5865f2',
+                  borderRadius: 3
+                } as React.CSSProperties
+              }
+            />
+          </div>
           {game.has_platinum === 1 && (
             <p style={{ color: '#7b68ee', fontSize: 13, marginTop: 4 }}>✦ Platinum</p>
           )}
@@ -90,15 +113,21 @@ export default function GameDetailPage({ appid }: Props): React.ReactElement {
           )
           const isHidden = isHiddenAchievement(ach.hidden)
 
+          const rowBorderColor = ach.earned ? TIER_COLOR[ach.trophy_tier] : '#2a2a35'
+
           return (
             <div
               key={ach.api_name}
+              className="achievement-row"
               style={{
                 display: 'flex',
                 gap: 12,
                 alignItems: 'center',
                 background: '#1a1a22',
-                border: `1px solid ${ach.earned ? TIER_COLOR[ach.trophy_tier] : '#2a2a35'}`,
+                borderLeft: `3px solid ${ach.earned ? TIER_COLOR[ach.trophy_tier] : 'transparent'}`,
+                borderTop: `1px solid ${rowBorderColor}`,
+                borderRight: `1px solid ${rowBorderColor}`,
+                borderBottom: `1px solid ${rowBorderColor}`,
                 borderRadius: 8,
                 padding: '10px 14px',
                 opacity: ach.earned ? 1 : isHidden ? 0.65 : 0.5
@@ -131,15 +160,21 @@ export default function GameDetailPage({ appid }: Props): React.ReactElement {
                 )}
               </div>
               <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                <div
+                <span
                   style={{
-                    fontSize: 11,
+                    display: 'inline-block',
+                    padding: '1px 6px',
+                    borderRadius: 10,
+                    fontSize: 10,
+                    fontWeight: 700,
+                    background: `${TIER_COLOR[ach.trophy_tier]}22`,
                     color: TIER_COLOR[ach.trophy_tier],
-                    textTransform: 'capitalize'
+                    textTransform: 'capitalize',
+                    border: `1px solid ${TIER_COLOR[ach.trophy_tier]}55`
                   }}
                 >
                   {ach.trophy_tier}
-                </div>
+                </span>
                 <div style={{ fontSize: 11, color: '#888' }}>
                   {ach.global_percent > 0 ? `${ach.global_percent.toFixed(1)}%` : '—'}
                 </div>
