@@ -24,5 +24,11 @@ contextBridge.exposeInMainWorld('api', {
     ipcRenderer.invoke('export-json'),
 
   importJson: (): Promise<ImportResult | null> =>
-    ipcRenderer.invoke('import-json')
+    ipcRenderer.invoke('import-json'),
+
+  exportZip: (): Promise<void> =>
+    ipcRenderer.invoke('export-zip'),
+
+  importZip: (): Promise<ImportResult | null> =>
+    ipcRenderer.invoke('import-zip')
 })

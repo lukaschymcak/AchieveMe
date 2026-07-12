@@ -11,6 +11,8 @@ declare global {
       refresh(): Promise<void>
       exportJson(): Promise<void>
       importJson(): Promise<ImportResult | null>
+      exportZip(): Promise<void>
+      importZip(): Promise<ImportResult | null>
     }
   }
 }

@@ -11,7 +11,9 @@ import { startWatcher } from '../achievement/watcherService'
 import { scanAllSources } from '../achievement/discoveryService'
 import { processAppId } from '../achievement/processAppId'
 import { buildExportBundle } from '../achievement/exportService'
+import { buildFullBackupZip } from '../achievement/exportZipService'
 import { importBundle } from '../achievement/importService'
+import { importFullBackupZip } from '../achievement/importZipService'
 import type { ProfileStats, GameSummary, GameDetail, AppSettings, ImportResult } from '../../shared/types'
 
 export function registerIpcHandlers(): void {
@@ -117,5 +119,31 @@ export function registerIpcHandlers(): void {
     const db = getDb()
     const settings = loadSettings()
     return importBundle(db, bundle, settings)
+  })
+
+  ipcMain.handle('export-zip', async (): Promise<void> => {
+    const { canceled, filePath } = await dialog.showSaveDialog({
+      title: 'Export Full Backup',
+      defaultPath: 'achieveme-backup.zip',
+      filters: [{ name: 'ZIP', extensions: ['zip'] }]
+    })
+    if (canceled || !filePath) return
+
+    const db = getDb()
+    const settings = loadSettings()
+    buildFullBackupZip(db, settings, filePath)
+  })
+
+  ipcMain.handle('import-zip', async (): Promise<ImportResult | null> => {
+    const { canceled, filePaths } = await dialog.showOpenDialog({
+      title: 'Import Full Backup',
+      filters: [{ name: 'ZIP', extensions: ['zip'] }],
+      properties: ['openFile']
+    })
+    if (canceled || filePaths.length === 0) return null
+
+    const db = getDb()
+    const settings = loadSettings()
+    return importFullBackupZip(db, filePaths[0], settings)
   })
 }

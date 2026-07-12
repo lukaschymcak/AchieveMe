@@ -1,0 +1,103 @@
+import fs from 'node:fs'
+import AdmZip from 'adm-zip'
+import type Database from 'better-sqlite3'
+import type { AppSettings, FullBackupManifest, PortableFolder } from '../../shared/types'
+import { getAllSaveLocations } from '../db/repository'
+import { scanAllSources } from './discoveryService'
+import { buildExportBundle } from './exportService'
+import { collectFilesRecursive, encodePortableFolderPath, getAppFolderPath } from './folderUtils'
+import { GOLDBERG_JSON_SOURCES } from './savePathUtils'
+
+function folderKey(source: string, appid: string, folderPath: string): string {
+  return `${source}|${appid}|${folderPath.toLowerCase()}`
+}
+
+function collectFolders(
+  db: Database.Database,
+  settings: AppSettings
+): Array<{ folderPath: string; folder: PortableFolder }> {
+  const results: Array<{ folderPath: string; folder: PortableFolder }> = []
+  const seen = new Set<string>()
+
+  for (const loc of getAllSaveLocations(db)) {
+    if (!GOLDBERG_JSON_SOURCES.includes(loc.source)) continue
+
+    const folderPath = getAppFolderPath(loc.file_path)
+    const key = folderKey(loc.source, loc.appid, folderPath)
+    if (seen.has(key)) continue
+    seen.add(key)
+
+    const hint = encodePortableFolderPath(folderPath, loc.source, settings)
+    const archivePath = `saves/${loc.source}/${loc.appid}`.replace(/\\/g, '/')
+    results.push({
+      folderPath,
+      folder: {
+        appid: loc.appid,
+        source: loc.source,
+        rootKind: hint.rootKind,
+        rootSource: hint.rootSource,
+        customRoot: hint.customRoot || undefined,
+        relativePath: hint.relativePath,
+        archivePath
+      }
+    })
+  }
+
+  const discovered = scanAllSources(settings)
+  for (const d of discovered) {
+    if (!GOLDBERG_JSON_SOURCES.includes(d.source)) continue
+
+    const folderPath = getAppFolderPath(d.filePath)
+    const key = folderKey(d.source, d.appid, folderPath)
+    if (seen.has(key)) continue
+    seen.add(key)
+
+    const hint = encodePortableFolderPath(folderPath, d.source, settings)
+    const archivePath = `saves/${d.source}/${d.appid}`.replace(/\\/g, '/')
+    results.push({
+      folderPath,
+      folder: {
+        appid: d.appid,
+        source: d.source,
+        rootKind: hint.rootKind,
+        rootSource: hint.rootSource,
+        customRoot: hint.customRoot || undefined,
+        relativePath: hint.relativePath,
+        archivePath
+      }
+    })
+  }
+
+  return results
+}
+
+export function buildFullBackupZip(
+  db: Database.Database,
+  settings: AppSettings,
+  outputPath: string
+): void {
+  const bundle = buildExportBundle(db, settings)
+  const folderEntries = collectFolders(db, settings)
+
+  const manifest: FullBackupManifest = {
+    formatVersion: 3,
+    exportedAt: bundle.exportedAt,
+    games: bundle.games,
+    achievements: bundle.achievements,
+    folders: folderEntries.map((e) => e.folder)
+  }
+
+  const zip = new AdmZip()
+  zip.addFile('manifest.json', Buffer.from(JSON.stringify(manifest, null, 2), 'utf8'))
+
+  for (const { folderPath, folder } of folderEntries) {
+    if (!fs.existsSync(folderPath)) continue
+
+    for (const file of collectFilesRecursive(folderPath)) {
+      const zipPath = `${folder.archivePath}/${file.relativePath}`.replace(/\\/g, '/')
+      zip.addFile(zipPath, fs.readFileSync(file.absolutePath))
+    }
+  }
+
+  zip.writeZip(outputPath)
+}
