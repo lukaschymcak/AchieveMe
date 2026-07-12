@@ -4,8 +4,8 @@ import AdmZip from 'adm-zip'
 import type Database from 'better-sqlite3'
 import type { AppSettings, FullBackupManifest, PortableFolder } from '../../shared/types'
 import { getAllSaveLocations } from '../db/repository'
-import { scanAllSources } from './discoveryService'
 import { buildExportBundle } from './exportService'
+import { discoverUncoveredGoldbergSaves } from './exportDiscovery'
 import { collectFilesRecursive, encodePortableFolderPath, encodePortableRootSubfolder, EMULATOR_ROOT_BACKUP_DIRS, getAppFolderPath } from './folderUtils'
 import { GOLDBERG_JSON_SOURCES, getRootsForSource } from './savePathUtils'
 
@@ -84,22 +84,19 @@ function collectFolders(
     })
   }
 
-  const discovered = scanAllSources(settings)
-  for (const d of discovered) {
-    if (!GOLDBERG_JSON_SOURCES.includes(d.source)) continue
-
-    const folderPath = getAppFolderPath(d.filePath)
-    const key = folderKey(d.source, d.appid, folderPath)
-    if (seen.has(key)) continue
-    seen.add(key)
-
-    const hint = encodePortableFolderPath(folderPath, d.source, settings)
-    const archivePath = `saves/${d.source}/${d.appid}`.replace(/\\/g, '/')
+  for (const discovered of discoverUncoveredGoldbergSaves(
+    settings,
+    seen,
+    (d) => folderKey(d.source, d.appid, getAppFolderPath(d.filePath))
+  )) {
+    const folderPath = getAppFolderPath(discovered.filePath)
+    const hint = encodePortableFolderPath(folderPath, discovered.source, settings)
+    const archivePath = `saves/${discovered.source}/${discovered.appid}`.replace(/\\/g, '/')
     results.push({
       folderPath,
       folder: {
-        appid: d.appid,
-        source: d.source,
+        appid: discovered.appid,
+        source: discovered.source,
         rootKind: hint.rootKind,
         rootSource: hint.rootSource,
         customRoot: hint.customRoot || undefined,

@@ -3,6 +3,7 @@ import { load } from 'cheerio'
 import type Database from 'better-sqlite3'
 import type { Achievement } from '../../shared/types'
 import { getCacheEntry, setCacheEntry } from '../db/repository'
+import { isFresh } from './cacheUtils'
 
 const STEAMDB_TTL = 604800
 const USER_AGENT =
@@ -19,16 +20,12 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
-function isFresh(cachedAt: number, ttlSeconds: number): boolean {
-  return Math.floor(Date.now() / 1000) - cachedAt < ttlSeconds
-}
-
 function safeText(value: string | undefined | null): string {
   return (value || '').replace(/\u00A0/g, ' ').trim()
 }
 
 /** SteamDB prefixes hidden descriptions with "Hidden achievement:" */
-export function normalizeHidden(descEN: string): { hidden: number; clean: string } {
+function normalizeHidden(descEN: string): { hidden: number; clean: string } {
   if (!descEN) return { hidden: 0, clean: '' }
 
   let s = String(descEN)
@@ -47,7 +44,7 @@ export function normalizeHidden(descEN: string): { hidden: number; clean: string
   return { hidden, clean: s }
 }
 
-export function normalizeMatchText(value: string): string {
+function normalizeMatchText(value: string): string {
   return String(value || '')
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
@@ -57,8 +54,7 @@ export function normalizeMatchText(value: string): string {
     .replace(/\s+/g, ' ')
 }
 
-/** Parse SteamDB /stats/ HTML — ported from Achievements-main. */
-export function extractSteamDbFromHtml(html: string): SteamDbAchievementRow[] {
+function extractSteamDbFromHtml(html: string): SteamDbAchievementRow[] {
   const $ = load(html || '')
   const rows: SteamDbAchievementRow[] = []
   const seen = new Set<string>()

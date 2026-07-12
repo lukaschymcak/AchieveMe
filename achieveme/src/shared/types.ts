@@ -1,14 +1,9 @@
-// Every emulator source we support. GreenLuma is excluded (registry-only, out of scope).
+// Supported emulator sources (Goldberg-family saves are writable on import).
 export type SourceId =
   | 'goldberg'
   | 'gse'
   | 'codex'
   | 'rune'
-  | 'onlinefix'
-  | 'smartsteamemu'
-  | 'skidrow'
-  | 'darksiders'
-  | 'ali213'
   | 'hoodlum'
   | 'creamapi'
   | 'reloaded'
@@ -20,11 +15,6 @@ export const ALL_SOURCES: SourceId[] = [
   'gse',
   'codex',
   'rune',
-  'onlinefix',
-  'smartsteamemu',
-  'skidrow',
-  'darksiders',
-  'ali213',
   'hoodlum',
   'creamapi',
   'reloaded'
@@ -124,14 +114,7 @@ export interface ExportBundleV2 {
   saveFiles: PortableSaveFile[]
 }
 
-/** v1 export shape (no formatVersion). */
-export interface ExportBundleV1 {
-  exportedAt: string
-  games: Game[]
-  achievements: Achievement[]
-}
-
-export type ExportBundle = ExportBundleV1 | ExportBundleV2
+export type ExportBundle = ExportBundleV2
 
 export interface SaveLocation {
   appid: string

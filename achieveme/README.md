@@ -1,6 +1,20 @@
 # AchieveMe
 
-AchieveMe is a desktop app (Electron) that tracks Steam achievements across multiple emulator save formats. It watches Goldberg, GSE, and other emulator save folders, merges progress into a local library, and enriches achievements with Steam Web API metadata.
+AchieveMe is a desktop app (Electron) that tracks Steam achievements across emulator save formats. It watches Goldberg, GSE, CODEX, RUNE, Hoodlum, CreamAPI, and Reloaded save folders, merges progress into a local library, and enriches achievements with Steam Web API metadata.
+
+## Supported emulator sources
+
+| Source | Default path | Save file |
+|--------|--------------|-----------|
+| goldberg | `%APPDATA%\Goldberg SteamEmu Saves` | `achievements.json` |
+| gse | `%APPDATA%\GSE Saves` | `achievements.json` |
+| codex | `%PUBLIC%\Documents\Steam\CODEX` | `achievements.ini` |
+| rune | `%PUBLIC%\Documents\Steam\RUNE` | `achievements.ini` |
+| hoodlum | *(custom folders only)* | `hlm.ini` |
+| creamapi | `%APPDATA%\CreamAPI` | `CreamAPI.Achievements.cfg` |
+| reloaded | `%PROGRAMDATA%\Steam` | `achievements.ini` |
+
+Goldberg and GSE saves can be written back on import. All other sources are read-only.
 
 ## Development
 
@@ -47,7 +61,7 @@ achieveme-backup.zip
 
 Full Backup import **does not delete** emulator folders. It only overwrites files that exist in the backup. Other appid folders already on disk are left untouched.
 
-JSON import is unchanged from v2: it writes Goldberg/GSE achievement files only, not arbitrary sibling files.
+JSON import writes Goldberg/GSE achievement files only, not arbitrary sibling files.
 
 ## Manual test checklist
 

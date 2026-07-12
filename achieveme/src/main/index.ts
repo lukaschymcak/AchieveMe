@@ -5,10 +5,9 @@ import { initDb } from './db/database'
 import { loadSettings } from './settings'
 import { startWatcher } from './achievement/watcherService'
 import { registerIpcHandlers } from './ipc/handlers'
-let mainWindow: BrowserWindow | null = null
 
 function createWindow(): void {
-  mainWindow = new BrowserWindow({
+  const mainWindow = new BrowserWindow({
     width: 1280,
     height: 800,
     minWidth: 1024,
@@ -22,7 +21,7 @@ function createWindow(): void {
   })
 
   mainWindow.on('ready-to-show', () => {
-    mainWindow!.show()
+    mainWindow.show()
   })
 
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {

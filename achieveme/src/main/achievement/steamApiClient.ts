@@ -6,6 +6,7 @@ import {
   setCacheEntry,
   getGame
 } from '../db/repository'
+import { isFresh } from './cacheUtils'
 import { ensureSteamDbHiddenDescriptions } from './steamDbScraper'
 import type Database from 'better-sqlite3'
 
@@ -27,10 +28,6 @@ function httpGet(url: string): Promise<string> {
       res.on('error', reject)
     }).on('error', reject)
   })
-}
-
-function isFresh(cachedAt: number, ttlSeconds: number): boolean {
-  return Math.floor(Date.now() / 1000) - cachedAt < ttlSeconds
 }
 
 function readCache(db: Database.Database, appid: string, type: string, ttl: number): unknown | null {
@@ -186,35 +183,19 @@ function getTrophyTier(globalPercent: number): 'gold' | 'silver' | 'bronze' {
   return 'bronze'
 }
 
-export interface EnrichResult {
-  game: Game
-  achievements: Achievement[]
-}
-
-export async function enrichApp(
+function buildAchievementRecords(
   appid: string,
-  apiKey: string,
   mergedRaw: Record<string, { achieved: boolean; unlockTime: number }>,
-  db: Database.Database,
-  forceRefresh = false
-): Promise<EnrichResult> {
-  const existingGame = getGame(db, appid)
-  const isNewGame = !existingGame
-
-  const schema = await fetchSchema(db, appid, apiKey, forceRefresh)
-  const percentages = await fetchPercentages(db, appid, forceRefresh)
-
-  let gameName = existingGame?.name ?? `Game ${appid}`
-  const appDetails = await fetchAppDetails(db, appid, forceRefresh || isNewGame)
-  if (appDetails?.name) gameName = appDetails.name
-
+  schema: SteamSchemaAchievement[] | null,
+  percentages: Record<string, number> | null
+): Achievement[] {
   const achievements: Achievement[] = []
   const schemaMap = new Map<string, SteamSchemaAchievement>()
   if (schema) {
-    for (const s of schema) schemaMap.set(s.name, s)
+    for (const entry of schema) schemaMap.set(entry.name, entry)
   }
 
-  const apiNames = schema ? schema.map((s) => s.name) : Object.keys(mergedRaw)
+  const apiNames = schema ? schema.map((entry) => entry.name) : Object.keys(mergedRaw)
 
   for (const apiName of apiNames) {
     const raw = mergedRaw[apiName]
@@ -244,8 +225,16 @@ export async function enrichApp(
     })
   }
 
-  await ensureSteamDbHiddenDescriptions(db, appid, achievements, forceRefresh)
+  return achievements
+}
 
+function buildGameRecord(
+  appid: string,
+  gameName: string,
+  achievements: Achievement[],
+  schema: SteamSchemaAchievement[] | null,
+  existingGame: Game | undefined
+): Game {
   const unlocked = achievements.filter((a) => a.earned === 1)
   const total = achievements.length
   const completionPct = total > 0 ? (unlocked.length / total) * 100 : 0
@@ -253,7 +242,7 @@ export async function enrichApp(
   const lastUnlockedAt =
     unlocked.length > 0 ? Math.max(...unlocked.map((a) => a.earned_time)) : 0
 
-  const game: Game = {
+  return {
     appid,
     name: gameName,
     total_achievements: total,
@@ -263,6 +252,33 @@ export async function enrichApp(
     last_unlocked_at: lastUnlockedAt,
     schema_fetched_at: schema ? Math.floor(Date.now() / 1000) : existingGame?.schema_fetched_at ?? 0
   }
+}
 
+export interface EnrichResult {
+  game: Game
+  achievements: Achievement[]
+}
+
+export async function enrichApp(
+  appid: string,
+  apiKey: string,
+  mergedRaw: Record<string, { achieved: boolean; unlockTime: number }>,
+  db: Database.Database,
+  forceRefresh = false
+): Promise<EnrichResult> {
+  const existingGame = getGame(db, appid)
+  const isNewGame = !existingGame
+
+  const schema = await fetchSchema(db, appid, apiKey, forceRefresh)
+  const percentages = await fetchPercentages(db, appid, forceRefresh)
+
+  let gameName = existingGame?.name ?? `Game ${appid}`
+  const appDetails = await fetchAppDetails(db, appid, forceRefresh || isNewGame)
+  if (appDetails?.name) gameName = appDetails.name
+
+  const achievements = buildAchievementRecords(appid, mergedRaw, schema, percentages)
+  await ensureSteamDbHiddenDescriptions(db, appid, achievements, forceRefresh)
+
+  const game = buildGameRecord(appid, gameName, achievements, schema, existingGame)
   return { game, achievements }
 }

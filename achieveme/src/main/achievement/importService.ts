@@ -2,7 +2,6 @@ import fs from 'node:fs'
 import type Database from 'better-sqlite3'
 import type {
   AppSettings,
-  ExportBundle,
   ExportBundleV2,
   GoldbergProgress,
   ImportResult,
@@ -13,14 +12,6 @@ import { processAppId } from './processAppId'
 import { regenerateProfileStats } from './profileStatsService'
 import { resolvePortablePath } from './savePathUtils'
 import { writeSaveBySource } from './writers/writeBySource'
-
-export interface ImportOptions {
-  customRootMap?: Record<string, string>
-}
-
-function isV2Bundle(bundle: ExportBundle): bundle is ExportBundleV2 {
-  return 'formatVersion' in bundle && bundle.formatVersion === 2 && 'saveFiles' in bundle
-}
 
 function goldbergProgressToRaw(progress: GoldbergProgress): Record<string, RawAchievement> {
   const result: Record<string, RawAchievement> = {}
@@ -35,9 +26,8 @@ function goldbergProgressToRaw(progress: GoldbergProgress): Record<string, RawAc
 
 export async function importBundle(
   db: Database.Database,
-  bundle: ExportBundle,
-  settings: AppSettings,
-  options: ImportOptions = {}
+  bundle: ExportBundleV2,
+  settings: AppSettings
 ): Promise<ImportResult> {
   const errors: string[] = []
   let saveFilesWritten = 0
@@ -47,19 +37,9 @@ export async function importBundle(
   }
   upsertAchievements(db, bundle.achievements)
 
-  if (!isV2Bundle(bundle)) {
-    regenerateProfileStats(db)
-    return {
-      gamesImported: bundle.games.length,
-      saveFilesWritten: 0,
-      filesWritten: 0,
-      errors
-    }
-  }
-
   const appidsToRefresh = new Set<string>()
 
-  for (const saveFile of bundle.saveFiles) {
+  for (const saveFile of bundle.saveFiles ?? []) {
     if (saveFile.format !== 'goldberg-json') continue
 
     try {
@@ -70,20 +50,14 @@ export async function importBundle(
         relativePath: saveFile.relativePath
       }
 
-      let customRootOverride: string | undefined
-      if (hint.rootKind === 'custom' && hint.customRoot) {
-        if (!fs.existsSync(hint.customRoot)) {
-          customRootOverride = options.customRootMap?.[hint.customRoot]
-          if (!customRootOverride) {
-            errors.push(
-              `Skipped ${saveFile.appid}/${saveFile.source}: custom root missing (${hint.customRoot})`
-            )
-            continue
-          }
-        }
+      if (hint.rootKind === 'custom' && hint.customRoot && !fs.existsSync(hint.customRoot)) {
+        errors.push(
+          `Skipped ${saveFile.appid}/${saveFile.source}: custom root missing (${hint.customRoot})`
+        )
+        continue
       }
 
-      const targetPath = resolvePortablePath(hint, settings, { customRootOverride })
+      const targetPath = resolvePortablePath(hint, settings)
       const raw = goldbergProgressToRaw(saveFile.progress)
       writeSaveBySource(saveFile.source, targetPath, raw)
       saveFilesWritten++
@@ -95,7 +69,7 @@ export async function importBundle(
         file_path: targetPath,
         root_kind: hint.rootKind,
         root_source: hint.rootSource,
-        custom_root: customRootOverride ?? hint.customRoot,
+        custom_root: hint.customRoot,
         relative_path: hint.relativePath,
         updated_at: now
       })

@@ -13,7 +13,7 @@ import {
   getAchievementsForGame,
   getAllSaveLocations
 } from '../db/repository'
-import { scanAllSources } from './discoveryService'
+import { discoverUncoveredGoldbergSaves } from './exportDiscovery'
 import { parseGoldbergAchievements } from './parsers/goldbergParser'
 import { encodePortablePath, GOLDBERG_JSON_SOURCES } from './savePathUtils'
 
@@ -73,25 +73,22 @@ export function buildExportBundle(db: Database.Database, settings: AppSettings):
     covered.add(`${loc.appid}|${loc.source}|${loc.file_path.toLowerCase()}`)
   }
 
-  // Fallback scan for legacy data before save_locations migration
-  const discovered = scanAllSources(settings)
-  for (const d of discovered) {
-    if (!GOLDBERG_JSON_SOURCES.includes(d.source)) continue
-    const key = `${d.appid}|${d.source}|${d.filePath.toLowerCase()}`
-    if (covered.has(key)) continue
-
-    const hint = encodePortablePath(d.filePath, d.source, settings)
+  for (const discovered of discoverUncoveredGoldbergSaves(
+    settings,
+    covered,
+    (d) => `${d.appid}|${d.source}|${d.filePath.toLowerCase()}`
+  )) {
+    const hint = encodePortablePath(discovered.filePath, discovered.source, settings)
     saveFiles.push({
-      appid: d.appid,
-      source: d.source,
+      appid: discovered.appid,
+      source: discovered.source,
       format: 'goldberg-json',
       rootKind: hint.rootKind,
       rootSource: hint.rootSource,
       customRoot: hint.customRoot || undefined,
       relativePath: hint.relativePath,
-      progress: readProgressForLocation(db, d.appid, d.filePath)
+      progress: readProgressForLocation(db, discovered.appid, discovered.filePath)
     })
-    covered.add(key)
   }
 
   return {

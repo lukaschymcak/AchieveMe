@@ -144,12 +144,6 @@ export function upsertSaveLocation(db: Database.Database, row: SaveLocation): vo
   `).run(row)
 }
 
-export function getSaveLocationsForApp(db: Database.Database, appid: string): SaveLocation[] {
-  return db
-    .prepare('SELECT * FROM save_locations WHERE appid = ?')
-    .all(appid) as SaveLocation[]
-}
-
 export function getAllSaveLocations(db: Database.Database): SaveLocation[] {
   return db.prepare('SELECT * FROM save_locations').all() as SaveLocation[]
 }

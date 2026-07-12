@@ -13,11 +13,6 @@ export const DEFAULT_ROOTS: Record<SourceId, string[]> = {
   gse: [expandEnv('%APPDATA%\\GSE Saves')],
   codex: [expandEnv('%PUBLIC%\\Documents\\Steam\\CODEX')],
   rune: [expandEnv('%PUBLIC%\\Documents\\Steam\\RUNE')],
-  onlinefix: [expandEnv('%PUBLIC%\\Documents\\OnlineFix')],
-  smartsteamemu: [expandEnv('%APPDATA%\\SmartSteamEmu')],
-  skidrow: [expandEnv('%LOCALAPPDATA%\\SKIDROW')],
-  darksiders: [path.join(expandEnv('%USERPROFILE%'), 'Documents', 'DARKSiDERS')],
-  ali213: [path.join(expandEnv('%USERPROFILE%'), 'Documents', 'VALVE')],
   hoodlum: [],
   creamapi: [expandEnv('%APPDATA%\\CreamAPI')],
   reloaded: [expandEnv('%PROGRAMDATA%\\Steam')]
@@ -28,11 +23,6 @@ export const SOURCE_FILE: Record<SourceId, string> = {
   gse: 'achievements.json',
   codex: 'achievements.ini',
   rune: 'achievements.ini',
-  onlinefix: 'achievements.ini',
-  smartsteamemu: 'stats.bin',
-  skidrow: 'achiev.ini',
-  darksiders: 'achiev.ini',
-  ali213: 'Achievements.Bin',
   hoodlum: 'hlm.ini',
   creamapi: 'CreamAPI.Achievements.cfg',
   reloaded: 'achievements.ini'

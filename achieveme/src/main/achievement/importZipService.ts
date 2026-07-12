@@ -7,7 +7,6 @@ import { upsertAchievements, upsertGame } from '../db/repository'
 import { processAppId } from './processAppId'
 import { regenerateProfileStats } from './profileStatsService'
 import { resolvePortablePath } from './savePathUtils'
-import type { ImportOptions } from './importService'
 
 function isV3Manifest(data: unknown): data is FullBackupManifest {
   return (
@@ -22,8 +21,7 @@ function isV3Manifest(data: unknown): data is FullBackupManifest {
 export async function importFullBackupZip(
   db: Database.Database,
   zipPath: string,
-  settings: AppSettings,
-  options: ImportOptions = {}
+  settings: AppSettings
 ): Promise<ImportResult> {
   const errors: string[] = []
   let filesWritten = 0
@@ -54,22 +52,16 @@ export async function importFullBackupZip(
       relativePath: folder.relativePath
     }
 
-    let customRootOverride: string | undefined
-    if (hint.rootKind === 'custom' && hint.customRoot) {
-      if (!fs.existsSync(hint.customRoot)) {
-        customRootOverride = options.customRootMap?.[hint.customRoot]
-        if (!customRootOverride) {
-          errors.push(
-            `Skipped ${folder.appid}/${folder.source}: custom root missing (${hint.customRoot})`
-          )
-          continue
-        }
-      }
+    if (hint.rootKind === 'custom' && hint.customRoot && !fs.existsSync(hint.customRoot)) {
+      errors.push(
+        `Skipped ${folder.appid}/${folder.source}: custom root missing (${hint.customRoot})`
+      )
+      continue
     }
 
     let folderRoot: string
     try {
-      folderRoot = resolvePortablePath(hint, settings, { customRootOverride })
+      folderRoot = resolvePortablePath(hint, settings)
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err)
       errors.push(`Skipped ${folder.appid}/${folder.source}: ${msg}`)

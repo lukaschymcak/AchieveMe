@@ -3,11 +3,6 @@ import type { RawAchievement, SourceId } from '../../shared/types'
 // Higher index = higher trust. Goldberg is most trusted.
 const SOURCE_PRIORITY: SourceId[] = [
   'hoodlum',
-  'ali213',
-  'skidrow',
-  'darksiders',
-  'smartsteamemu',
-  'onlinefix',
   'rune',
   'reloaded',
   'creamapi',

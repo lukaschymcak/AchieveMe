@@ -3,9 +3,8 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { app } from 'electron'
 import { getDb } from '../db/database'
-import { getAllGames, getGame, getAchievementsForGame, upsertAchievements } from '../db/repository'
+import { getAllGames, getGame, getAchievementsForGame } from '../db/repository'
 import { getStoreCoverUrl } from '../achievement/steamApiClient'
-import { ensureSteamDbHiddenDescriptions } from '../achievement/steamDbScraper'
 import { loadSettings, saveSettings } from '../settings'
 import { startWatcher } from '../achievement/watcherService'
 import { scanAllSources } from '../achievement/discoveryService'
@@ -30,12 +29,6 @@ export function registerIpcHandlers(): void {
   ipcMain.handle('get-all-games', async (): Promise<GameSummary[]> => {
     const db = getDb()
     const games = getAllGames(db)
-
-    for (const g of games) {
-      const achievements = getAchievementsForGame(db, g.appid)
-      const updated = await ensureSteamDbHiddenDescriptions(db, g.appid, achievements)
-      if (updated) upsertAchievements(db, achievements)
-    }
 
     const summaries: GameSummary[] = []
     for (const g of games) {
