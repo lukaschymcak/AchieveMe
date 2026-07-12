@@ -1,4 +1,4 @@
-import type { ProfileStats, GameSummary, GameDetail, AppSettings } from '../../shared/types'
+import type { ProfileStats, GameSummary, GameDetail, AppSettings, ImportResult } from '../../shared/types'
 
 declare global {
   interface Window {
@@ -10,6 +10,7 @@ declare global {
       saveSettings(settings: AppSettings): Promise<void>
       refresh(): Promise<void>
       exportJson(): Promise<void>
+      importJson(): Promise<ImportResult | null>
     }
   }
 }

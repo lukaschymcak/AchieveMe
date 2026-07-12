@@ -103,3 +103,51 @@ export interface GameDetail {
   achievements: Achievement[]
   cover_url: string
 }
+
+/** Goldberg-style save progress (matches achievements.json on disk). */
+export type GoldbergProgress = Record<string, { earned: boolean; earned_time: number }>
+
+export interface PortableSaveFile {
+  appid: string
+  source: SourceId
+  format: 'goldberg-json'
+  rootKind: 'default' | 'custom'
+  rootSource: SourceId
+  customRoot?: string
+  relativePath: string
+  progress: GoldbergProgress
+}
+
+export interface ExportBundleV2 {
+  formatVersion: 2
+  exportedAt: string
+  games: Game[]
+  achievements: Achievement[]
+  saveFiles: PortableSaveFile[]
+}
+
+/** v1 export shape (no formatVersion). */
+export interface ExportBundleV1 {
+  exportedAt: string
+  games: Game[]
+  achievements: Achievement[]
+}
+
+export type ExportBundle = ExportBundleV1 | ExportBundleV2
+
+export interface SaveLocation {
+  appid: string
+  source: SourceId
+  file_path: string
+  root_kind: 'default' | 'custom'
+  root_source: SourceId
+  custom_root: string
+  relative_path: string
+  updated_at: number
+}
+
+export interface ImportResult {
+  gamesImported: number
+  saveFilesWritten: number
+  errors: string[]
+}

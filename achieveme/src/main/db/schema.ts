@@ -48,6 +48,18 @@ export function createTables(db: Database.Database): void {
       cached_at  INTEGER NOT NULL,
       PRIMARY KEY (appid, type)
     );
+
+    CREATE TABLE IF NOT EXISTS save_locations (
+      appid          TEXT    NOT NULL,
+      source         TEXT    NOT NULL,
+      file_path      TEXT    NOT NULL,
+      root_kind      TEXT    NOT NULL DEFAULT 'default',
+      root_source    TEXT    NOT NULL DEFAULT '',
+      custom_root    TEXT    NOT NULL DEFAULT '',
+      relative_path  TEXT    NOT NULL DEFAULT '',
+      updated_at     INTEGER NOT NULL DEFAULT 0,
+      PRIMARY KEY (appid, source, file_path)
+    );
   `)
   migrateGamesTable(db)
   migrateAchievementsTable(db)

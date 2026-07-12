@@ -5,6 +5,7 @@ import { ALL_SOURCES } from '../../../shared/types'
 export default function SettingsPage(): React.ReactElement {
   const [settings, setSettings] = useState<AppSettings | null>(null)
   const [saved, setSaved] = useState(false)
+  const [importMsg, setImportMsg] = useState<string | null>(null)
   const [newFolder, setNewFolder] = useState('')
 
   useEffect(() => {
@@ -52,6 +53,17 @@ export default function SettingsPage(): React.ReactElement {
     window.api.saveSettings(settings).then(() => {
       setSaved(true)
       setTimeout(() => setSaved(false), 2000)
+    })
+  }
+
+  function importJson(): void {
+    window.api.importJson().then((result) => {
+      if (!result) return
+      const errNote = result.errors.length > 0 ? ` (${result.errors.length} warnings)` : ''
+      setImportMsg(
+        `Imported ${result.gamesImported} games, wrote ${result.saveFilesWritten} save files${errNote}`
+      )
+      setTimeout(() => setImportMsg(null), 4000)
     })
   }
 
@@ -213,7 +225,11 @@ export default function SettingsPage(): React.ReactElement {
         >
           Export JSON
         </button>
+        <button onClick={importJson} style={{ padding: '8px 16px', fontSize: 13 }}>
+          Import JSON
+        </button>
         {saved && <span style={{ fontSize: 13, color: '#4ade80' }}>Saved!</span>}
+        {importMsg && <span style={{ fontSize: 13, color: '#4ade80' }}>{importMsg}</span>}
       </div>
     </div>
   )

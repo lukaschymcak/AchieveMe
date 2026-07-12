@@ -1,6 +1,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import type { AppSettings, SourceId } from '../../shared/types'
+import { SOURCE_FILE, getRootsForSource } from './savePathUtils'
 
 export interface DiscoveredApp {
   appid: string
@@ -8,51 +9,8 @@ export interface DiscoveredApp {
   filePath: string
 }
 
-function expandEnv(value: string): string {
-  return value.replace(/%([^%]+)%/g, (_, key: string) => process.env[key] ?? '')
-}
-
 function isNumericAppId(name: string): boolean {
   return /^\d+$/.test(name)
-}
-
-// Default save folder root paths per emulator (Windows env vars expanded at runtime)
-const DEFAULT_ROOTS: Record<SourceId, string[]> = {
-  goldberg: [expandEnv('%APPDATA%\\Goldberg SteamEmu Saves')],
-  gse: [expandEnv('%APPDATA%\\GSE Saves')],
-  empress: [expandEnv('%APPDATA%\\EMPRESS'), expandEnv('%PUBLIC%\\Documents\\EMPRESS')],
-  codex: [expandEnv('%PUBLIC%\\Documents\\Steam\\CODEX')],
-  rune: [expandEnv('%PUBLIC%\\Documents\\Steam\\RUNE')],
-  onlinefix: [expandEnv('%PUBLIC%\\Documents\\OnlineFix')],
-  smartsteamemu: [expandEnv('%APPDATA%\\SmartSteamEmu')],
-  skidrow: [expandEnv('%LOCALAPPDATA%\\SKIDROW')],
-  darksiders: [path.join(expandEnv('%USERPROFILE%'), 'Documents', 'DARKSiDERS')],
-  ali213: [path.join(expandEnv('%USERPROFILE%'), 'Documents', 'VALVE')],
-  hoodlum: [], // no default root; user must add one in settings
-  creamapi: [expandEnv('%APPDATA%\\CreamAPI')],
-  reloaded: [expandEnv('%PROGRAMDATA%\\Steam')]
-}
-
-// The achievement file name each emulator writes inside the appid folder
-const SOURCE_FILE: Record<SourceId, string> = {
-  goldberg: 'achievements.json',
-  gse: 'achievements.json',
-  empress: 'achievements.json', // but path is nested — see scanEmpressRoot
-  codex: 'achievements.ini',
-  rune: 'achievements.ini',
-  onlinefix: 'achievements.ini',
-  smartsteamemu: 'stats.bin',
-  skidrow: 'achiev.ini',
-  darksiders: 'achiev.ini',
-  ali213: 'Achievements.Bin', // despite extension, it is an INI file
-  hoodlum: 'hlm.ini',
-  creamapi: 'CreamAPI.Achievements.cfg',
-  reloaded: 'achievements.ini'
-}
-
-function getRootsForSource(source: SourceId, settings: AppSettings): string[] {
-  const defaults = DEFAULT_ROOTS[source] ?? []
-  return [...defaults, ...settings.customWatchFolders]
 }
 
 // Empress saves at: {root}/{appid}/remote/{appid}/achievements.json

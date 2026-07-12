@@ -1,5 +1,5 @@
 import type Database from 'better-sqlite3'
-import type { Game, Achievement } from '../../shared/types'
+import type { Game, Achievement, SaveLocation } from '../../shared/types'
 
 // ─── Games ───────────────────────────────────────────────────────────────────
 
@@ -42,6 +42,13 @@ export function getAllGames(db: Database.Database): Game[] {
        FROM games ORDER BY completion_pct DESC`
     )
     .all() as Game[]
+}
+
+export function deleteGame(db: Database.Database, appid: string): void {
+  db.prepare('DELETE FROM achievements WHERE appid = ?').run(appid)
+  db.prepare('DELETE FROM save_locations WHERE appid = ?').run(appid)
+  db.prepare('DELETE FROM api_cache WHERE appid = ?').run(appid)
+  db.prepare('DELETE FROM games WHERE appid = ?').run(appid)
 }
 
 // ─── Achievements ─────────────────────────────────────────────────────────────
@@ -116,4 +123,37 @@ export function setCacheEntry(
       data_json = excluded.data_json,
       cached_at = excluded.cached_at
   `).run(appid, type, data_json, now)
+}
+
+// ─── Save Locations ───────────────────────────────────────────────────────────
+
+export function upsertSaveLocation(db: Database.Database, row: SaveLocation): void {
+  db.prepare(`
+    INSERT INTO save_locations (
+      appid, source, file_path, root_kind, root_source, custom_root, relative_path, updated_at
+    )
+    VALUES (
+      @appid, @source, @file_path, @root_kind, @root_source, @custom_root, @relative_path, @updated_at
+    )
+    ON CONFLICT(appid, source, file_path) DO UPDATE SET
+      root_kind     = excluded.root_kind,
+      root_source   = excluded.root_source,
+      custom_root   = excluded.custom_root,
+      relative_path = excluded.relative_path,
+      updated_at    = excluded.updated_at
+  `).run(row)
+}
+
+export function getSaveLocationsForApp(db: Database.Database, appid: string): SaveLocation[] {
+  return db
+    .prepare('SELECT * FROM save_locations WHERE appid = ?')
+    .all(appid) as SaveLocation[]
+}
+
+export function getAllSaveLocations(db: Database.Database): SaveLocation[] {
+  return db.prepare('SELECT * FROM save_locations').all() as SaveLocation[]
+}
+
+export function deleteSaveLocationsForApp(db: Database.Database, appid: string): void {
+  db.prepare('DELETE FROM save_locations WHERE appid = ?').run(appid)
 }

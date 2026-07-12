@@ -1,8 +1,11 @@
 import chokidar, { type FSWatcher } from 'chokidar'
 import path from 'node:path'
 import type { AppSettings } from '../../shared/types'
-import { getWatchRoots } from './discoveryService'
+import { getDb } from '../db/database'
+import { deleteGame, getAllGames } from '../db/repository'
+import { getWatchRoots, scanAllSources } from './discoveryService'
 import { processAppId } from './processAppId'
+import { regenerateProfileStats } from './profileStatsService'
 
 let watcher: FSWatcher | null = null
 const debounceTimers = new Map<string, NodeJS.Timeout>()
@@ -33,8 +36,26 @@ function scheduleProcess(appid: string, settings: AppSettings): void {
   debounceTimers.set(appid, timer)
 }
 
+function pruneOrphanedGames(settings: AppSettings): void {
+  const db = getDb()
+  const onDisk = new Set(scanAllSources(settings).map((d) => d.appid))
+  let removed = 0
+
+  for (const game of getAllGames(db)) {
+    if (!onDisk.has(game.appid)) {
+      deleteGame(db, game.appid)
+      removed++
+    }
+  }
+
+  if (removed > 0) {
+    regenerateProfileStats(db)
+  }
+}
+
 async function runInitialScan(settings: AppSettings): Promise<void> {
-  const { scanAllSources } = await import('./discoveryService')
+  pruneOrphanedGames(settings)
+
   const discovered = scanAllSources(settings)
   const appids = [...new Set(discovered.map((d) => d.appid))]
 
@@ -64,7 +85,7 @@ export async function startWatcher(settings: AppSettings): Promise<void> {
     depth: 4
   })
 
-  watcher.on('change', (filePath: string) => {
+  function handleWatchPath(filePath: string): void {
     for (const { root } of watchRoots) {
       if (filePath.toLowerCase().startsWith(root.toLowerCase())) {
         const appid = extractAppId(filePath, root)
@@ -74,7 +95,10 @@ export async function startWatcher(settings: AppSettings): Promise<void> {
         }
       }
     }
-  })
+  }
+
+  watcher.on('change', handleWatchPath)
+  watcher.on('unlink', handleWatchPath)
 
   // Process everything already on disk on startup
   await runInitialScan(settings)

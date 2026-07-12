@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import type { ProfileStats, GameSummary, GameDetail, AppSettings } from '../shared/types'
+import type { ProfileStats, GameSummary, GameDetail, AppSettings, ImportResult } from '../shared/types'
 
 contextBridge.exposeInMainWorld('api', {
   getProfileStats: (): Promise<ProfileStats | null> =>
@@ -21,5 +21,8 @@ contextBridge.exposeInMainWorld('api', {
     ipcRenderer.invoke('refresh'),
 
   exportJson: (): Promise<void> =>
-    ipcRenderer.invoke('export-json')
+    ipcRenderer.invoke('export-json'),
+
+  importJson: (): Promise<ImportResult | null> =>
+    ipcRenderer.invoke('import-json')
 })

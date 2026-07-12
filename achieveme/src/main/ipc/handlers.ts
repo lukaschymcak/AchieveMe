@@ -10,7 +10,9 @@ import { loadSettings, saveSettings } from '../settings'
 import { startWatcher } from '../achievement/watcherService'
 import { scanAllSources } from '../achievement/discoveryService'
 import { processAppId } from '../achievement/processAppId'
-import type { ProfileStats, GameSummary, GameDetail, AppSettings } from '../../shared/types'
+import { buildExportBundle } from '../achievement/exportService'
+import { importBundle } from '../achievement/importService'
+import type { ProfileStats, GameSummary, GameDetail, AppSettings, ImportResult } from '../../shared/types'
 
 export function registerIpcHandlers(): void {
   ipcMain.handle('get-profile-stats', (): ProfileStats | null => {
@@ -92,15 +94,28 @@ export function registerIpcHandlers(): void {
     if (canceled || !filePath) return
 
     const db = getDb()
-    const games = getAllGames(db)
-    const achievements = games.flatMap((g) => getAchievementsForGame(db, g.appid))
-
-    const data = {
-      exportedAt: new Date().toISOString(),
-      games,
-      achievements
-    }
+    const settings = loadSettings()
+    const data = buildExportBundle(db, settings)
 
     fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf8')
+  })
+
+  ipcMain.handle('import-json', async (): Promise<ImportResult | null> => {
+    const { canceled, filePaths } = await dialog.showOpenDialog({
+      title: 'Import AchieveMe data',
+      filters: [{ name: 'JSON', extensions: ['json'] }],
+      properties: ['openFile']
+    })
+    if (canceled || filePaths.length === 0) return null
+
+    const text = fs.readFileSync(filePaths[0], 'utf8')
+    const bundle = JSON.parse(text)
+    if (!bundle?.games || !bundle?.achievements) {
+      throw new Error('Invalid export file: missing games or achievements')
+    }
+
+    const db = getDb()
+    const settings = loadSettings()
+    return importBundle(db, bundle, settings)
   })
 }

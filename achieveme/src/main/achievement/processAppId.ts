@@ -1,10 +1,17 @@
 import { getDb } from '../db/database'
-import { upsertGame, upsertAchievements } from '../db/repository'
+import {
+  upsertGame,
+  upsertAchievements,
+  upsertSaveLocation,
+  deleteSaveLocationsForApp,
+  deleteGame
+} from '../db/repository'
 import { scanAllSources } from './discoveryService'
 import { parseAchievementsBySource } from './parsers/parseBySource'
 import { mergeRawAchievements } from './rawMerge'
 import { enrichApp } from './steamApiClient'
 import { regenerateProfileStats } from './profileStatsService'
+import { encodePortablePath, GOLDBERG_JSON_SOURCES } from './savePathUtils'
 import type { AppSettings } from '../../shared/types'
 
 export async function processAppId(
@@ -17,7 +24,29 @@ export async function processAppId(
   // 1. Find all save files on disk for this appid
   const allDiscovered = scanAllSources(settings)
   const forThisApp = allDiscovered.filter((d) => d.appid === appid)
-  if (forThisApp.length === 0) return
+  if (forThisApp.length === 0) {
+    deleteGame(db, appid)
+    regenerateProfileStats(db)
+    return
+  }
+
+  deleteSaveLocationsForApp(db, appid)
+
+  const now = Math.floor(Date.now() / 1000)
+  for (const d of forThisApp) {
+    if (!GOLDBERG_JSON_SOURCES.includes(d.source)) continue
+    const hint = encodePortablePath(d.filePath, d.source, settings)
+    upsertSaveLocation(db, {
+      appid: d.appid,
+      source: d.source,
+      file_path: d.filePath,
+      root_kind: hint.rootKind,
+      root_source: hint.rootSource,
+      custom_root: hint.customRoot,
+      relative_path: hint.relativePath,
+      updated_at: now
+    })
+  }
 
   // 2. Parse each save file
   const parsedRows = forThisApp.map((d) => ({
