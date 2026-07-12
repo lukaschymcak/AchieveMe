@@ -99,7 +99,9 @@ export async function importFullBackupZip(
       }
     }
 
-    appidsToRefresh.add(folder.appid)
+    if (/^\d+$/.test(folder.appid)) {
+      appidsToRefresh.add(folder.appid)
+    }
   }
 
   for (const appid of appidsToRefresh) {

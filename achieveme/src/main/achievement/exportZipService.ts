@@ -1,15 +1,56 @@
 import fs from 'node:fs'
+import path from 'node:path'
 import AdmZip from 'adm-zip'
 import type Database from 'better-sqlite3'
 import type { AppSettings, FullBackupManifest, PortableFolder } from '../../shared/types'
 import { getAllSaveLocations } from '../db/repository'
 import { scanAllSources } from './discoveryService'
 import { buildExportBundle } from './exportService'
-import { collectFilesRecursive, encodePortableFolderPath, getAppFolderPath } from './folderUtils'
-import { GOLDBERG_JSON_SOURCES } from './savePathUtils'
+import { collectFilesRecursive, encodePortableFolderPath, encodePortableRootSubfolder, EMULATOR_ROOT_BACKUP_DIRS, getAppFolderPath } from './folderUtils'
+import { GOLDBERG_JSON_SOURCES, getRootsForSource } from './savePathUtils'
 
 function folderKey(source: string, appid: string, folderPath: string): string {
   return `${source}|${appid}|${folderPath.toLowerCase()}`
+}
+
+function collectEmulatorRootFolders(
+  settings: AppSettings
+): Array<{ folderPath: string; folder: PortableFolder }> {
+  const results: Array<{ folderPath: string; folder: PortableFolder }> = []
+  const seen = new Set<string>()
+
+  for (const source of GOLDBERG_JSON_SOURCES) {
+    if (!settings.enabledSources.includes(source)) continue
+
+    for (const root of getRootsForSource(source, settings)) {
+      if (!root || !fs.existsSync(root)) continue
+
+      for (const dirName of EMULATOR_ROOT_BACKUP_DIRS) {
+        const folderPath = path.join(root, dirName)
+        const key = folderKey(source, dirName, folderPath)
+        if (seen.has(key)) continue
+        if (!fs.existsSync(folderPath)) continue
+        seen.add(key)
+
+        const hint = encodePortableRootSubfolder(folderPath, dirName, source, settings)
+        const archivePath = `saves/${source}/${dirName}`.replace(/\\/g, '/')
+        results.push({
+          folderPath,
+          folder: {
+            appid: dirName,
+            source,
+            rootKind: hint.rootKind,
+            rootSource: hint.rootSource,
+            customRoot: hint.customRoot || undefined,
+            relativePath: hint.relativePath,
+            archivePath
+          }
+        })
+      }
+    }
+  }
+
+  return results
 }
 
 function collectFolders(
@@ -67,6 +108,8 @@ function collectFolders(
       }
     })
   }
+
+  results.push(...collectEmulatorRootFolders(settings))
 
   return results
 }

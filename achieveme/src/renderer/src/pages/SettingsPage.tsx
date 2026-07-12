@@ -219,8 +219,8 @@ export default function SettingsPage(): React.ReactElement {
         <h3 style={{ marginBottom: 8 }}>Backup &amp; Restore</h3>
         <p style={{ fontSize: 12, color: '#888', marginBottom: 12 }}>
           Export JSON for lightweight achievement progress only. Full Backup zips entire Goldberg/GSE
-          appid folders (including extra save files). Import merges file-by-file and does not delete
-          other games on disk.
+          appid folders plus the global emulator <code>settings</code> folder (including extra save
+          files). Import merges file-by-file and does not delete other games on disk.
         </p>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
           <button

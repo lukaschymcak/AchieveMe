@@ -27,7 +27,7 @@ Settings provides four backup actions:
 | Action | What it includes | Best for |
 |--------|------------------|----------|
 | **Export JSON** | SQLite games/achievements + Goldberg/GSE `achievements.json` progress (v2) | Lightweight transfer, version control |
-| **Export Full Backup** | Same metadata plus every file under each Goldberg/GSE `{appid}\` folder (v3 ZIP) | Moving extra save files alongside achievements |
+| **Export Full Backup** | Same metadata plus every file under each Goldberg/GSE `{appid}\` folder and the emulator-root `settings\` folder (v3 ZIP) | Moving extra save files alongside achievements |
 | **Import JSON** | Restores library and writes `achievements.json` files | Round-trip JSON backups |
 | **Import Full Backup** | Restores library and merges ZIP files **one-by-one** into emulator folders | Restoring full appid folders |
 
@@ -36,8 +36,10 @@ Settings provides four backup actions:
 ```
 achieveme-backup.zip
 ├── manifest.json          (formatVersion: 3)
+├── saves/gse/settings/    (global GSE settings: steam id, language, etc.)
 └── saves/gse/{appid}/
     ├── achievements.json
+    ├── settings/            (per-game settings, if present)
     └── (any other files in that appid folder)
 ```
 
