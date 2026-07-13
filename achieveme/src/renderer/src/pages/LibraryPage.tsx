@@ -4,6 +4,14 @@ import SteamApiKeyForm from '../components/SteamApiKeyForm'
 import { filterAndSortGames, type SortOption } from '../lib/libraryUtils'
 
 type AppPage = 'dashboard' | 'library' | 'settings'
+type ViewMode = 'grid' | 'list'
+
+const LIBRARY_VIEW_MODE_KEY = 'library-view-mode'
+
+function readStoredViewMode(): ViewMode {
+  const stored = localStorage.getItem(LIBRARY_VIEW_MODE_KEY)
+  return stored === 'list' ? 'list' : 'grid'
+}
 
 interface Props {
   onSelect: (appid: string) => void
@@ -42,6 +50,11 @@ export default function LibraryPage({
   const [deleteMode, setDeleteMode] = useState(false)
   const [pendingDelete, setPendingDelete] = useState<GameSummary | null>(null)
   const [deletingAppid, setDeletingAppid] = useState<string | null>(null)
+  const [viewMode, setViewMode] = useState<ViewMode>(readStoredViewMode)
+
+  useEffect(() => {
+    localStorage.setItem(LIBRARY_VIEW_MODE_KEY, viewMode)
+  }, [viewMode])
 
   useEffect(() => {
     window.api.getSettings().then((settings) => {
@@ -121,8 +134,9 @@ export default function LibraryPage({
 
   return (
     <div className={`library${deleteMode ? ' library--delete-mode' : ''}`}>
-      <header className="library-chrome">
-        <div className="library-chrome__left">
+      <div className="library-chrome-wrap">
+        <header className="library-chrome">
+          <div className="library-chrome__left">
           <nav className="library-chrome__nav" aria-label="Main">
             {NAV_ITEMS.map((item) => (
               <button
@@ -197,20 +211,55 @@ export default function LibraryPage({
             {refreshing ? 'Refreshing…' : 'Refresh'}
           </button>
         </div>
-      </header>
+        </header>
+
+        <div className="library-chrome__toolbar">
+          <button
+            type="button"
+            className="library-view-toggle"
+            onClick={() => setViewMode((mode) => (mode === 'grid' ? 'list' : 'grid'))}
+            aria-label={viewMode === 'grid' ? 'Switch to list view' : 'Switch to grid view'}
+            title={viewMode === 'grid' ? 'List view' : 'Grid view'}
+          >
+            {viewMode === 'grid' ? <ViewListIcon /> : <ViewGridIcon />}
+          </button>
+        </div>
+      </div>
 
       {loading ? (
-        <div className="library__grid library__grid--loading" aria-busy="true" aria-label="Loading library">
-          {Array.from({ length: 6 }, (_, i) => (
-            <div key={i} className="library-card library-card--skeleton" />
-          ))}
-        </div>
+        viewMode === 'list' ? (
+          <ul className="library__list library__list--loading" aria-busy="true" aria-label="Loading library">
+            {Array.from({ length: 6 }, (_, i) => (
+              <li key={i} className="library-list-row library-list-row--skeleton" />
+            ))}
+          </ul>
+        ) : (
+          <div className="library__grid library__grid--loading" aria-busy="true" aria-label="Loading library">
+            {Array.from({ length: 6 }, (_, i) => (
+              <div key={i} className="library-card library-card--skeleton" />
+            ))}
+          </div>
+        )
       ) : games.length === 0 ? (
         <p className="library__status library__status--empty">
           No games found. Make sure your emulator save folders exist, then click Refresh.
         </p>
       ) : displayedGames.length === 0 ? (
         <p className="library__status library__status--empty">No games match your search.</p>
+      ) : viewMode === 'list' ? (
+        <ul className="library__list">
+          {displayedGames.map((game) => (
+            <GameListRow
+              key={game.appid}
+              game={game}
+              isPending={pendingDelete?.appid === game.appid}
+              deleting={deletingAppid === game.appid}
+              onRowClick={() => handleCardClick(game)}
+              onConfirmDelete={() => handleDelete(game.appid)}
+              onCancelDelete={() => setPendingDelete(null)}
+            />
+          ))}
+        </ul>
       ) : (
         <div className="library__grid">
           {displayedGames.map((game) => (
@@ -331,5 +380,132 @@ function GameCard({
         </div>
       </div>
     </article>
+  )
+}
+
+function GameListRow({
+  game,
+  isPending,
+  deleting,
+  onRowClick,
+  onConfirmDelete,
+  onCancelDelete
+}: {
+  game: GameSummary
+  isPending: boolean
+  deleting: boolean
+  onRowClick: () => void
+  onConfirmDelete: () => void
+  onCancelDelete: () => void
+}): React.ReactElement {
+  const completionPct = Math.round(game.completion_pct)
+  const hasPlatinum = game.has_platinum
+
+  return (
+    <li
+      className={`library-list-row${hasPlatinum ? ' library-list-row--platinum' : ''}${
+        isPending ? ' library-list-row--pending' : ''
+      }${deleting ? ' library-list-row--deleting' : ''}`}
+      onClick={onRowClick}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          onRowClick()
+        }
+      }}
+      role="button"
+      tabIndex={0}
+      aria-label={`${game.name}, ${game.unlocked_achievements} of ${game.total_achievements} achievements, ${completionPct} percent complete`}
+    >
+      {isPending && (
+        <div
+          className="library-list-row__confirm"
+          onClick={(e) => e.stopPropagation()}
+          role="dialog"
+          aria-labelledby={`delete-title-list-${game.appid}`}
+        >
+          <p id={`delete-title-list-${game.appid}`} className="library-list-row__confirm-title">
+            Delete this game?
+          </p>
+          <p className="library-list-row__confirm-name">{game.name}</p>
+          <p className="library-list-row__confirm-hint">Removes the game and its save folder from disk.</p>
+          <div className="library-list-row__confirm-actions">
+            <button
+              type="button"
+              className="library-chip library-chip--danger-active"
+              onClick={onConfirmDelete}
+              disabled={deleting}
+            >
+              Delete
+            </button>
+            <button
+              type="button"
+              className="library-chip"
+              onClick={onCancelDelete}
+              disabled={deleting}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div className="library-list-row__thumb-wrap">
+        {game.cover_url ? (
+          <img className="library-list-row__thumb" src={game.cover_url} alt="" loading="lazy" />
+        ) : (
+          <div className="library-list-row__thumb library-list-row__thumb--placeholder">{game.name}</div>
+        )}
+      </div>
+
+      <div className="library-list-row__body">
+        <div className="library-list-row__header">
+          <h3 className="library-list-row__name">{game.name}</h3>
+          <div className="library-list-row__stats" aria-hidden>
+            <span className="library-list-row__fraction">
+              {game.unlocked_achievements}/{game.total_achievements}
+            </span>
+            <span className="library-list-row__pct">{completionPct}%</span>
+            {hasPlatinum && <span className="library-list-row__platinum">✦ Platinum</span>}
+          </div>
+        </div>
+        <div
+          className="library-list-row__progress"
+          role="progressbar"
+          aria-valuenow={completionPct}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-label={`${completionPct}% complete`}
+        >
+          <div
+            className={`library-list-row__progress-fill${
+              hasPlatinum ? ' library-list-row__progress-fill--platinum' : ''
+            }`}
+            style={{ '--bar-width': `${completionPct}%`, width: `${completionPct}%` } as React.CSSProperties}
+          />
+        </div>
+      </div>
+    </li>
+  )
+}
+
+function ViewListIcon(): React.ReactElement {
+  return (
+    <svg className="library-view-toggle__icon" viewBox="0 0 16 16" aria-hidden>
+      <rect x="1.5" y="2.5" width="13" height="2" rx="0.75" fill="currentColor" />
+      <rect x="1.5" y="7" width="13" height="2" rx="0.75" fill="currentColor" />
+      <rect x="1.5" y="11.5" width="13" height="2" rx="0.75" fill="currentColor" />
+    </svg>
+  )
+}
+
+function ViewGridIcon(): React.ReactElement {
+  return (
+    <svg className="library-view-toggle__icon" viewBox="0 0 16 16" aria-hidden>
+      <rect x="1.5" y="1.5" width="5.5" height="5.5" rx="0.75" fill="currentColor" />
+      <rect x="9" y="1.5" width="5.5" height="5.5" rx="0.75" fill="currentColor" />
+      <rect x="1.5" y="9" width="5.5" height="5.5" rx="0.75" fill="currentColor" />
+      <rect x="9" y="9" width="5.5" height="5.5" rx="0.75" fill="currentColor" />
+    </svg>
   )
 }
