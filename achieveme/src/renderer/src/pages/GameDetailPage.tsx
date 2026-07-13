@@ -21,6 +21,7 @@ interface Props {
   refreshing: boolean
   onPrev: (() => void) | null
   onNext: (() => void) | null
+  transitionDir: 'next' | 'prev' | null
 }
 
 type TierVarKey = TrophyTier | 'platinum'
@@ -168,48 +169,38 @@ function GameDetailNavArrows({
   )
 }
 
-function GameDetailSkeleton({
+function GameDetailSkeletonContent({
   onBack,
   onRefresh,
-  refreshing,
-  onPrev,
-  onNext
+  refreshing
 }: {
   onBack: () => void
   onRefresh: () => void
   refreshing: boolean
-  onPrev: (() => void) | null
-  onNext: (() => void) | null
 }): React.ReactElement {
   return (
-    <div className="game-detail game-detail--loading" aria-busy="true" aria-label="Loading game details">
-      <GameDetailNavArrows onPrev={onPrev} onNext={onNext} />
-      <div className="game-detail__backdrop game-detail__backdrop--placeholder" aria-hidden>
-        <div className="game-detail__backdrop-overlay" />
-      </div>
-      <div className="game-detail__content">
-        <header className="game-detail__hero">
-          <GameDetailHeroBar onBack={onBack} onRefresh={onRefresh} refreshing={refreshing} />
-          <div className="game-detail__hero-content">
-            <div className="game-detail__hero-left">
-              <div className="game-detail__skeleton game-detail__skeleton--title" />
-            </div>
-            <div className="game-detail__hero-right">
-              <div className="game-detail__skeleton game-detail__skeleton--ring" />
-              <div className="game-detail__skeleton game-detail__skeleton--meta" />
-            </div>
+    <>
+      <header className="game-detail__hero">
+        <GameDetailHeroBar onBack={onBack} onRefresh={onRefresh} refreshing={refreshing} />
+        <div className="game-detail__hero-content">
+          <div className="game-detail__hero-left">
+            <div className="game-detail__skeleton game-detail__skeleton--title" />
           </div>
-        </header>
-        <div className="game-detail__body">
-          <div className="game-detail__skeleton game-detail__skeleton--section" />
-          <div className="game-detail__list">
-            {Array.from({ length: 6 }, (_, i) => (
-              <div key={i} className="game-detail__skeleton game-detail__skeleton--row" />
-            ))}
+          <div className="game-detail__hero-right">
+            <div className="game-detail__skeleton game-detail__skeleton--ring" />
+            <div className="game-detail__skeleton game-detail__skeleton--meta" />
           </div>
         </div>
+      </header>
+      <div className="game-detail__body">
+        <div className="game-detail__skeleton game-detail__skeleton--section" />
+        <div className="game-detail__list">
+          {Array.from({ length: 6 }, (_, i) => (
+            <div key={i} className="game-detail__skeleton game-detail__skeleton--row" />
+          ))}
+        </div>
       </div>
-    </div>
+    </>
   )
 }
 
@@ -366,7 +357,8 @@ export default function GameDetailPage({
   onRefresh,
   refreshing,
   onPrev,
-  onNext
+  onNext,
+  transitionDir
 }: Props): React.ReactElement {
   const [detail, setDetail] = useState<GameDetail | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -425,62 +417,34 @@ export default function GameDetailPage({
     )
   }, [detail])
 
-  if (error) {
-    return (
-      <div className="game-detail">
-        <GameDetailNavArrows onPrev={onPrev} onNext={onNext} />
-        <div className="game-detail__content">
-          <header className="game-detail__hero game-detail__hero--compact">
-            <GameDetailHeroBar onBack={onBack} onRefresh={onRefresh} refreshing={refreshing} />
-          </header>
-          <div className="game-detail__body">
-            <p className="game-detail__error" role="alert">
-              {error}
-            </p>
-          </div>
-        </div>
-      </div>
-    )
-  }
+  const backdropStyle = resolvedBackdrop
+    ? { backgroundImage: `url(${resolvedBackdrop})` }
+    : undefined
 
-  if (!detail) {
-    return (
-      <GameDetailSkeleton
-        onBack={onBack}
-        onRefresh={onRefresh}
-        refreshing={refreshing}
-        onPrev={onPrev}
-        onNext={onNext}
-      />
-    )
-  }
-
-  const { game, achievements } = detail
-  const completionPct = Math.round(game.completion_pct)
-  const hasPlatinum = game.has_platinum === 1
+  const isLoading = !detail && !error
+  const game = detail?.game
+  const achievements = detail?.achievements ?? []
+  const completionPct = game ? Math.round(game.completion_pct) : 0
+  const hasPlatinum = game?.has_platinum === 1
   const hasHiddenUnearned = achievements.some(
     (a) => isHiddenAchievement(a.hidden) && !a.earned
   )
   const hiddenUnearnedCount = achievements.filter(
     (a) => isHiddenAchievement(a.hidden) && !a.earned
   ).length
-
-  const backdropStyle = resolvedBackdrop
-    ? { backgroundImage: `url(${resolvedBackdrop})` }
-    : undefined
-
-  const visibleFilters = FILTER_OPTIONS.filter((opt) => {
-    if (opt.id === 'all') return true
-    if (opt.id === 'platinum') return game.total_achievements > 0
-    const group = getTierGroup(tierGroups, opt.id)
-    return group !== undefined && group.items.length > 0
-  })
-
+  const visibleFilters = game
+    ? FILTER_OPTIONS.filter((opt) => {
+        if (opt.id === 'all') return true
+        if (opt.id === 'platinum') return game.total_achievements > 0
+        const group = getTierGroup(tierGroups, opt.id)
+        return group !== undefined && group.items.length > 0
+      })
+    : []
   const filteredGroup =
-    activeFilter === 'all' ? null : getTierGroup(tierGroups, activeFilter)
+    activeFilter === 'all' || !game ? null : getTierGroup(tierGroups, activeFilter)
 
   return (
-    <div className="game-detail">
+    <div className={`game-detail${isLoading ? ' game-detail--loading' : ''}`}>
       <GameDetailNavArrows onPrev={onPrev} onNext={onNext} />
       <div
         className={`game-detail__backdrop${resolvedBackdrop ? '' : ' game-detail__backdrop--placeholder'}`}
@@ -490,127 +454,168 @@ export default function GameDetailPage({
         <div className="game-detail__backdrop-overlay" />
       </div>
 
-      <div className="game-detail__content">
-        <header className="game-detail__hero">
-          <GameDetailHeroBar onBack={onBack} onRefresh={onRefresh} refreshing={refreshing} />
-          <div className="game-detail__hero-content">
-            <div className="game-detail__hero-left">
-              <h2 className="game-detail__title">{game.name}</h2>
-            </div>
-            <div className="game-detail__hero-right">
-              <CompletionRing pct={completionPct} platinum={hasPlatinum} size={96} large />
-              <p className="game-detail__meta game-detail__meta--hero">
-                <span className="game-detail__meta-strong">
-                  {game.unlocked_achievements} / {game.total_achievements}
-                </span>
-                <span className="game-detail__meta-label">achievements</span>
-              </p>
-              <div
-                className="game-detail__progress-track game-detail__progress-track--hero"
-                role="progressbar"
-                aria-valuenow={completionPct}
-                aria-valuemin={0}
-                aria-valuemax={100}
-                aria-label={`${completionPct}% complete`}
-              >
-                <div
-                  className={`game-detail__progress-fill ${
-                    hasPlatinum
-                      ? 'game-detail__progress-fill--platinum'
-                      : 'game-detail__progress-fill--progress'
-                  }`}
-                  style={{ '--bar-width': `${completionPct}%` } as React.CSSProperties}
-                />
+      <div
+        key={appid}
+        className="game-detail-transition"
+        data-dir={transitionDir ?? ''}
+      >
+        <div
+          className="game-detail__content"
+          aria-busy={isLoading || undefined}
+          aria-label={isLoading ? 'Loading game details' : undefined}
+        >
+          {error ? (
+            <>
+              <header className="game-detail__hero game-detail__hero--compact">
+                <GameDetailHeroBar onBack={onBack} onRefresh={onRefresh} refreshing={refreshing} />
+              </header>
+              <div className="game-detail__body">
+                <p className="game-detail__error" role="alert">
+                  {error}
+                </p>
               </div>
-              {hasPlatinum && <span className="game-detail__platinum-badge">✦ Platinum</span>}
-            </div>
-          </div>
-        </header>
-
-        <div className="game-detail__body">
-          <div className="game-detail__toolbar">
-            <h3 className="game-detail__section-title">
-              Achievements
-              <span className="game-detail__section-count">{achievements.length}</span>
-            </h3>
-          </div>
-
-          {achievements.length > 0 && (
-            <div className="game-detail__filter-bar" role="group" aria-label="Filter achievements by tier">
-              {visibleFilters.map((opt) => {
-                const group = opt.id === 'all' ? undefined : getTierGroup(tierGroups, opt.id)
-                const earnedCount =
-                  opt.id === 'all'
-                    ? achievements.filter((a) => a.earned === 1).length + (hasPlatinum ? 1 : 0)
-                    : countEarnedInTier(group, opt.id)
-                const isActive = activeFilter === opt.id
-                const tierClass =
-                  opt.id !== 'all' ? ` game-detail__filter-btn--${opt.id}` : ''
-
-                return (
-                  <button
-                    key={opt.id}
-                    type="button"
-                    className={`game-detail__filter-btn${tierClass}${
-                      isActive ? ' game-detail__filter-btn--active' : ''
-                    }`}
-                    aria-pressed={isActive}
-                    onClick={() => setActiveFilter(opt.id)}
-                  >
-                    {opt.label}
-                    <span className="game-detail__filter-btn__count">{earnedCount}</span>
-                  </button>
-                )
-              })}
-              {hasHiddenUnearned && (
-                <button
-                  type="button"
-                  className={`game-detail__filter-btn game-detail__filter-btn--hidden${
-                    showDescriptions ? ' game-detail__filter-btn--active' : ''
-                  }`}
-                  aria-pressed={showDescriptions}
-                  aria-label={
-                    showDescriptions
-                      ? 'Hide hidden achievement descriptions'
-                      : 'Show hidden achievement descriptions'
-                  }
-                  onClick={() => setShowDescriptions((v) => !v)}
-                >
-                  Hidden
-                  <span className="game-detail__filter-btn__count">{hiddenUnearnedCount}</span>
-                </button>
-              )}
-            </div>
-          )}
-
-          {achievements.length === 0 ? (
-            <p className="game-detail__empty">
-              No achievements are loaded for this game yet. Refresh the library to fetch Steam metadata.
-            </p>
+            </>
+          ) : !detail ? (
+            <GameDetailSkeletonContent
+              onBack={onBack}
+              onRefresh={onRefresh}
+              refreshing={refreshing}
+            />
           ) : (
-            <ul className="game-detail__list">
-              {activeFilter === 'all'
-                ? tierGroups.flatMap((group) => {
-                    const earnedCount = countEarnedInTier(group, group.tier)
-                    const totalCount =
-                      group.tier === 'platinum' ? 1 : group.items.length
+            <>
+              <header className="game-detail__hero">
+                <GameDetailHeroBar onBack={onBack} onRefresh={onRefresh} refreshing={refreshing} />
+                <div className="game-detail__hero-content">
+                  <div className="game-detail__hero-left">
+                    <h2 className="game-detail__title">{game!.name}</h2>
+                  </div>
+                  <div className="game-detail__hero-right">
+                    <CompletionRing pct={completionPct} platinum={hasPlatinum} size={96} large />
+                    <p className="game-detail__meta game-detail__meta--hero">
+                      <span className="game-detail__meta-strong">
+                        {game!.unlocked_achievements} / {game!.total_achievements}
+                      </span>
+                      <span className="game-detail__meta-label">achievements</span>
+                    </p>
+                    <div
+                      className="game-detail__progress-track game-detail__progress-track--hero"
+                      role="progressbar"
+                      aria-valuenow={completionPct}
+                      aria-valuemin={0}
+                      aria-valuemax={100}
+                      aria-label={`${completionPct}% complete`}
+                    >
+                      <div
+                        className={`game-detail__progress-fill ${
+                          hasPlatinum
+                            ? 'game-detail__progress-fill--platinum'
+                            : 'game-detail__progress-fill--progress'
+                        }`}
+                        style={{ '--bar-width': `${completionPct}%` } as React.CSSProperties}
+                      />
+                    </div>
+                    {hasPlatinum && <span className="game-detail__platinum-badge">✦ Platinum</span>}
+                  </div>
+                </div>
+              </header>
 
-                    return [
-                      <TierHeader
-                        key={`header-${group.tier}`}
-                        tier={group.tier}
-                        earnedCount={earnedCount}
-                        totalCount={totalCount}
-                      />,
-                      ...group.items.map((item) =>
-                        renderListItem(item, game.appid, showDescriptions, game.last_unlocked_at)
+              <div className="game-detail__body">
+                <div className="game-detail__toolbar">
+                  <h3 className="game-detail__section-title">
+                    Achievements
+                    <span className="game-detail__section-count">{achievements.length}</span>
+                  </h3>
+                </div>
+
+                {achievements.length > 0 && (
+                  <div className="game-detail__filter-bar" role="group" aria-label="Filter achievements by tier">
+                    {visibleFilters.map((opt) => {
+                      const group = opt.id === 'all' ? undefined : getTierGroup(tierGroups, opt.id)
+                      const earnedCount =
+                        opt.id === 'all'
+                          ? achievements.filter((a) => a.earned === 1).length + (hasPlatinum ? 1 : 0)
+                          : countEarnedInTier(group, opt.id)
+                      const isActive = activeFilter === opt.id
+                      const tierClass =
+                        opt.id !== 'all' ? ` game-detail__filter-btn--${opt.id}` : ''
+
+                      return (
+                        <button
+                          key={opt.id}
+                          type="button"
+                          className={`game-detail__filter-btn${tierClass}${
+                            isActive ? ' game-detail__filter-btn--active' : ''
+                          }`}
+                          aria-pressed={isActive}
+                          onClick={() => setActiveFilter(opt.id)}
+                        >
+                          {opt.label}
+                          <span className="game-detail__filter-btn__count">{earnedCount}</span>
+                        </button>
                       )
-                    ]
-                  })
-                : filteredGroup?.items.map((item) =>
-                    renderListItem(item, game.appid, showDescriptions, game.last_unlocked_at)
-                  )}
-            </ul>
+                    })}
+                    {hasHiddenUnearned && (
+                      <button
+                        type="button"
+                        className={`game-detail__filter-btn game-detail__filter-btn--hidden${
+                          showDescriptions ? ' game-detail__filter-btn--active' : ''
+                        }`}
+                        aria-pressed={showDescriptions}
+                        aria-label={
+                          showDescriptions
+                            ? 'Hide hidden achievement descriptions'
+                            : 'Show hidden achievement descriptions'
+                        }
+                        onClick={() => setShowDescriptions((v) => !v)}
+                      >
+                        Hidden
+                        <span className="game-detail__filter-btn__count">{hiddenUnearnedCount}</span>
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                {achievements.length === 0 ? (
+                  <p className="game-detail__empty">
+                    No achievements are loaded for this game yet. Refresh the library to fetch Steam metadata.
+                  </p>
+                ) : (
+                  <ul className="game-detail__list">
+                    {activeFilter === 'all'
+                      ? tierGroups.flatMap((group) => {
+                          const earnedCount = countEarnedInTier(group, group.tier)
+                          const totalCount =
+                            group.tier === 'platinum' ? 1 : group.items.length
+
+                          return [
+                            <TierHeader
+                              key={`header-${group.tier}`}
+                              tier={group.tier}
+                              earnedCount={earnedCount}
+                              totalCount={totalCount}
+                            />,
+                            ...group.items.map((item) =>
+                              renderListItem(
+                                item,
+                                game!.appid,
+                                showDescriptions,
+                                game!.last_unlocked_at
+                              )
+                            )
+                          ]
+                        })
+                      : filteredGroup?.items.map((item) =>
+                          renderListItem(
+                            item,
+                            game!.appid,
+                            showDescriptions,
+                            game!.last_unlocked_at
+                          )
+                        )}
+                  </ul>
+                )}
+              </div>
+            </>
           )}
         </div>
       </div>

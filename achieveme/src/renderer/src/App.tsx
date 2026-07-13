@@ -31,37 +31,32 @@ export default function App(): React.ReactElement {
     return (
       <div className="app-shell app-shell--game-detail">
         <main className="app-main">
-          <div
-            key={selectedAppid}
-            data-dir={transitionDir ?? ''}
-            className="game-detail-transition"
-          >
-            <GameDetailPage
-              appid={selectedAppid}
-              onBack={() => {
-                setTransitionDir(null)
-                setSelectedAppid(null)
-              }}
-              onRefresh={handleRefresh}
-              refreshing={refreshing}
-              onPrev={
-                prevAppid
-                  ? () => {
-                      setTransitionDir('prev')
-                      setSelectedAppid(prevAppid)
-                    }
-                  : null
-              }
-              onNext={
-                nextAppid
-                  ? () => {
-                      setTransitionDir('next')
-                      setSelectedAppid(nextAppid)
-                    }
-                  : null
-              }
-            />
-          </div>
+          <GameDetailPage
+            appid={selectedAppid}
+            transitionDir={transitionDir}
+            onBack={() => {
+              setTransitionDir(null)
+              setSelectedAppid(null)
+            }}
+            onRefresh={handleRefresh}
+            refreshing={refreshing}
+            onPrev={
+              prevAppid
+                ? () => {
+                    setTransitionDir('prev')
+                    setSelectedAppid(prevAppid)
+                  }
+                : null
+            }
+            onNext={
+              nextAppid
+                ? () => {
+                    setTransitionDir('next')
+                    setSelectedAppid(nextAppid)
+                  }
+                : null
+            }
+          />
         </main>
       </div>
     )
