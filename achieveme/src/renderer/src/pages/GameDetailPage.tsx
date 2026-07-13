@@ -152,7 +152,9 @@ function GameDetailNavArrows({
           onClick={onPrev}
           aria-label="Previous game"
         >
-          ‹
+          <span className="game-detail__nav-arrow-glyph" aria-hidden>
+            ‹
+          </span>
         </button>
       )}
       {onNext && (
@@ -162,7 +164,9 @@ function GameDetailNavArrows({
           onClick={onNext}
           aria-label="Next game"
         >
-          ›
+          <span className="game-detail__nav-arrow-glyph" aria-hidden>
+            ›
+          </span>
         </button>
       )}
     </>

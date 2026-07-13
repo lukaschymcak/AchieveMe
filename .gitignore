@@ -12,7 +12,8 @@ build/
 .cursor/skills/
 # Vite cache
 .vite/
-
+goldberg-files
+GoldbergAssistant
 # TypeScript
 *.tsbuildinfo
 
