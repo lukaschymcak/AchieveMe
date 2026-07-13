@@ -79,6 +79,20 @@ export default function LibraryPage({
   }, [])
 
   useEffect(() => {
+    if (hasApiKey !== true) return
+
+    function handleLibraryUpdated(): void {
+      void reloadGames()
+    }
+
+    window.api.onLibraryUpdated(handleLibraryUpdated)
+
+    return () => {
+      window.api.offLibraryUpdated(handleLibraryUpdated)
+    }
+  }, [hasApiKey])
+
+  useEffect(() => {
     if (!menuAppid) return
 
     function handleKeyDown(e: KeyboardEvent): void {

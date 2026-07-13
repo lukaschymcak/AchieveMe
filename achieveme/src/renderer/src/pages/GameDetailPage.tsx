@@ -382,6 +382,22 @@ export default function GameDetailPage({
   }, [appid])
 
   useEffect(() => {
+    function handleLibraryUpdated(payload: { appid?: string }): void {
+      if (payload.appid && payload.appid !== appid) return
+      window.api
+        .getGameDetail(appid)
+        .then(setDetail)
+        .catch(() => setError('Could not load game details. Try Refresh from the toolbar.'))
+    }
+
+    window.api.onLibraryUpdated(handleLibraryUpdated)
+
+    return () => {
+      window.api.offLibraryUpdated(handleLibraryUpdated)
+    }
+  }, [appid])
+
+  useEffect(() => {
     if (!detail) {
       setResolvedBackdrop('')
       return

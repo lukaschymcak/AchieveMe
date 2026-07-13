@@ -8,6 +8,18 @@ export default function DashboardPage(): React.ReactElement {
     window.api.getProfileStats().then(setStats)
   }, [])
 
+  useEffect(() => {
+    function handleLibraryUpdated(): void {
+      window.api.getProfileStats().then(setStats)
+    }
+
+    window.api.onLibraryUpdated(handleLibraryUpdated)
+
+    return () => {
+      window.api.offLibraryUpdated(handleLibraryUpdated)
+    }
+  }, [])
+
   if (!stats) {
     return <div style={{ padding: 24 }}>Loading...</div>
   }

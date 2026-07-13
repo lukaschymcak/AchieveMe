@@ -97,6 +97,7 @@ export async function startWatcher(settings: AppSettings): Promise<void> {
     }
   }
 
+  watcher.on('add', handleWatchPath)
   watcher.on('change', handleWatchPath)
   watcher.on('unlink', handleWatchPath)
 

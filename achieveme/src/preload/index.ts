@@ -1,5 +1,16 @@
-import { contextBridge, ipcRenderer } from 'electron'
-import type { ProfileStats, GameSummary, GameDetail, AppSettings, ImportResult, SteamSearchResult, GoldbergApplyRequest, SteamApiDllInfo } from '../shared/types'
+import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
+import type { ProfileStats, GameSummary, GameDetail, AppSettings, ImportResult, SteamSearchResult, GoldbergApplyRequest, SteamApiDllInfo, LibraryUpdatedPayload } from '../shared/types'
+
+const libraryUpdatedCallbacks = new Set<(payload: LibraryUpdatedPayload) => void>()
+
+function dispatchLibraryUpdated(
+  _event: IpcRendererEvent,
+  payload: LibraryUpdatedPayload
+): void {
+  for (const cb of libraryUpdatedCallbacks) {
+    cb(payload)
+  }
+}
 
 contextBridge.exposeInMainWorld('api', {
   getProfileStats: (): Promise<ProfileStats | null> =>
@@ -47,5 +58,19 @@ contextBridge.exposeInMainWorld('api', {
 
   offGoldbergLog: (): void => {
     ipcRenderer.removeAllListeners('goldberg-log')
+  },
+
+  onLibraryUpdated: (cb: (payload: LibraryUpdatedPayload) => void): void => {
+    if (libraryUpdatedCallbacks.size === 0) {
+      ipcRenderer.on('library-updated', dispatchLibraryUpdated)
+    }
+    libraryUpdatedCallbacks.add(cb)
+  },
+
+  offLibraryUpdated: (cb: (payload: LibraryUpdatedPayload) => void): void => {
+    libraryUpdatedCallbacks.delete(cb)
+    if (libraryUpdatedCallbacks.size === 0) {
+      ipcRenderer.removeListener('library-updated', dispatchLibraryUpdated)
+    }
   }
 })

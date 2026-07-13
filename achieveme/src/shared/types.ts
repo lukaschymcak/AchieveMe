@@ -165,6 +165,10 @@ export interface GoldbergApplyRequest {
   dllPath: string
 }
 
+export interface LibraryUpdatedPayload {
+  appid?: string
+}
+
 export interface SteamApiDllInfo {
   path: string
   fileName: string

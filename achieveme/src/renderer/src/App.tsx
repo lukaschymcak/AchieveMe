@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import type { GameSummary } from '../../shared/types'
 import DashboardPage from './pages/DashboardPage'
 import LibraryPage from './pages/LibraryPage'
@@ -19,6 +19,18 @@ export default function App(): React.ReactElement {
     setRefreshing(true)
     window.api.refresh().finally(() => setRefreshing(false))
   }
+
+  useEffect(() => {
+    function handleLibraryUpdated(): void {
+      window.api.getAllGames().then(setLibraryGames)
+    }
+
+    window.api.onLibraryUpdated(handleLibraryUpdated)
+
+    return () => {
+      window.api.offLibraryUpdated(handleLibraryUpdated)
+    }
+  }, [])
 
   if (selectedAppid) {
     const currentIdx = libraryGames.findIndex((g) => g.appid === selectedAppid)

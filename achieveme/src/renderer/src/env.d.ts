@@ -1,4 +1,4 @@
-import type { ProfileStats, GameSummary, GameDetail, AppSettings, ImportResult, SteamSearchResult, GoldbergApplyRequest, SteamApiDllInfo } from '../../shared/types'
+import type { ProfileStats, GameSummary, GameDetail, AppSettings, ImportResult, SteamSearchResult, GoldbergApplyRequest, SteamApiDllInfo, LibraryUpdatedPayload } from '../../shared/types'
 
 declare global {
   interface Window {
@@ -18,6 +18,8 @@ declare global {
       applyGoldberg(request: GoldbergApplyRequest): Promise<void>
       onGoldbergLog(cb: (line: string) => void): void
       offGoldbergLog(): void
+      onLibraryUpdated(cb: (payload: LibraryUpdatedPayload) => void): void
+      offLibraryUpdated(cb: (payload: LibraryUpdatedPayload) => void): void
     }
   }
 }

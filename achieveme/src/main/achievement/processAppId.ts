@@ -12,6 +12,7 @@ import { mergeRawAchievements } from './rawMerge'
 import { enrichApp } from './steamApiClient'
 import { regenerateProfileStats } from './profileStatsService'
 import { encodePortablePath, GOLDBERG_JSON_SOURCES } from './savePathUtils'
+import { notifyLibraryUpdated } from './libraryNotifyService'
 import type { AppSettings } from '../../shared/types'
 
 export async function processAppId(
@@ -27,6 +28,7 @@ export async function processAppId(
   if (forThisApp.length === 0) {
     deleteGame(db, appid)
     regenerateProfileStats(db)
+    notifyLibraryUpdated(appid)
     return
   }
 
@@ -66,4 +68,5 @@ export async function processAppId(
 
   // 6. Rebuild profile_stats.json
   regenerateProfileStats(db)
+  notifyLibraryUpdated(appid)
 }
