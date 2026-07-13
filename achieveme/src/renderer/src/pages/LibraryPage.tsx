@@ -354,29 +354,33 @@ function GameCard({
         )}
         <div className="library-card__scrim" aria-hidden />
         <div className="library-card__overlay">
-          <h3 className="library-card__title">{game.name}</h3>
-          <div className="library-card__stats">
-            <span className="library-card__fraction">
-              {game.unlocked_achievements}/{game.total_achievements}
-            </span>
-            <span className="library-card__pct">{completionPct}%</span>
-            {hasPlatinum && <span className="library-card__platinum">✦ Platinum</span>}
-          </div>
-          <div
-            className="library-card__progress"
-            role="progressbar"
-            aria-valuenow={completionPct}
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-label={`${completionPct}% complete`}
-          >
+          <div className="library-card__main">
+            <h3 className="library-card__title">{game.name}</h3>
+            <div className="library-card__stats">
+              <span className="library-card__fraction">
+                {game.unlocked_achievements}/{game.total_achievements}
+              </span>
+              {hasPlatinum && <span className="library-card__platinum">✦ Platinum</span>}
+            </div>
             <div
-              className={`library-card__progress-fill${
-                hasPlatinum ? ' library-card__progress-fill--platinum' : ''
-              }`}
-              style={{ width: `${completionPct}%` }}
-            />
+              className="library-card__progress"
+              role="progressbar"
+              aria-valuenow={completionPct}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-label={`${completionPct}% complete`}
+            >
+              <div
+                className={`library-card__progress-fill${
+                  hasPlatinum ? ' library-card__progress-fill--platinum' : ''
+                }`}
+                style={{ width: `${completionPct}%` }}
+              />
+            </div>
           </div>
+          <span className="library-card__pct" aria-hidden>
+            {completionPct}%
+          </span>
         </div>
       </div>
     </article>
@@ -459,15 +463,12 @@ function GameListRow({
       </div>
 
       <div className="library-list-row__body">
-        <div className="library-list-row__header">
-          <h3 className="library-list-row__name">{game.name}</h3>
-          <div className="library-list-row__stats" aria-hidden>
-            <span className="library-list-row__fraction">
-              {game.unlocked_achievements}/{game.total_achievements}
-            </span>
-            <span className="library-list-row__pct">{completionPct}%</span>
-            {hasPlatinum && <span className="library-list-row__platinum">✦ Platinum</span>}
-          </div>
+        <h3 className="library-list-row__name">{game.name}</h3>
+        <div className="library-list-row__meta" aria-hidden>
+          <span className="library-list-row__fraction">
+            {game.unlocked_achievements}/{game.total_achievements}
+          </span>
+          {hasPlatinum && <span className="library-list-row__platinum">✦ Platinum</span>}
         </div>
         <div
           className="library-list-row__progress"
@@ -485,6 +486,10 @@ function GameListRow({
           />
         </div>
       </div>
+
+      <span className="library-list-row__pct" aria-hidden>
+        {completionPct}%
+      </span>
     </li>
   )
 }
