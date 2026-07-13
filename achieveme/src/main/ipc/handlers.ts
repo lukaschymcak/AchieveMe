@@ -11,6 +11,7 @@ import {
   deleteGame
 } from '../db/repository'
 import { getStoreCoverUrl } from '../achievement/steamApiClient'
+import { getSteamLibraryHeroUrl } from '../../shared/steamUrls'
 import { loadSettings, saveSettings } from '../settings'
 import { startWatcher, pruneOrphanedGames } from '../achievement/watcherService'
 import { scanAllSources } from '../achievement/discoveryService'
@@ -58,7 +59,8 @@ export function registerIpcHandlers(): void {
     if (!game) return null
     const achievements = getAchievementsForGame(db, appid)
     const cover_url = await getStoreCoverUrl(db, appid)
-    return { game, achievements, cover_url }
+    const backdrop_url = getSteamLibraryHeroUrl(appid)
+    return { game, achievements, cover_url, backdrop_url }
   })
 
   ipcMain.handle('get-settings', (): AppSettings => {

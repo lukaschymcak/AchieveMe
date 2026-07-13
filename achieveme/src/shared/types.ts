@@ -91,6 +91,7 @@ export interface GameDetail {
   game: Game
   achievements: Achievement[]
   cover_url: string
+  backdrop_url: string
 }
 
 /** Goldberg-style save progress (matches achievements.json on disk). */

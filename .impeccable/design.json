@@ -1,0 +1,317 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-07-13T13:55:00.000Z",
+  "title": "Design System: AchieveMe",
+  "extensions": {
+    "colorMeta": {
+      "bg-base": {
+        "role": "neutral",
+        "displayName": "Shell Base",
+        "canonical": "oklch(15% 0.012 275)",
+        "tonalRamp": [
+          "oklch(8% 0.02 275)",
+          "oklch(10% 0.018 275)",
+          "oklch(12% 0.016 275)",
+          "oklch(15% 0.012 275)",
+          "oklch(18% 0.014 275)",
+          "oklch(22% 0.016 275)",
+          "oklch(28% 0.018 275)",
+          "oklch(40% 0.02 275)"
+        ]
+      },
+      "surface-1": {
+        "role": "neutral",
+        "displayName": "Surface Lift",
+        "canonical": "oklch(18% 0.014 275)",
+        "tonalRamp": [
+          "oklch(10% 0.018 275)",
+          "oklch(12% 0.016 275)",
+          "oklch(15% 0.014 275)",
+          "oklch(18% 0.014 275)",
+          "oklch(22% 0.016 275)",
+          "oklch(28% 0.018 275)",
+          "oklch(34% 0.02 275)",
+          "oklch(45% 0.02 275)"
+        ]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Primary Ink",
+        "canonical": "oklch(93% 0.01 275)",
+        "tonalRamp": [
+          "oklch(45% 0.012 275)",
+          "oklch(58% 0.012 275)",
+          "oklch(70% 0.014 275)",
+          "oklch(82% 0.012 275)",
+          "oklch(88% 0.01 275)",
+          "oklch(93% 0.01 275)",
+          "oklch(96% 0.008 275)",
+          "oklch(99% 0.005 275)"
+        ]
+      },
+      "color-progress": {
+        "role": "primary",
+        "displayName": "Progress Blue",
+        "canonical": "oklch(60% 0.12 230)",
+        "tonalRamp": [
+          "oklch(25% 0.08 230)",
+          "oklch(35% 0.1 230)",
+          "oklch(45% 0.11 230)",
+          "oklch(52% 0.115 230)",
+          "oklch(60% 0.12 230)",
+          "oklch(68% 0.12 230)",
+          "oklch(76% 0.1 230)",
+          "oklch(85% 0.08 230)"
+        ]
+      },
+      "color-action": {
+        "role": "primary",
+        "displayName": "Focus Action",
+        "canonical": "oklch(62% 0.14 230)",
+        "tonalRamp": [
+          "oklch(28% 0.1 230)",
+          "oklch(38% 0.12 230)",
+          "oklch(48% 0.13 230)",
+          "oklch(55% 0.14 230)",
+          "oklch(62% 0.14 230)",
+          "oklch(70% 0.13 230)",
+          "oklch(78% 0.11 230)",
+          "oklch(88% 0.08 230)"
+        ]
+      },
+      "tier-bronze": {
+        "role": "tertiary",
+        "displayName": "Trophy Bronze",
+        "canonical": "oklch(62% 0.13 58)",
+        "tonalRamp": [
+          "oklch(28% 0.08 58)",
+          "oklch(38% 0.1 58)",
+          "oklch(48% 0.11 58)",
+          "oklch(55% 0.12 58)",
+          "oklch(62% 0.13 58)",
+          "oklch(70% 0.12 58)",
+          "oklch(78% 0.1 58)",
+          "oklch(88% 0.07 58)"
+        ]
+      },
+      "tier-silver": {
+        "role": "tertiary",
+        "displayName": "Trophy Silver",
+        "canonical": "oklch(76% 0.025 260)",
+        "tonalRamp": [
+          "oklch(35% 0.02 260)",
+          "oklch(45% 0.022 260)",
+          "oklch(55% 0.024 260)",
+          "oklch(65% 0.025 260)",
+          "oklch(76% 0.025 260)",
+          "oklch(82% 0.022 260)",
+          "oklch(88% 0.018 260)",
+          "oklch(94% 0.012 260)"
+        ]
+      },
+      "tier-gold": {
+        "role": "tertiary",
+        "displayName": "Trophy Gold",
+        "canonical": "oklch(78% 0.15 88)",
+        "tonalRamp": [
+          "oklch(35% 0.1 88)",
+          "oklch(45% 0.12 88)",
+          "oklch(55% 0.14 88)",
+          "oklch(65% 0.15 88)",
+          "oklch(78% 0.15 88)",
+          "oklch(84% 0.13 88)",
+          "oklch(90% 0.1 88)",
+          "oklch(95% 0.07 88)"
+        ]
+      },
+      "tier-platinum": {
+        "role": "tertiary",
+        "displayName": "Trophy Platinum",
+        "canonical": "oklch(84% 0.07 285)",
+        "tonalRamp": [
+          "oklch(40% 0.05 285)",
+          "oklch(50% 0.06 285)",
+          "oklch(60% 0.065 285)",
+          "oklch(72% 0.07 285)",
+          "oklch(84% 0.07 285)",
+          "oklch(88% 0.06 285)",
+          "oklch(92% 0.05 285)",
+          "oklch(96% 0.03 285)"
+        ]
+      },
+      "color-error": {
+        "role": "semantic",
+        "displayName": "Error",
+        "canonical": "oklch(68% 0.16 25)",
+        "tonalRamp": [
+          "oklch(30% 0.12 25)",
+          "oklch(40% 0.14 25)",
+          "oklch(50% 0.15 25)",
+          "oklch(58% 0.16 25)",
+          "oklch(68% 0.16 25)",
+          "oklch(75% 0.14 25)",
+          "oklch(82% 0.12 25)",
+          "oklch(90% 0.08 25)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Game Title Display",
+        "purpose": "Game names on detail hero only. Bebas Neue condensed authority."
+      },
+      "stats": {
+        "displayName": "Stats & Chips",
+        "purpose": "Rajdhani for rings, filter pills, tier headers, counts."
+      },
+      "body": {
+        "displayName": "UI Body",
+        "purpose": "Achievement lists, nav, descriptions. System UI stack."
+      },
+      "label": {
+        "displayName": "Section Label",
+        "purpose": "Uppercase tracked tier section headers."
+      }
+    },
+    "shadows": [
+      {
+        "name": "tier-icon-ring",
+        "value": "0 0 0 1px color-mix(in oklch, var(--row-tier) 55%, transparent)",
+        "purpose": "Earned achievement icon wrap — tier-colored ring, not drop shadow."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease-out",
+        "value": "cubic-bezier(0.22, 1, 0.36, 1)",
+        "purpose": "Default state transitions, progress bar fill, ring stroke."
+      },
+      {
+        "name": "state-fast",
+        "value": "150ms cubic-bezier(0.22, 1, 0.36, 1)",
+        "purpose": "Button, chip, and row hover backgrounds."
+      },
+      {
+        "name": "progress-reveal",
+        "value": "600ms cubic-bezier(0.22, 1, 0.36, 1)",
+        "purpose": "Hero progress bar width animation on game detail load."
+      }
+    ],
+    "breakpoints": [
+      { "name": "sm", "value": "640px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "App Button Default",
+      "kind": "button",
+      "refersTo": "button-default",
+      "description": "Shell-level actions: nav links, Refresh on library. Not used on game detail hero.",
+      "html": "<button type=\"button\" class=\"ds-btn-default\">Refresh</button>",
+      "css": ".ds-btn-default { display: inline-flex; align-items: center; justify-content: center; min-height: 32px; padding: 6px 14px; border-radius: 6px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 13px; font-weight: 400; color: oklch(93% 0.01 275); background: oklch(22% 0.016 275); border: 1px solid oklch(34% 0.02 275); cursor: pointer; transition: background 150ms cubic-bezier(0.22, 1, 0.36, 1), border-color 150ms cubic-bezier(0.22, 1, 0.36, 1); } .ds-btn-default:hover { background: oklch(28% 0.018 275); } .ds-btn-default:focus-visible { outline: 2px solid oklch(62% 0.14 230); outline-offset: 2px; }"
+    },
+    {
+      "name": "Hero Back Pill",
+      "kind": "button",
+      "refersTo": "chip-hero",
+      "description": "Returns to library from game detail. Frosted pill over cover art; sentence case label.",
+      "html": "<button type=\"button\" class=\"ds-chip-hero ds-chip-hero--back\"><span class=\"ds-chip-hero__icon\" aria-hidden=\"true\">←</span> Library</button>",
+      "css": ".ds-chip-hero { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 6px 14px; border-radius: 999px; font-family: 'Rajdhani', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 0.75rem; font-weight: 600; letter-spacing: 0.01em; color: oklch(70% 0.014 275); background: oklch(12% 0.014 275 / 0.72); border: 1px solid oklch(34% 0.02 275 / 0.5); backdrop-filter: blur(10px); cursor: pointer; transition: background 150ms cubic-bezier(0.22, 1, 0.36, 1), border-color 150ms cubic-bezier(0.22, 1, 0.36, 1), color 150ms cubic-bezier(0.22, 1, 0.36, 1); } .ds-chip-hero:hover { background: oklch(18% 0.014 275 / 0.85); border-color: oklch(40% 0.02 275 / 0.55); color: oklch(93% 0.01 275); } .ds-chip-hero:focus-visible { outline: 2px solid oklch(62% 0.14 230); outline-offset: 2px; } .ds-chip-hero__icon { font-size: 1.05em; line-height: 1; opacity: 0.9; }"
+    },
+    {
+      "name": "Tier Filter Chip",
+      "kind": "chip",
+      "refersTo": "chip-filter",
+      "description": "Tier filter bar on game detail. Uppercase Rajdhani with count badge.",
+      "html": "<button type=\"button\" class=\"ds-chip-filter\" aria-pressed=\"false\">Gold <span class=\"ds-chip-filter__count\">3</span></button>",
+      "css": ".ds-chip-filter { display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; border-radius: 999px; font-family: 'Rajdhani', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 0.75rem; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: oklch(70% 0.014 275); background: oklch(16% 0.014 275 / 0.88); border: 1px solid oklch(34% 0.02 275 / 0.45); cursor: pointer; transition: background 150ms cubic-bezier(0.22, 1, 0.36, 1), border-color 150ms cubic-bezier(0.22, 1, 0.36, 1), color 150ms cubic-bezier(0.22, 1, 0.36, 1); } .ds-chip-filter:hover { background: oklch(20% 0.014 275 / 0.92); color: oklch(93% 0.01 275); } .ds-chip-filter:focus-visible { outline: 2px solid oklch(62% 0.14 230); outline-offset: 2px; } .ds-chip-filter__count { display: inline-flex; align-items: center; justify-content: center; min-width: 1.25rem; padding: 0 5px; border-radius: 999px; font-size: 0.625rem; font-weight: 700; font-variant-numeric: tabular-nums; background: oklch(100% 0 0 / 0.08); color: oklch(70% 0.014 275); }"
+    },
+    {
+      "name": "Tier Filter Chip Active (Gold)",
+      "kind": "chip",
+      "refersTo": "chip-filter-active",
+      "description": "Active tier filter — tier metal tint at 18% into dark base.",
+      "html": "<button type=\"button\" class=\"ds-chip-filter ds-chip-filter--gold\" aria-pressed=\"true\">Gold <span class=\"ds-chip-filter__count\">3</span></button>",
+      "css": ".ds-chip-filter--gold { color: oklch(93% 0.01 275); background: color-mix(in oklch, oklch(78% 0.15 88) 18%, oklch(16% 0.014 275 / 0.92)); border-color: color-mix(in oklch, oklch(78% 0.15 88) 45%, transparent); } .ds-chip-filter--gold .ds-chip-filter__count { background: oklch(100% 0 0 / 0.14); color: oklch(93% 0.01 275); }"
+    },
+    {
+      "name": "Hidden Toggle Chip",
+      "kind": "chip",
+      "refersTo": "chip-filter-active",
+      "description": "Toggles hidden achievement descriptions. Neutral active state — never accent blue.",
+      "html": "<button type=\"button\" class=\"ds-chip-filter ds-chip-filter--hidden\" aria-pressed=\"true\" aria-label=\"Hide hidden achievement descriptions\">Hidden <span class=\"ds-chip-filter__count\">2</span></button>",
+      "css": ".ds-chip-filter--hidden[aria-pressed='true'] { color: oklch(93% 0.01 275); background: oklch(22% 0.014 275 / 0.92); border-color: oklch(45% 0.02 275 / 0.55); } .ds-chip-filter--hidden[aria-pressed='true'] .ds-chip-filter__count { background: oklch(100% 0 0 / 0.14); color: oklch(93% 0.01 275); }"
+    },
+    {
+      "name": "Achievement Row Earned",
+      "kind": "custom",
+      "description": "Earned achievement with gold tier tint, full border, tier pill.",
+      "html": "<div class=\"ds-achievement-row ds-achievement-row--earned ds-achievement-row--gold\"><div class=\"ds-achievement-row__icon\"></div><div class=\"ds-achievement-row__body\"><div class=\"ds-achievement-row__name\">Master of the Universe</div><div class=\"ds-achievement-row__desc\">Complete all story missions.</div></div><div class=\"ds-achievement-row__aside\"><span class=\"ds-tier-pill ds-tier-pill--gold\">gold</span></div></div>",
+      "css": ".ds-achievement-row { display: flex; gap: 12px; align-items: center; width: 100%; padding: 10px 14px; border-radius: 8px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; } .ds-achievement-row--earned.ds-achievement-row--gold { background: color-mix(in oklch, oklch(78% 0.15 88) 12%, oklch(16% 0.014 275 / 0.92)); border: 1px solid color-mix(in oklch, oklch(78% 0.15 88) 32%, oklch(34% 0.02 275 / 0.5)); } .ds-achievement-row__icon { width: 40px; height: 40px; border-radius: 4px; background: oklch(28% 0.018 275); flex-shrink: 0; } .ds-achievement-row__body { flex: 1; min-width: 0; } .ds-achievement-row__name { font-weight: 600; font-size: 13px; color: oklch(93% 0.01 275); } .ds-achievement-row__desc { font-size: 11px; color: oklch(70% 0.014 275); margin-top: 2px; line-height: 1.45; } .ds-achievement-row__aside { text-align: right; flex-shrink: 0; } .ds-tier-pill { display: inline-block; padding: 2px 7px; border-radius: 999px; font-size: 10px; font-weight: 700; text-transform: capitalize; border: 1px solid; } .ds-tier-pill--gold { color: oklch(78% 0.15 88); background: color-mix(in oklch, oklch(78% 0.15 88) 16%, oklch(22% 0.016 275)); border-color: color-mix(in oklch, oklch(78% 0.15 88) 45%, oklch(34% 0.02 275)); }"
+    },
+    {
+      "name": "Tier Section Header",
+      "kind": "custom",
+      "description": "Divider between trophy tier groups in the achievement list.",
+      "html": "<div class=\"ds-tier-header ds-tier-header--gold\"><span class=\"ds-tier-header__label\">Gold</span><span class=\"ds-tier-header__meta\">2 earned · 5 total</span></div>",
+      "css": ".ds-tier-header { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 12px 2px 8px; border-bottom: 1px solid oklch(34% 0.02 275 / 0.35); } .ds-tier-header__label { font-family: 'Rajdhani', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; } .ds-tier-header--gold .ds-tier-header__label { color: oklch(78% 0.15 88); } .ds-tier-header__meta { font-size: 0.6875rem; color: oklch(58% 0.012 275); font-variant-numeric: tabular-nums; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Trophy Case",
+    "overview": "AchieveMe is a late-night desktop companion: the Steam client is open, the room is dim, and the user is checking what they have left to platinum. The interface should feel like familiar dark gaming chrome with a trophy shelf inside it — progress you earned, metals that mean something, completion rings that read at a glance. Celebration comes from tier color and earned-state tinting, not from neon flash or loot-box motion. The canonical visual system is fully implemented on Game Detail; Library, Dashboard, and Settings must migrate from legacy inline purple styles.",
+    "keyCharacteristics": [
+      "Hue-275 tinted dark neutrals for the shell; trophy metals carry identity",
+      "Bebas Neue for game titles only; Rajdhani for stats, filters, and chips",
+      "Frosted pill chips on cover art and matte pill filters in the achievement toolbar",
+      "Tier-tinted earned rows with full borders — never side-stripe accents",
+      "Restrained progress blue for rings and bars; accent blue for focus only",
+      "State-only motion with reduced-motion alternatives"
+    ],
+    "rules": [
+      {
+        "name": "The Metals Mean Earned Rule",
+        "body": "Trophy metal colors appear on earned achievements, tier filter active states, and completion celebration — never as generic decoration on inactive chrome.",
+        "section": "colors"
+      },
+      {
+        "name": "The One Accent Rule",
+        "body": "Progress blue carries functional progress UI. Action blue is focus-only. Do not reintroduce Discord-purple (#5865f2) or blue-outlined ghost buttons on product surfaces.",
+        "section": "colors"
+      },
+      {
+        "name": "The Display Boundary Rule",
+        "body": "Bebas Neue is reserved for game titles on the detail hero. Everything interactive uses Rajdhani or system UI.",
+        "section": "typography"
+      },
+      {
+        "name": "The Cover Glass Rule",
+        "body": "Backdrop blur is allowed on hero pills over game art. Nowhere else unless the surface is literally over a photograph.",
+        "section": "elevation"
+      },
+      {
+        "name": "The Flat Row Rule",
+        "body": "Achievement rows do not use box-shadow at rest. Icon wraps on earned rows may use a 1px tier-colored ring.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do use CSS custom properties from :root for all new surfaces — never hardcode #1a1a22 or #5865f2 on migrated pages.",
+      "Do use Rajdhani uppercase pills for filters, sort controls, and hero actions on game surfaces.",
+      "Do tint earned achievement rows with color-mix(in oklch, var(--tier-*) …) and full borders.",
+      "Do keep body text and placeholders at --ink-muted or darker on tinted near-dark backgrounds.",
+      "Do provide prefers-reduced-motion alternatives for bar fills, ring transitions, and skeleton pulse.",
+      "Do cap hero display type at clamp(…, 4rem) and use text-wrap: balance on game titles."
+    ],
+    "donts": [
+      "Don't use generic SaaS dashboard patterns: cream backgrounds, identical card grids, eyebrow kickers, hero-metric templates.",
+      "Don't use gambling or RGB-neon aesthetics: flashy gradients, loot-box energy, overstimulating motion.",
+      "Don't ship bare spreadsheet utility: raw tables with zero personality and no earned celebration.",
+      "Don't use border-left or border-right greater than 1px as a colored accent on rows or cards.",
+      "Don't use gradient text (background-clip: text) for emphasis.",
+      "Don't use blue accent outlines on resting buttons.",
+      "Don't apply Bebas Neue to buttons, nav labels, or achievement list items.",
+      "Don't use decorative glassmorphism on list rows or library cards."
+    ]
+  }
+}

@@ -9,7 +9,7 @@ dist-electron/
 out/
 release/
 build/
-
+.cursor/skills/
 # Vite cache
 .vite/
 

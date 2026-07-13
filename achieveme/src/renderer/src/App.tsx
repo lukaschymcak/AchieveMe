@@ -18,45 +18,59 @@ export default function App(): React.ReactElement {
 
   if (selectedAppid) {
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
-        <nav style={{ padding: '8px 16px', background: '#1a1a22', display: 'flex', gap: 12, alignItems: 'center' }}>
-          <button onClick={() => setSelectedAppid(null)}>← Library</button>
-          <div style={{ flex: 1 }} />
-          <button onClick={handleRefresh} disabled={refreshing}>
-            {refreshing ? 'Refreshing...' : 'Refresh'}
-          </button>
-        </nav>
-        <main style={{ flex: 1, overflow: 'auto' }}>
-          <GameDetailPage appid={selectedAppid} />
+      <div className="app-shell app-shell--game-detail">
+        <main className="app-main">
+          <GameDetailPage
+            appid={selectedAppid}
+            onBack={() => setSelectedAppid(null)}
+            onRefresh={handleRefresh}
+            refreshing={refreshing}
+          />
+        </main>
+      </div>
+    )
+  }
+
+  if (page === 'library') {
+    return (
+      <div className="app-shell">
+        <main className="app-main">
+          <LibraryPage
+            page={page}
+            onNavigate={setPage}
+            onSelect={setSelectedAppid}
+            onGoToSettings={() => setPage('settings')}
+            onRefresh={handleRefresh}
+            refreshing={refreshing}
+          />
         </main>
       </div>
     )
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
-      <nav style={{ padding: '8px 16px', background: '#1a1a22', display: 'flex', gap: 12, alignItems: 'center' }}>
-        <button onClick={() => setPage('dashboard')} style={{ fontWeight: page === 'dashboard' ? 700 : 400 }}>
+    <div className="app-shell">
+      <nav className="app-nav">
+        <button
+          type="button"
+          className={`app-nav__link${page === 'dashboard' ? ' app-nav__link--active' : ''}`}
+          onClick={() => setPage('dashboard')}
+        >
           Dashboard
         </button>
-        <button onClick={() => setPage('library')} style={{ fontWeight: page === 'library' ? 700 : 400 }}>
+        <button type="button" className="app-nav__link" onClick={() => setPage('library')}>
           Library
         </button>
-        <button onClick={() => setPage('settings')} style={{ fontWeight: page === 'settings' ? 700 : 400 }}>
+        <button
+          type="button"
+          className={`app-nav__link${page === 'settings' ? ' app-nav__link--active' : ''}`}
+          onClick={() => setPage('settings')}
+        >
           Settings
         </button>
-        <div style={{ flex: 1 }} />
-        {page === 'library' && (
-          <button onClick={handleRefresh} disabled={refreshing}>
-            {refreshing ? 'Refreshing...' : 'Refresh'}
-          </button>
-        )}
       </nav>
-      <main style={{ flex: 1, overflow: 'auto' }}>
+      <main className="app-main">
         {page === 'dashboard' && <DashboardPage />}
-        {page === 'library' && (
-          <LibraryPage onSelect={setSelectedAppid} onGoToSettings={() => setPage('settings')} />
-        )}
         {page === 'settings' && <SettingsPage />}
       </main>
     </div>

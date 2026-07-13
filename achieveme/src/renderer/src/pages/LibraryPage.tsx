@@ -3,18 +3,37 @@ import type { GameSummary } from '../../../shared/types'
 import SteamApiKeyForm from '../components/SteamApiKeyForm'
 import { filterAndSortGames, type SortOption } from '../lib/libraryUtils'
 
+type AppPage = 'dashboard' | 'library' | 'settings'
+
 interface Props {
   onSelect: (appid: string) => void
   onGoToSettings?: () => void
+  page: AppPage
+  onNavigate: (page: AppPage) => void
+  onRefresh: () => void
+  refreshing: boolean
 }
 
-const SORT_OPTIONS: Array<{ id: SortOption; label: string }> = [
-  { id: 'completion-asc', label: 'Least complete' },
-  { id: 'unlocked-desc', label: 'Most unlocked' },
-  { id: 'recent', label: 'Recently unlocked' }
+const NAV_ITEMS: Array<{ id: AppPage; label: string }> = [
+  { id: 'dashboard', label: 'Dashboard' },
+  { id: 'library', label: 'Library' },
+  { id: 'settings', label: 'Settings' }
 ]
 
-export default function LibraryPage({ onSelect, onGoToSettings }: Props): React.ReactElement {
+const SORT_OPTIONS: Array<{ id: SortOption; label: string; shortLabel: string }> = [
+  { id: 'completion-asc', label: 'Least complete', shortLabel: 'Least' },
+  { id: 'unlocked-desc', label: 'Most unlocked', shortLabel: 'Most' },
+  { id: 'recent', label: 'Recently unlocked', shortLabel: 'Recent' }
+]
+
+export default function LibraryPage({
+  onSelect,
+  onGoToSettings,
+  page,
+  onNavigate,
+  onRefresh,
+  refreshing
+}: Props): React.ReactElement {
   const [hasApiKey, setHasApiKey] = useState<boolean | null>(null)
   const [games, setGames] = useState<GameSummary[]>([])
   const [loading, setLoading] = useState(false)
@@ -77,26 +96,21 @@ export default function LibraryPage({ onSelect, onGoToSettings }: Props): React.
   }
 
   if (hasApiKey === null) {
-    return <div style={{ padding: 24 }}>Loading...</div>
+    return (
+      <div className="library library--centered">
+        <p className="library__status">Loading…</p>
+      </div>
+    )
   }
 
   if (!hasApiKey) {
     return (
-      <div style={{ padding: 24 }}>
+      <div className="library library--centered">
         <SteamApiKeyForm prominent onSaved={handleKeySaved} />
         {onGoToSettings && (
-          <p style={{ textAlign: 'center', marginTop: 16, fontSize: 13, color: '#888' }}>
+          <p className="library__settings-hint">
             Or configure it in{' '}
-            <button
-              onClick={onGoToSettings}
-              style={{
-                background: 'none',
-                border: 'none',
-                color: '#5865f2',
-                padding: 0,
-                textDecoration: 'underline'
-              }}
-            >
+            <button type="button" className="library__link-btn" onClick={onGoToSettings}>
               Settings
             </button>
           </p>
@@ -105,111 +119,111 @@ export default function LibraryPage({ onSelect, onGoToSettings }: Props): React.
     )
   }
 
-  if (loading) {
-    return <div style={{ padding: 24 }}>Loading library...</div>
-  }
-
-  if (games.length === 0) {
-    return (
-      <div style={{ padding: 24, color: '#888' }}>
-        No games found. Make sure your emulator save folders exist, then click Refresh.
-      </div>
-    )
-  }
-
   return (
-    <div style={{ padding: 24 }}>
-      <h2 style={{ marginBottom: 16 }}>Library ({displayedGames.length} games)</h2>
-
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 16, alignItems: 'center' }}>
-        <input
-          type="search"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search games..."
-          style={{
-            flex: '1 1 200px',
-            minWidth: 180,
-            padding: '8px 12px',
-            background: '#1a1a22',
-            border: '1px solid #3a3a48',
-            borderRadius: 6,
-            color: '#e8e8e8',
-            fontSize: 13
-          }}
-        />
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
-          {SORT_OPTIONS.map((option) => (
-            <button
-              key={option.id}
-              onClick={() => setSort(option.id)}
-              style={{
-                padding: '6px 12px',
-                fontSize: 12,
-                background: sort === option.id ? '#5865f2' : '#1a1a22',
-                border: `1px solid ${sort === option.id ? '#5865f2' : '#3a3a48'}`,
-                borderRadius: 6,
-                color: sort === option.id ? '#fff' : '#e8e8e8'
-              }}
-            >
-              {option.label}
-            </button>
-          ))}
-          <button
-            onClick={() => {
-              if (deleteMode) {
-                exitDeleteMode()
-              } else {
-                setDeleteMode(true)
-              }
-            }}
-            style={{
-              padding: '6px 12px',
-              fontSize: 12,
-              background: deleteMode ? 'rgba(248, 113, 113, 0.15)' : '#1a1a22',
-              border: `1px solid ${deleteMode ? '#f87171' : '#3a3a48'}`,
-              borderRadius: 6,
-              color: deleteMode ? '#f87171' : '#e8e8e8'
-            }}
-          >
-            {deleteMode ? 'Cancel delete' : 'Delete'}
-          </button>
-        </div>
-      </div>
-
-      {displayedGames.length === 0 ? (
-        <div style={{ color: '#888' }}>No games match your search.</div>
-      ) : (
-        <div
-          style={{
-            background: deleteMode ? 'rgba(248, 113, 113, 0.03)' : 'transparent',
-            borderTop: deleteMode ? '1px solid rgba(248, 113, 113, 0.25)' : '1px solid transparent',
-            transition: 'background 200ms ease, border-color 200ms ease',
-            paddingTop: 12,
-            borderRadius: 8
-          }}
-        >
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',
-              gap: 16,
-              cursor: deleteMode ? 'crosshair' : 'default'
-            }}
-          >
-            {displayedGames.map((game) => (
-              <GameCard
-                key={game.appid}
-                game={game}
-                deleteMode={deleteMode}
-                isPending={pendingDelete?.appid === game.appid}
-                deleting={deletingAppid === game.appid}
-                onCardClick={() => handleCardClick(game)}
-                onConfirmDelete={() => handleDelete(game.appid)}
-                onCancelDelete={() => setPendingDelete(null)}
-              />
+    <div className={`library${deleteMode ? ' library--delete-mode' : ''}`}>
+      <header className="library-chrome">
+        <div className="library-chrome__left">
+          <nav className="library-chrome__nav" aria-label="Main">
+            {NAV_ITEMS.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                className={`library-chip library-chip--nav${
+                  page === item.id ? ' library-chip--active' : ''
+                }`}
+                aria-current={page === item.id ? 'page' : undefined}
+                onClick={() => onNavigate(item.id)}
+              >
+                {item.label}
+              </button>
+            ))}
+          </nav>
+          <div className="library-chrome__sorts" role="group" aria-label="Sort games">
+            {SORT_OPTIONS.map((option) => (
+              <button
+                key={option.id}
+                type="button"
+                className={`library-chip${
+                  sort === option.id ? ' library-chip--active' : ''
+                }`}
+                aria-pressed={sort === option.id}
+                title={option.label}
+                onClick={() => setSort(option.id)}
+              >
+                {option.shortLabel}
+              </button>
             ))}
           </div>
+        </div>
+
+        <div className="library-chrome__search-wrap">
+          <label className="library-chrome__search-label" htmlFor="library-search">
+            <span className="visually-hidden">Search games</span>
+          </label>
+          <input
+            id="library-search"
+            type="search"
+            className="library-chrome__search"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search games…"
+            autoComplete="off"
+          />
+        </div>
+
+        <div className="library-chrome__right">
+          <span className="library-chrome__count" aria-live="polite">
+            {displayedGames.length} {displayedGames.length === 1 ? 'game' : 'games'}
+          </span>
+          <button
+            type="button"
+            className={`library-chip library-chip--danger${
+              deleteMode ? ' library-chip--danger-active' : ''
+            }`}
+            aria-pressed={deleteMode}
+            onClick={() => {
+              if (deleteMode) exitDeleteMode()
+              else setDeleteMode(true)
+            }}
+          >
+            {deleteMode ? 'Cancel' : 'Delete'}
+          </button>
+          <button
+            type="button"
+            className="library-chip library-chip--action"
+            onClick={onRefresh}
+            disabled={refreshing}
+          >
+            {refreshing ? 'Refreshing…' : 'Refresh'}
+          </button>
+        </div>
+      </header>
+
+      {loading ? (
+        <div className="library__grid library__grid--loading" aria-busy="true" aria-label="Loading library">
+          {Array.from({ length: 6 }, (_, i) => (
+            <div key={i} className="library-card library-card--skeleton" />
+          ))}
+        </div>
+      ) : games.length === 0 ? (
+        <p className="library__status library__status--empty">
+          No games found. Make sure your emulator save folders exist, then click Refresh.
+        </p>
+      ) : displayedGames.length === 0 ? (
+        <p className="library__status library__status--empty">No games match your search.</p>
+      ) : (
+        <div className="library__grid">
+          {displayedGames.map((game) => (
+            <GameCard
+              key={game.appid}
+              game={game}
+              isPending={pendingDelete?.appid === game.appid}
+              deleting={deletingAppid === game.appid}
+              onCardClick={() => handleCardClick(game)}
+              onConfirmDelete={() => handleDelete(game.appid)}
+              onCancelDelete={() => setPendingDelete(null)}
+            />
+          ))}
         </div>
       )}
     </div>
@@ -218,7 +232,6 @@ export default function LibraryPage({ onSelect, onGoToSettings }: Props): React.
 
 function GameCard({
   game,
-  deleteMode,
   isPending,
   deleting,
   onCardClick,
@@ -226,95 +239,57 @@ function GameCard({
   onCancelDelete
 }: {
   game: GameSummary
-  deleteMode: boolean
   isPending: boolean
   deleting: boolean
   onCardClick: () => void
   onConfirmDelete: () => void
   onCancelDelete: () => void
 }): React.ReactElement {
-  const [hovered, setHovered] = useState(false)
-
-  const baseBorderColor = isPending ? '#f87171' : game.has_platinum ? '#7b68ee' : '#2a2a35'
-  let borderColor = baseBorderColor
-  let boxShadow = 'none'
-
-  if (hovered && deleteMode) {
-    borderColor = '#f87171'
-    boxShadow = '0 0 12px rgba(248, 113, 113, 0.4)'
-  } else if (hovered && !deleteMode) {
-    borderColor = '#4a4a60'
-    boxShadow = '0 0 10px rgba(88, 101, 242, 0.2)'
-  }
+  const completionPct = Math.round(game.completion_pct)
+  const hasPlatinum = game.has_platinum
 
   return (
-    <div
+    <article
+      className={`library-card${hasPlatinum ? ' library-card--platinum' : ''}${
+        isPending ? ' library-card--pending' : ''
+      }${deleting ? ' library-card--deleting' : ''}`}
       onClick={onCardClick}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      style={{
-        position: 'relative',
-        background: '#1a1a22',
-        border: `2px solid ${borderColor}`,
-        borderRadius: 8,
-        overflow: 'hidden',
-        display: 'flex',
-        flexDirection: 'column',
-        boxShadow,
-        transition: 'border-color 150ms ease, box-shadow 150ms ease',
-        animation: deleting
-          ? 'fade-delete 300ms ease forwards'
-          : isPending
-            ? 'pulse-red 1.2s ease-in-out infinite'
-            : 'none',
-        cursor: deleteMode ? 'pointer' : 'pointer'
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          onCardClick()
+        }
       }}
+      role="button"
+      tabIndex={0}
+      aria-label={`${game.name}, ${game.unlocked_achievements} of ${game.total_achievements} achievements, ${completionPct} percent complete`}
     >
       {isPending && (
         <div
+          className="library-card__confirm"
           onClick={(e) => e.stopPropagation()}
-          style={{
-            position: 'absolute',
-            inset: 0,
-            zIndex: 2,
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 10,
-            background: 'rgba(15, 15, 19, 0.92)',
-            padding: 16,
-            textAlign: 'center'
-          }}
+          role="dialog"
+          aria-labelledby={`delete-title-${game.appid}`}
         >
-          <div style={{ fontSize: 13, fontWeight: 600 }}>Are you sure?</div>
-          <div style={{ fontSize: 11, color: '#888', marginBottom: 4 }}>{game.name}</div>
-          <div style={{ display: 'flex', gap: 8 }}>
+          <p id={`delete-title-${game.appid}`} className="library-card__confirm-title">
+            Delete this game?
+          </p>
+          <p className="library-card__confirm-name">{game.name}</p>
+          <p className="library-card__confirm-hint">Removes the game and its save folder from disk.</p>
+          <div className="library-card__confirm-actions">
             <button
+              type="button"
+              className="library-chip library-chip--danger-active"
               onClick={onConfirmDelete}
               disabled={deleting}
-              style={{
-                padding: '6px 12px',
-                fontSize: 12,
-                background: '#f87171',
-                border: 'none',
-                borderRadius: 6,
-                color: '#fff'
-              }}
             >
               Delete
             </button>
             <button
+              type="button"
+              className="library-chip"
               onClick={onCancelDelete}
               disabled={deleting}
-              style={{
-                padding: '6px 12px',
-                fontSize: 12,
-                background: '#1a1a22',
-                border: '1px solid #3a3a48',
-                borderRadius: 6,
-                color: '#e8e8e8'
-              }}
             >
               Cancel
             </button>
@@ -322,71 +297,39 @@ function GameCard({
         </div>
       )}
 
-      {game.cover_url ? (
-        <img
-          src={game.cover_url}
-          alt={game.name}
-          style={{
-            width: '100%',
-            aspectRatio: '16 / 9',
-            objectFit: 'cover',
-            display: 'block',
-            background: '#2a2a35'
-          }}
-        />
-      ) : (
-        <div
-          style={{
-            width: '100%',
-            aspectRatio: '16 / 9',
-            background: '#2a2a35',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: '#555',
-            fontSize: 12,
-            padding: 8,
-            textAlign: 'center'
-          }}
-        >
-          {game.name}
-        </div>
-      )}
-      <div style={{ padding: '8px 10px' }}>
-        <div
-          style={{
-            fontSize: 12,
-            fontWeight: 600,
-            marginBottom: 4,
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap'
-          }}
-        >
-          {game.name}
-        </div>
-        <div style={{ fontSize: 11, color: '#888' }}>
-          {game.unlocked_achievements}/{game.total_achievements}
-        </div>
-        <div
-          style={{
-            marginTop: 6,
-            height: 4,
-            background: '#2a2a35',
-            borderRadius: 2,
-            overflow: 'hidden'
-          }}
-        >
+      <div className="library-card__media">
+        {game.cover_url ? (
+          <img className="library-card__cover" src={game.cover_url} alt="" loading="lazy" />
+        ) : (
+          <div className="library-card__cover library-card__cover--placeholder">{game.name}</div>
+        )}
+        <div className="library-card__scrim" aria-hidden />
+        <div className="library-card__overlay">
+          <h3 className="library-card__title">{game.name}</h3>
+          <div className="library-card__stats">
+            <span className="library-card__fraction">
+              {game.unlocked_achievements}/{game.total_achievements}
+            </span>
+            <span className="library-card__pct">{completionPct}%</span>
+            {hasPlatinum && <span className="library-card__platinum">✦ Platinum</span>}
+          </div>
           <div
-            style={{
-              height: '100%',
-              width: `${game.completion_pct}%`,
-              background: game.has_platinum ? '#7b68ee' : '#5865f2',
-              borderRadius: 2
-            }}
-          />
+            className="library-card__progress"
+            role="progressbar"
+            aria-valuenow={completionPct}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-label={`${completionPct}% complete`}
+          >
+            <div
+              className={`library-card__progress-fill${
+                hasPlatinum ? ' library-card__progress-fill--platinum' : ''
+              }`}
+              style={{ width: `${completionPct}%` }}
+            />
+          </div>
         </div>
       </div>
-    </div>
+    </article>
   )
 }
