@@ -1,4 +1,4 @@
-import type { ProfileStats, GameSummary, GameDetail, AppSettings, ImportResult } from '../../shared/types'
+import type { ProfileStats, GameSummary, GameDetail, AppSettings, ImportResult, SteamSearchResult, GoldbergApplyRequest, SteamApiDllInfo } from '../../shared/types'
 
 declare global {
   interface Window {
@@ -9,9 +9,15 @@ declare global {
       getSettings(): Promise<AppSettings>
       saveSettings(settings: AppSettings): Promise<void>
       refresh(): Promise<void>
+      refreshGame(appid: string): Promise<void>
       deleteGame(appid: string): Promise<void>
       exportZip(): Promise<void>
       importZip(): Promise<ImportResult | null>
+      searchSteamGames(query: string): Promise<SteamSearchResult[]>
+      browseDllPath(): Promise<SteamApiDllInfo | null>
+      applyGoldberg(request: GoldbergApplyRequest): Promise<void>
+      onGoldbergLog(cb: (line: string) => void): void
+      offGoldbergLog(): void
     }
   }
 }

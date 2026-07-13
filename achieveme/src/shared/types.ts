@@ -153,3 +153,27 @@ export interface FullBackupManifest {
   achievements: Achievement[]
   folders: PortableFolder[]
 }
+
+export interface SteamSearchResult {
+  appid: string
+  name: string
+  imageUrl: string | null
+}
+
+export interface GoldbergApplyRequest {
+  appid: string
+  dllPath: string
+}
+
+export interface SteamApiDllInfo {
+  path: string
+  fileName: string
+  directory: string
+  architecture: 'x86' | 'x64'
+}
+
+export interface GameFolderInfo {
+  gameDir: string
+  hasSteamSettings: boolean
+  dllInfo: SteamApiDllInfo | null
+}

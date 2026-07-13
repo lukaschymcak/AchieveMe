@@ -1,6 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import type { GameSummary } from '../../../shared/types'
 import SteamApiKeyForm from '../components/SteamApiKeyForm'
+import AddGameModal from '../components/AddGameModal'
+import GameCardMenu, { type GameCardMenuMode } from '../components/GameCardMenu'
+import GameCardHoldOverlay from '../components/GameCardHoldOverlay'
+import { useLongPress } from '../hooks/useLongPress'
 import { filterAndSortGames, type SortOption } from '../lib/libraryUtils'
 
 type AppPage = 'dashboard' | 'library' | 'settings'
@@ -49,10 +53,12 @@ export default function LibraryPage({
   const [loading, setLoading] = useState(false)
   const [search, setSearch] = useState('')
   const [sort, setSort] = useState<SortOption>('unlocked-desc')
-  const [deleteMode, setDeleteMode] = useState(false)
-  const [pendingDelete, setPendingDelete] = useState<GameSummary | null>(null)
+  const [menuAppid, setMenuAppid] = useState<string | null>(null)
+  const [menuMode, setMenuMode] = useState<GameCardMenuMode>('actions')
   const [deletingAppid, setDeletingAppid] = useState<string | null>(null)
+  const [refreshingAppid, setRefreshingAppid] = useState<string | null>(null)
   const [viewMode, setViewMode] = useState<ViewMode>(readStoredViewMode)
+  const [showAddModal, setShowAddModal] = useState(false)
 
   useEffect(() => {
     localStorage.setItem(LIBRARY_VIEW_MODE_KEY, viewMode)
@@ -72,6 +78,19 @@ export default function LibraryPage({
     })
   }, [])
 
+  useEffect(() => {
+    if (!menuAppid) return
+
+    function handleKeyDown(e: KeyboardEvent): void {
+      if (e.key === 'Escape') {
+        closeMenu()
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [menuAppid])
+
   const displayedGames = useMemo(
     () => filterAndSortGames(games, search, sort),
     [games, search, sort]
@@ -90,9 +109,19 @@ export default function LibraryPage({
       .finally(() => setLoading(false))
   }
 
-  function exitDeleteMode(): void {
-    setDeleteMode(false)
-    setPendingDelete(null)
+  function closeMenu(): void {
+    setMenuAppid(null)
+    setMenuMode('actions')
+  }
+
+  function openMenu(appid: string): void {
+    setMenuAppid(appid)
+    setMenuMode('actions')
+  }
+
+  async function reloadGames(): Promise<void> {
+    const updated = await window.api.getAllGames()
+    setGames(updated)
   }
 
   async function handleDelete(appid: string): Promise<void> {
@@ -100,18 +129,21 @@ export default function LibraryPage({
     try {
       await window.api.deleteGame(appid)
       setGames((prev) => prev.filter((g) => g.appid !== appid))
-      exitDeleteMode()
+      closeMenu()
     } finally {
       setDeletingAppid(null)
     }
   }
 
-  function handleCardClick(game: GameSummary): void {
-    if (deleteMode) {
-      setPendingDelete(game)
-      return
+  async function handleRefreshGame(appid: string): Promise<void> {
+    setRefreshingAppid(appid)
+    try {
+      await window.api.refreshGame(appid)
+      await reloadGames()
+      closeMenu()
+    } finally {
+      setRefreshingAppid(null)
     }
-    onSelect(game.appid)
   }
 
   if (hasApiKey === null) {
@@ -139,7 +171,7 @@ export default function LibraryPage({
   }
 
   return (
-    <div className={`library${deleteMode ? ' library--delete-mode' : ''}`}>
+    <div className="library">
       <div className="library-chrome-wrap">
         <header className="library-chrome">
           <div className="library-chrome__left">
@@ -197,19 +229,6 @@ export default function LibraryPage({
           </span>
           <button
             type="button"
-            className={`library-chip library-chip--danger${
-              deleteMode ? ' library-chip--danger-active' : ''
-            }`}
-            aria-pressed={deleteMode}
-            onClick={() => {
-              if (deleteMode) exitDeleteMode()
-              else setDeleteMode(true)
-            }}
-          >
-            {deleteMode ? 'Cancel' : 'Delete'}
-          </button>
-          <button
-            type="button"
             className="library-chip library-chip--action"
             onClick={onRefresh}
             disabled={refreshing}
@@ -220,6 +239,15 @@ export default function LibraryPage({
         </header>
 
         <div className="library-chrome__toolbar">
+          <button
+            type="button"
+            className="library-view-toggle"
+            onClick={() => setShowAddModal(true)}
+            aria-label="Add game to library"
+            title="Add game"
+          >
+            <PlusIcon />
+          </button>
           <button
             type="button"
             className="library-view-toggle"
@@ -258,11 +286,20 @@ export default function LibraryPage({
             <GameListRow
               key={game.appid}
               game={game}
-              isPending={pendingDelete?.appid === game.appid}
+              menuOpen={menuAppid === game.appid}
+              menuMode={menuAppid === game.appid ? menuMode : 'actions'}
               deleting={deletingAppid === game.appid}
-              onRowClick={() => handleCardClick(game)}
+              refreshing={refreshingAppid === game.appid}
+              onOpenMenu={() => openMenu(game.appid)}
+              onCloseMenu={closeMenu}
+              onOpen={() => {
+                closeMenu()
+                onSelect(game.appid)
+              }}
+              onRefresh={() => handleRefreshGame(game.appid)}
+              onDelete={() => setMenuMode('confirm-delete')}
               onConfirmDelete={() => handleDelete(game.appid)}
-              onCancelDelete={() => setPendingDelete(null)}
+              onCancelDelete={() => setMenuMode('actions')}
             />
           ))}
         </ul>
@@ -272,14 +309,37 @@ export default function LibraryPage({
             <GameCard
               key={game.appid}
               game={game}
-              isPending={pendingDelete?.appid === game.appid}
+              menuOpen={menuAppid === game.appid}
+              menuMode={menuAppid === game.appid ? menuMode : 'actions'}
               deleting={deletingAppid === game.appid}
-              onCardClick={() => handleCardClick(game)}
+              refreshing={refreshingAppid === game.appid}
+              onOpenMenu={() => openMenu(game.appid)}
+              onCloseMenu={closeMenu}
+              onOpen={() => {
+                closeMenu()
+                onSelect(game.appid)
+              }}
+              onRefresh={() => handleRefreshGame(game.appid)}
+              onDelete={() => setMenuMode('confirm-delete')}
               onConfirmDelete={() => handleDelete(game.appid)}
-              onCancelDelete={() => setPendingDelete(null)}
+              onCancelDelete={() => setMenuMode('actions')}
             />
           ))}
         </div>
+      )}
+
+      {showAddModal && (
+        <AddGameModal
+          onClose={() => setShowAddModal(false)}
+          onGameAdded={() => {
+            setShowAddModal(false)
+            setLoading(true)
+            window.api
+              .getAllGames()
+              .then(setGames)
+              .finally(() => setLoading(false))
+          }}
+        />
       )}
     </div>
   )
@@ -287,69 +347,77 @@ export default function LibraryPage({
 
 function GameCard({
   game,
-  isPending,
+  menuOpen,
+  menuMode,
   deleting,
-  onCardClick,
+  refreshing,
+  onOpenMenu,
+  onCloseMenu,
+  onOpen,
+  onRefresh,
+  onDelete,
   onConfirmDelete,
   onCancelDelete
 }: {
   game: GameSummary
-  isPending: boolean
+  menuOpen: boolean
+  menuMode: GameCardMenuMode
   deleting: boolean
-  onCardClick: () => void
+  refreshing: boolean
+  onOpenMenu: () => void
+  onCloseMenu: () => void
+  onOpen: () => void
+  onRefresh: () => void
+  onDelete: () => void
   onConfirmDelete: () => void
   onCancelDelete: () => void
 }): React.ReactElement {
   const completionPct = Math.round(game.completion_pct)
   const hasPlatinum = game.has_platinum
 
+  const { isHolding, holdDurationMs, ...longPressHandlers } = useLongPress({
+    onLongPress: onOpenMenu,
+    onShortPress: onOpen,
+    disabled: menuOpen
+  })
+
   return (
     <article
       className={`library-card${hasPlatinum ? ' library-card--platinum' : ''}${
-        isPending ? ' library-card--pending' : ''
-      }${deleting ? ' library-card--deleting' : ''}`}
-      onClick={onCardClick}
+        menuOpen ? ' library-card--menu-open' : ''
+      }${isHolding ? ' library-card--holding' : ''}${deleting ? ' library-card--deleting' : ''}`}
+      {...longPressHandlers}
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault()
-          onCardClick()
+          onOpen()
         }
       }}
       role="button"
       tabIndex={0}
       aria-label={`${game.name}, ${game.unlocked_achievements} of ${game.total_achievements} achievements, ${completionPct} percent complete`}
     >
-      {isPending && (
-        <div
-          className="library-card__confirm"
-          onClick={(e) => e.stopPropagation()}
-          role="dialog"
-          aria-labelledby={`delete-title-${game.appid}`}
-        >
-          <p id={`delete-title-${game.appid}`} className="library-card__confirm-title">
-            Delete this game?
-          </p>
-          <p className="library-card__confirm-name">{game.name}</p>
-          <p className="library-card__confirm-hint">Removes the game and its save folder from disk.</p>
-          <div className="library-card__confirm-actions">
-            <button
-              type="button"
-              className="library-chip library-chip--danger-active"
-              onClick={onConfirmDelete}
-              disabled={deleting}
-            >
-              Delete
-            </button>
-            <button
-              type="button"
-              className="library-chip"
-              onClick={onCancelDelete}
-              disabled={deleting}
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
+      <GameCardHoldOverlay
+        classPrefix="library-card"
+        isHolding={isHolding}
+        menuOpen={menuOpen}
+        holdDurationMs={holdDurationMs}
+      />
+
+      {menuOpen && (
+        <GameCardMenu
+          gameName={game.name}
+          mode={menuMode}
+          deleting={deleting}
+          refreshing={refreshing}
+          classPrefix="library-card"
+          onOpen={onOpen}
+          onRefresh={onRefresh}
+          onDelete={onDelete}
+          onConfirmDelete={onConfirmDelete}
+          onCancelDelete={onCancelDelete}
+          onClose={onCloseMenu}
+        />
       )}
 
       <div className="library-card__media">
@@ -395,69 +463,77 @@ function GameCard({
 
 function GameListRow({
   game,
-  isPending,
+  menuOpen,
+  menuMode,
   deleting,
-  onRowClick,
+  refreshing,
+  onOpenMenu,
+  onCloseMenu,
+  onOpen,
+  onRefresh,
+  onDelete,
   onConfirmDelete,
   onCancelDelete
 }: {
   game: GameSummary
-  isPending: boolean
+  menuOpen: boolean
+  menuMode: GameCardMenuMode
   deleting: boolean
-  onRowClick: () => void
+  refreshing: boolean
+  onOpenMenu: () => void
+  onCloseMenu: () => void
+  onOpen: () => void
+  onRefresh: () => void
+  onDelete: () => void
   onConfirmDelete: () => void
   onCancelDelete: () => void
 }): React.ReactElement {
   const completionPct = Math.round(game.completion_pct)
   const hasPlatinum = game.has_platinum
 
+  const { isHolding, holdDurationMs, ...longPressHandlers } = useLongPress({
+    onLongPress: onOpenMenu,
+    onShortPress: onOpen,
+    disabled: menuOpen
+  })
+
   return (
     <li
       className={`library-list-row${hasPlatinum ? ' library-list-row--platinum' : ''}${
-        isPending ? ' library-list-row--pending' : ''
-      }${deleting ? ' library-list-row--deleting' : ''}`}
-      onClick={onRowClick}
+        menuOpen ? ' library-list-row--menu-open' : ''
+      }${isHolding ? ' library-list-row--holding' : ''}${deleting ? ' library-list-row--deleting' : ''}`}
+      {...longPressHandlers}
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault()
-          onRowClick()
+          onOpen()
         }
       }}
       role="button"
       tabIndex={0}
       aria-label={`${game.name}, ${game.unlocked_achievements} of ${game.total_achievements} achievements, ${completionPct} percent complete`}
     >
-      {isPending && (
-        <div
-          className="library-list-row__confirm"
-          onClick={(e) => e.stopPropagation()}
-          role="dialog"
-          aria-labelledby={`delete-title-list-${game.appid}`}
-        >
-          <p id={`delete-title-list-${game.appid}`} className="library-list-row__confirm-title">
-            Delete this game?
-          </p>
-          <p className="library-list-row__confirm-name">{game.name}</p>
-          <p className="library-list-row__confirm-hint">Removes the game and its save folder from disk.</p>
-          <div className="library-list-row__confirm-actions">
-            <button
-              type="button"
-              className="library-chip library-chip--danger-active"
-              onClick={onConfirmDelete}
-              disabled={deleting}
-            >
-              Delete
-            </button>
-            <button
-              type="button"
-              className="library-chip"
-              onClick={onCancelDelete}
-              disabled={deleting}
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
+      <GameCardHoldOverlay
+        classPrefix="library-list-row"
+        isHolding={isHolding}
+        menuOpen={menuOpen}
+        holdDurationMs={holdDurationMs}
+      />
+
+      {menuOpen && (
+        <GameCardMenu
+          gameName={game.name}
+          mode={menuMode}
+          deleting={deleting}
+          refreshing={refreshing}
+          classPrefix="library-list-row"
+          onOpen={onOpen}
+          onRefresh={onRefresh}
+          onDelete={onDelete}
+          onConfirmDelete={onConfirmDelete}
+          onCancelDelete={onCancelDelete}
+          onClose={onCloseMenu}
+        />
       )}
 
       <div className="library-list-row__thumb-wrap">
@@ -497,6 +573,15 @@ function GameListRow({
         {completionPct}%
       </span>
     </li>
+  )
+}
+
+function PlusIcon(): React.ReactElement {
+  return (
+    <svg className="library-view-toggle__icon" viewBox="0 0 16 16" aria-hidden>
+      <rect x="7" y="2" width="2" height="12" rx="1" fill="currentColor" />
+      <rect x="2" y="7" width="12" height="2" rx="1" fill="currentColor" />
+    </svg>
   )
 }
 

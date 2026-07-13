@@ -1,5 +1,6 @@
 import { ipcMain, dialog } from 'electron'
 import fs from 'node:fs'
+import https from 'node:https'
 import path from 'node:path'
 import { app } from 'electron'
 import { getDb } from '../db/database'
@@ -19,7 +20,8 @@ import { processAppId } from '../achievement/processAppId'
 import { buildFullBackupZip } from '../achievement/exportZipService'
 import { importFullBackupZip } from '../achievement/importZipService'
 import { regenerateProfileStats } from '../achievement/profileStatsService'
-import type { ProfileStats, GameSummary, GameDetail, AppSettings, ImportResult } from '../../shared/types'
+import { applyGoldberg } from '../achievement/goldbergSetupService'
+import type { ProfileStats, GameSummary, GameDetail, AppSettings, ImportResult, SteamSearchResult, GoldbergApplyRequest, SteamApiDllInfo } from '../../shared/types'
 
 export function registerIpcHandlers(): void {
   ipcMain.handle('get-profile-stats', (): ProfileStats | null => {
@@ -70,6 +72,11 @@ export function registerIpcHandlers(): void {
   ipcMain.handle('save-settings', async (_event, settings: AppSettings): Promise<void> => {
     saveSettings(settings)
     await startWatcher(settings)
+  })
+
+  ipcMain.handle('refresh-game', async (_event, appid: string): Promise<void> => {
+    const settings = loadSettings()
+    await processAppId(appid, settings, true)
   })
 
   ipcMain.handle('refresh', async (): Promise<void> => {
@@ -134,5 +141,78 @@ export function registerIpcHandlers(): void {
     const db = getDb()
     const settings = loadSettings()
     return importFullBackupZip(db, filePaths[0], settings)
+  })
+
+  ipcMain.handle('search-steam-games', (_event, query: string): Promise<SteamSearchResult[]> => {
+    return new Promise((resolve) => {
+      const term = encodeURIComponent(query.trim())
+      if (!term) {
+        resolve([])
+        return
+      }
+      const url = `https://store.steampowered.com/api/storesearch/?term=${term}&l=english&cc=US`
+      https
+        .get(url, { headers: { 'User-Agent': 'AchieveMe/1.0' } }, (res) => {
+          let data = ''
+          res.on('data', (chunk: Buffer) => {
+            data += chunk.toString()
+          })
+          res.on('end', () => {
+            try {
+              const json = JSON.parse(data) as {
+                items?: Array<{
+                  id?: number | string
+                  name?: string
+                  tiny_image?: string
+                }>
+              }
+              const results: SteamSearchResult[] = (json.items ?? [])
+                .filter((item) => item.id !== undefined)
+                .map((item) => ({
+                  appid: String(item.id),
+                  name: item.name ?? `App ${item.id}`,
+                  imageUrl: item.tiny_image ?? null
+                }))
+              resolve(results)
+            } catch {
+              resolve([])
+            }
+          })
+        })
+        .on('error', () => resolve([]))
+    })
+  })
+
+  ipcMain.handle('browse-dll-path', async (): Promise<SteamApiDllInfo | null> => {
+    const { canceled, filePaths } = await dialog.showOpenDialog({
+      title: 'Select steam_api.dll or steam_api64.dll',
+      filters: [{ name: 'Steam API DLL', extensions: ['dll'] }],
+      properties: ['openFile']
+    })
+    if (canceled || filePaths.length === 0) return null
+
+    const dllPath = path.resolve(filePaths[0])
+    const fileName = path.basename(dllPath)
+    const lower = fileName.toLowerCase()
+    if (lower !== 'steam_api.dll' && lower !== 'steam_api64.dll') {
+      throw new Error('Select steam_api.dll or steam_api64.dll.')
+    }
+    if (!fs.existsSync(dllPath)) {
+      throw new Error('Steam API DLL was not found.')
+    }
+
+    return {
+      path: dllPath,
+      fileName,
+      directory: path.dirname(dllPath),
+      architecture: lower === 'steam_api64.dll' ? 'x64' : 'x86'
+    }
+  })
+
+  ipcMain.handle('apply-goldberg', async (event, request: GoldbergApplyRequest): Promise<void> => {
+    const settings = loadSettings()
+    await applyGoldberg(request, settings, (line) => {
+      event.sender.send('goldberg-log', line)
+    })
   })
 }

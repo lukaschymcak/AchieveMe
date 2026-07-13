@@ -10,6 +10,12 @@
   "files": [
     "out"
   ],
+  "extraResources": [
+    {
+      "from": "../goldberg-files/generate_emu_config",
+      "to": "generate_emu_config"
+    }
+  ],
   "mac": {
     "target": [
       "dmg"
