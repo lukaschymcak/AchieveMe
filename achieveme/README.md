@@ -66,4 +66,8 @@ Full Backup import **does not delete** emulator folders. It only overwrites file
 3. **Refresh prune** — Delete `achievements.json` for a game, click Refresh; the game should disappear from the library.
 4. **Delete game** — Click **Delete** in the library toolbar (cursor becomes crosshair), click a game card, confirm on the inline "Are you sure?" overlay; verify the game is removed from the app and its save folder is deleted from disk.
 5. **Library search/sort** — Search by name and switch sort modes (least complete, most unlocked, recently unlocked). Hover game cards for a blue glow; enable **Delete** mode to see the red grid tint, red card hover, pending pulse, and delete fade-out.
-6. **Game detail nav & hidden descriptions** — Open a game from the library; confirm **← Library** and **Refresh** appear as frosted pills on the hero (no separate top nav). For games with unearned hidden achievements, use the **Hidden** filter pill (with count) to toggle description text; achievement rows always stay visible.
+6. **Game detail nav & hidden descriptions** — Open a game from the library; confirm **← Library** and **Refresh** appear as frosted pills on the hero (no separate top nav). Use the left/right arrow buttons on the screen edges to move through games in the library's current sort order without returning to the list; each transition should slide in from the direction of travel. For games with unearned hidden achievements, use the **Hidden** filter pill (with count) to toggle description text; achievement rows always stay visible.
+
+### In-detail navigation
+
+Left/right arrow buttons in the game detail view let you browse through the library's current sorted order without returning to the library list. The order follows the active sort and search filter at the time of entry.

@@ -1,15 +1,19 @@
 import React, { useState } from 'react'
+import type { GameSummary } from '../../shared/types'
 import DashboardPage from './pages/DashboardPage'
 import LibraryPage from './pages/LibraryPage'
 import GameDetailPage from './pages/GameDetailPage'
 import SettingsPage from './pages/SettingsPage'
 
 type Page = 'dashboard' | 'library' | 'settings'
+type TransitionDir = 'next' | 'prev' | null
 
 export default function App(): React.ReactElement {
   const [page, setPage] = useState<Page>('dashboard')
   const [selectedAppid, setSelectedAppid] = useState<string | null>(null)
   const [refreshing, setRefreshing] = useState(false)
+  const [libraryGames, setLibraryGames] = useState<GameSummary[]>([])
+  const [transitionDir, setTransitionDir] = useState<TransitionDir>(null)
 
   function handleRefresh(): void {
     setRefreshing(true)
@@ -17,15 +21,47 @@ export default function App(): React.ReactElement {
   }
 
   if (selectedAppid) {
+    const currentIdx = libraryGames.findIndex((g) => g.appid === selectedAppid)
+    const prevAppid = currentIdx > 0 ? libraryGames[currentIdx - 1].appid : null
+    const nextAppid =
+      currentIdx >= 0 && currentIdx < libraryGames.length - 1
+        ? libraryGames[currentIdx + 1].appid
+        : null
+
     return (
       <div className="app-shell app-shell--game-detail">
         <main className="app-main">
-          <GameDetailPage
-            appid={selectedAppid}
-            onBack={() => setSelectedAppid(null)}
-            onRefresh={handleRefresh}
-            refreshing={refreshing}
-          />
+          <div
+            key={selectedAppid}
+            data-dir={transitionDir ?? ''}
+            className="game-detail-transition"
+          >
+            <GameDetailPage
+              appid={selectedAppid}
+              onBack={() => {
+                setTransitionDir(null)
+                setSelectedAppid(null)
+              }}
+              onRefresh={handleRefresh}
+              refreshing={refreshing}
+              onPrev={
+                prevAppid
+                  ? () => {
+                      setTransitionDir('prev')
+                      setSelectedAppid(prevAppid)
+                    }
+                  : null
+              }
+              onNext={
+                nextAppid
+                  ? () => {
+                      setTransitionDir('next')
+                      setSelectedAppid(nextAppid)
+                    }
+                  : null
+              }
+            />
+          </div>
         </main>
       </div>
     )
@@ -42,6 +78,7 @@ export default function App(): React.ReactElement {
             onGoToSettings={() => setPage('settings')}
             onRefresh={handleRefresh}
             refreshing={refreshing}
+            onDisplayedGamesChange={setLibraryGames}
           />
         </main>
       </div>

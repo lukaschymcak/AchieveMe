@@ -20,6 +20,7 @@ interface Props {
   onNavigate: (page: AppPage) => void
   onRefresh: () => void
   refreshing: boolean
+  onDisplayedGamesChange?: (games: GameSummary[]) => void
 }
 
 const NAV_ITEMS: Array<{ id: AppPage; label: string }> = [
@@ -40,7 +41,8 @@ export default function LibraryPage({
   page,
   onNavigate,
   onRefresh,
-  refreshing
+  refreshing,
+  onDisplayedGamesChange
 }: Props): React.ReactElement {
   const [hasApiKey, setHasApiKey] = useState<boolean | null>(null)
   const [games, setGames] = useState<GameSummary[]>([])
@@ -74,6 +76,10 @@ export default function LibraryPage({
     () => filterAndSortGames(games, search, sort),
     [games, search, sort]
   )
+
+  useEffect(() => {
+    onDisplayedGamesChange?.(displayedGames)
+  }, [displayedGames, onDisplayedGamesChange])
 
   function handleKeySaved(): void {
     setHasApiKey(true)

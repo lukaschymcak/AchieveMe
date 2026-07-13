@@ -19,6 +19,8 @@ interface Props {
   onBack: () => void
   onRefresh: () => void
   refreshing: boolean
+  onPrev: (() => void) | null
+  onNext: (() => void) | null
 }
 
 type TierVarKey = TrophyTier | 'platinum'
@@ -133,17 +135,55 @@ function GameDetailHeroBar({
   )
 }
 
+function GameDetailNavArrows({
+  onPrev,
+  onNext
+}: {
+  onPrev: (() => void) | null
+  onNext: (() => void) | null
+}): React.ReactElement {
+  return (
+    <>
+      {onPrev && (
+        <button
+          type="button"
+          className="game-detail__nav-arrow game-detail__nav-arrow--prev"
+          onClick={onPrev}
+          aria-label="Previous game"
+        >
+          ‹
+        </button>
+      )}
+      {onNext && (
+        <button
+          type="button"
+          className="game-detail__nav-arrow game-detail__nav-arrow--next"
+          onClick={onNext}
+          aria-label="Next game"
+        >
+          ›
+        </button>
+      )}
+    </>
+  )
+}
+
 function GameDetailSkeleton({
   onBack,
   onRefresh,
-  refreshing
+  refreshing,
+  onPrev,
+  onNext
 }: {
   onBack: () => void
   onRefresh: () => void
   refreshing: boolean
+  onPrev: (() => void) | null
+  onNext: (() => void) | null
 }): React.ReactElement {
   return (
     <div className="game-detail game-detail--loading" aria-busy="true" aria-label="Loading game details">
+      <GameDetailNavArrows onPrev={onPrev} onNext={onNext} />
       <div className="game-detail__backdrop game-detail__backdrop--placeholder" aria-hidden>
         <div className="game-detail__backdrop-overlay" />
       </div>
@@ -324,7 +364,9 @@ export default function GameDetailPage({
   appid,
   onBack,
   onRefresh,
-  refreshing
+  refreshing,
+  onPrev,
+  onNext
 }: Props): React.ReactElement {
   const [detail, setDetail] = useState<GameDetail | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -386,6 +428,7 @@ export default function GameDetailPage({
   if (error) {
     return (
       <div className="game-detail">
+        <GameDetailNavArrows onPrev={onPrev} onNext={onNext} />
         <div className="game-detail__content">
           <header className="game-detail__hero game-detail__hero--compact">
             <GameDetailHeroBar onBack={onBack} onRefresh={onRefresh} refreshing={refreshing} />
@@ -401,7 +444,15 @@ export default function GameDetailPage({
   }
 
   if (!detail) {
-    return <GameDetailSkeleton onBack={onBack} onRefresh={onRefresh} refreshing={refreshing} />
+    return (
+      <GameDetailSkeleton
+        onBack={onBack}
+        onRefresh={onRefresh}
+        refreshing={refreshing}
+        onPrev={onPrev}
+        onNext={onNext}
+      />
+    )
   }
 
   const { game, achievements } = detail
@@ -430,6 +481,7 @@ export default function GameDetailPage({
 
   return (
     <div className="game-detail">
+      <GameDetailNavArrows onPrev={onPrev} onNext={onNext} />
       <div
         className={`game-detail__backdrop${resolvedBackdrop ? '' : ' game-detail__backdrop--placeholder'}`}
         style={backdropStyle}

@@ -185,6 +185,84 @@ button:focus-visible {
   min-height: 100%;
 }
 
+@keyframes slideInFromRight {
+  from {
+    transform: translateX(48px);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideInFromLeft {
+  from {
+    transform: translateX(-48px);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.game-detail-transition[data-dir='next'] {
+  animation: slideInFromRight 280ms var(--ease-out) both;
+}
+
+.game-detail-transition[data-dir='prev'] {
+  animation: slideInFromLeft 280ms var(--ease-out) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .game-detail-transition[data-dir] {
+    animation: none;
+  }
+}
+
+.game-detail__nav-arrow {
+  position: fixed;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 10;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border-radius: 50%;
+  background: oklch(12% 0.014 275 / 0.72);
+  border: 1px solid oklch(34% 0.02 275 / 0.5);
+  color: var(--ink);
+  font-size: 1.75rem;
+  line-height: 1;
+  backdrop-filter: blur(10px);
+  transition: background 150ms var(--ease-out), border-color 150ms var(--ease-out), color 150ms var(--ease-out);
+}
+
+.game-detail__nav-arrow:hover {
+  background: oklch(18% 0.014 275 / 0.85);
+  border-color: oklch(45% 0.02 275 / 0.6);
+  color: var(--ink);
+}
+
+.game-detail__nav-arrow:focus-visible {
+  outline: 2px solid var(--color-action);
+  outline-offset: 2px;
+}
+
+.game-detail__nav-arrow--prev {
+  left: var(--space-4);
+}
+
+.game-detail__nav-arrow--next {
+  right: var(--space-4);
+}
+
 .game-detail__backdrop {
   position: fixed;
   inset: 0;
