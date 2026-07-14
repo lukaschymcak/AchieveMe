@@ -4,9 +4,6 @@ export type SourceId =
   | 'gse'
   | 'codex'
   | 'rune'
-  | 'hoodlum'
-  | 'creamapi'
-  | 'reloaded'
 
 export type TrophyTier = 'bronze' | 'silver' | 'gold'
 
@@ -14,10 +11,7 @@ export const ALL_SOURCES: SourceId[] = [
   'goldberg',
   'gse',
   'codex',
-  'rune',
-  'hoodlum',
-  'creamapi',
-  'reloaded'
+  'rune'
 ]
 
 // What a parsed emulator save file gives us per achievement
@@ -60,6 +54,20 @@ export interface Achievement {
   hidden: number // 0 or 1 (SQLite has no boolean)
 }
 
+export interface RecentUnlock {
+  appid: string
+  gameName: string
+  achievementName: string
+  tier: TrophyTier
+  earnedAt: number
+}
+
+export interface NearCompletionGame {
+  appid: string
+  name: string
+  completionPct: number
+}
+
 // Written to profile_stats.json for instant dashboard reads
 export interface ProfileStats {
   totalGames: number
@@ -70,6 +78,9 @@ export interface ProfileStats {
   bronze: number
   level: number
   xp: number
+  libraryCompletionPct: number
+  recentUnlocks: RecentUnlock[]
+  nearCompletionGames: NearCompletionGame[]
   // e.g. [{ month: "2024-01", count: 5 }, ...]
   monthlyActivity: Array<{ month: string; count: number }>
 }

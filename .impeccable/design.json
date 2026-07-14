@@ -1,9 +1,24 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-07-13T13:55:00.000Z",
+  "generatedAt": "2026-07-14T08:10:00.000Z",
   "title": "Design System: AchieveMe",
   "extensions": {
     "colorMeta": {
+      "canvas-black": {
+        "role": "neutral",
+        "displayName": "App Canvas",
+        "canonical": "oklch(0% 0 0)",
+        "tonalRamp": [
+          "oklch(0% 0 0)",
+          "oklch(4% 0.008 275)",
+          "oklch(8% 0.01 275)",
+          "oklch(12% 0.012 275)",
+          "oklch(15% 0.012 275)",
+          "oklch(18% 0.014 275)",
+          "oklch(22% 0.016 275)",
+          "oklch(28% 0.018 275)"
+        ]
+      },
       "bg-base": {
         "role": "neutral",
         "displayName": "Shell Base",
@@ -161,16 +176,16 @@
         "purpose": "Game names on detail hero only. Bebas Neue condensed authority."
       },
       "stats": {
-        "displayName": "Stats & Chips",
-        "purpose": "Rajdhani for rings, filter pills, tier headers, counts."
+        "displayName": "Stats & App Chips",
+        "purpose": "Rajdhani for library-chip nav, sort, refresh, rings, filter pills, chrome counts."
       },
       "body": {
         "displayName": "UI Body",
-        "purpose": "Achievement lists, nav, descriptions. System UI stack."
+        "purpose": "Achievement lists, settings copy, chrome search input. System UI stack."
       },
       "label": {
         "displayName": "Section Label",
-        "purpose": "Uppercase tracked tier section headers."
+        "purpose": "Uppercase tracked tier section headers on game detail."
       }
     },
     "shadows": [
@@ -189,7 +204,7 @@
       {
         "name": "state-fast",
         "value": "150ms cubic-bezier(0.22, 1, 0.36, 1)",
-        "purpose": "Button, chip, and row hover backgrounds."
+        "purpose": "Chip, button, and row hover backgrounds."
       },
       {
         "name": "progress-reveal",
@@ -198,17 +213,41 @@
       }
     ],
     "breakpoints": [
-      { "name": "sm", "value": "640px" }
+      { "name": "sm", "value": "640px" },
+      { "name": "md", "value": "1100px" }
     ]
   },
   "components": [
     {
-      "name": "App Button Default",
-      "kind": "button",
-      "refersTo": "button-default",
-      "description": "Shell-level actions: nav links, Refresh on library. Not used on game detail hero.",
-      "html": "<button type=\"button\" class=\"ds-btn-default\">Refresh</button>",
-      "css": ".ds-btn-default { display: inline-flex; align-items: center; justify-content: center; min-height: 32px; padding: 6px 14px; border-radius: 6px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 13px; font-weight: 400; color: oklch(93% 0.01 275); background: oklch(22% 0.016 275); border: 1px solid oklch(34% 0.02 275); cursor: pointer; transition: background 150ms cubic-bezier(0.22, 1, 0.36, 1), border-color 150ms cubic-bezier(0.22, 1, 0.36, 1); } .ds-btn-default:hover { background: oklch(28% 0.018 275); } .ds-btn-default:focus-visible { outline: 2px solid oklch(62% 0.14 230); outline-offset: 2px; }"
+      "name": "App Nav Chip",
+      "kind": "nav",
+      "refersTo": "chip-app",
+      "description": "Page navigation inside library-chrome. Dashboard, Library, Settings, Help.",
+      "html": "<nav class=\"ds-app-chrome__nav\" aria-label=\"Main\"><button type=\"button\" class=\"ds-chip-app\">Dashboard</button><button type=\"button\" class=\"ds-chip-app ds-chip-app--nav-active\" aria-current=\"page\">Library</button><button type=\"button\" class=\"ds-chip-app\">Settings</button><button type=\"button\" class=\"ds-chip-app\">Help</button></nav>",
+      "css": ".ds-app-chrome__nav { display: flex; flex-wrap: wrap; gap: 4px; } .ds-chip-app { display: inline-flex; align-items: center; justify-content: center; min-height: 32px; padding: 5px 12px; border-radius: 999px; font-family: 'Rajdhani', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 0.75rem; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: oklch(70% 0.014 275); background: oklch(16% 0.014 275 / 0.88); border: 1px solid oklch(34% 0.02 275 / 0.45); cursor: pointer; transition: background 150ms cubic-bezier(0.22, 1, 0.36, 1), border-color 150ms cubic-bezier(0.22, 1, 0.36, 1), color 150ms cubic-bezier(0.22, 1, 0.36, 1); } .ds-chip-app:hover { background: oklch(20% 0.014 275 / 0.92); color: oklch(93% 0.01 275); } .ds-chip-app:focus-visible { outline: 2px solid oklch(62% 0.14 230); outline-offset: 2px; } .ds-chip-app--nav-active { color: oklch(93% 0.01 275); background: color-mix(in oklch, oklch(60% 0.12 230) 14%, oklch(16% 0.014 275 / 0.92)); border-color: color-mix(in oklch, oklch(60% 0.12 230) 40%, transparent); }"
+    },
+    {
+      "name": "App Action Chip",
+      "kind": "chip",
+      "refersTo": "chip-app-active",
+      "description": "Primary page actions in library-chrome right slot: Refresh, Save, Export.",
+      "html": "<button type=\"button\" class=\"ds-chip-app ds-chip-app--action\">Refresh</button>",
+      "css": ".ds-chip-app--action { color: oklch(93% 0.01 275); background: oklch(22% 0.014 275 / 0.92); border-color: oklch(45% 0.02 275 / 0.55); } .ds-chip-app--action:hover { background: oklch(28% 0.016 275 / 0.95); }"
+    },
+    {
+      "name": "App Chrome Search",
+      "kind": "input",
+      "refersTo": "input-chrome-search",
+      "description": "Canonical text field for app pages: library search, API key, folder paths.",
+      "html": "<input type=\"search\" class=\"ds-input-chrome\" placeholder=\"Search games…\" autocomplete=\"off\" />",
+      "css": ".ds-input-chrome { width: 100%; min-height: 36px; padding: 8px 16px; border-radius: 6px; border: 1px solid oklch(34% 0.02 275); background: oklch(18% 0.014 275); color: oklch(93% 0.01 275); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 13px; transition: border-color 150ms cubic-bezier(0.22, 1, 0.36, 1), background 150ms cubic-bezier(0.22, 1, 0.36, 1); } .ds-input-chrome::placeholder { color: oklch(70% 0.014 275); } .ds-input-chrome:hover { background: oklch(22% 0.016 275); } .ds-input-chrome:focus { outline: none; border-color: color-mix(in oklch, oklch(62% 0.14 230) 55%, oklch(34% 0.02 275)); background: oklch(22% 0.016 275); } .ds-input-chrome:focus-visible { outline: 2px solid oklch(62% 0.14 230); outline-offset: 2px; }"
+    },
+    {
+      "name": "App Chrome Header",
+      "kind": "nav",
+      "description": "library-chrome header row: nav left, search center, actions right, bottom border on black canvas.",
+      "html": "<header class=\"ds-app-chrome\"><div class=\"ds-app-chrome__left\"><nav class=\"ds-app-chrome__nav\" aria-label=\"Main\"><button type=\"button\" class=\"ds-chip-app ds-chip-app--nav-active\" aria-current=\"page\">Library</button></nav></div><div class=\"ds-app-chrome__search\"><input type=\"search\" class=\"ds-input-chrome\" placeholder=\"Search games…\" /></div><div class=\"ds-app-chrome__right\"><button type=\"button\" class=\"ds-chip-app ds-chip-app--action\">Refresh</button></div></header>",
+      "css": ".ds-app-chrome { display: flex; align-items: center; gap: 12px; padding-bottom: 16px; border-bottom: 1px solid oklch(34% 0.02 275); background: oklch(0% 0 0); } .ds-app-chrome__left { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; flex-shrink: 0; } .ds-app-chrome__search { flex: 1 1 200px; min-width: 0; } .ds-app-chrome__right { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; flex-shrink: 0; }"
     },
     {
       "name": "Hero Back Pill",
@@ -235,40 +274,32 @@
       "css": ".ds-chip-filter--gold { color: oklch(93% 0.01 275); background: color-mix(in oklch, oklch(78% 0.15 88) 18%, oklch(16% 0.014 275 / 0.92)); border-color: color-mix(in oklch, oklch(78% 0.15 88) 45%, transparent); } .ds-chip-filter--gold .ds-chip-filter__count { background: oklch(100% 0 0 / 0.14); color: oklch(93% 0.01 275); }"
     },
     {
-      "name": "Hidden Toggle Chip",
-      "kind": "chip",
-      "refersTo": "chip-filter-active",
-      "description": "Toggles hidden achievement descriptions. Neutral active state — never accent blue.",
-      "html": "<button type=\"button\" class=\"ds-chip-filter ds-chip-filter--hidden\" aria-pressed=\"true\" aria-label=\"Hide hidden achievement descriptions\">Hidden <span class=\"ds-chip-filter__count\">2</span></button>",
-      "css": ".ds-chip-filter--hidden[aria-pressed='true'] { color: oklch(93% 0.01 275); background: oklch(22% 0.014 275 / 0.92); border-color: oklch(45% 0.02 275 / 0.55); } .ds-chip-filter--hidden[aria-pressed='true'] .ds-chip-filter__count { background: oklch(100% 0 0 / 0.14); color: oklch(93% 0.01 275); }"
-    },
-    {
       "name": "Achievement Row Earned",
       "kind": "custom",
       "description": "Earned achievement with gold tier tint, full border, tier pill.",
       "html": "<div class=\"ds-achievement-row ds-achievement-row--earned ds-achievement-row--gold\"><div class=\"ds-achievement-row__icon\"></div><div class=\"ds-achievement-row__body\"><div class=\"ds-achievement-row__name\">Master of the Universe</div><div class=\"ds-achievement-row__desc\">Complete all story missions.</div></div><div class=\"ds-achievement-row__aside\"><span class=\"ds-tier-pill ds-tier-pill--gold\">gold</span></div></div>",
       "css": ".ds-achievement-row { display: flex; gap: 12px; align-items: center; width: 100%; padding: 10px 14px; border-radius: 8px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; } .ds-achievement-row--earned.ds-achievement-row--gold { background: color-mix(in oklch, oklch(78% 0.15 88) 12%, oklch(16% 0.014 275 / 0.92)); border: 1px solid color-mix(in oklch, oklch(78% 0.15 88) 32%, oklch(34% 0.02 275 / 0.5)); } .ds-achievement-row__icon { width: 40px; height: 40px; border-radius: 4px; background: oklch(28% 0.018 275); flex-shrink: 0; } .ds-achievement-row__body { flex: 1; min-width: 0; } .ds-achievement-row__name { font-weight: 600; font-size: 13px; color: oklch(93% 0.01 275); } .ds-achievement-row__desc { font-size: 11px; color: oklch(70% 0.014 275); margin-top: 2px; line-height: 1.45; } .ds-achievement-row__aside { text-align: right; flex-shrink: 0; } .ds-tier-pill { display: inline-block; padding: 2px 7px; border-radius: 999px; font-size: 10px; font-weight: 700; text-transform: capitalize; border: 1px solid; } .ds-tier-pill--gold { color: oklch(78% 0.15 88); background: color-mix(in oklch, oklch(78% 0.15 88) 16%, oklch(22% 0.016 275)); border-color: color-mix(in oklch, oklch(78% 0.15 88) 45%, oklch(34% 0.02 275)); }"
-    },
-    {
-      "name": "Tier Section Header",
-      "kind": "custom",
-      "description": "Divider between trophy tier groups in the achievement list.",
-      "html": "<div class=\"ds-tier-header ds-tier-header--gold\"><span class=\"ds-tier-header__label\">Gold</span><span class=\"ds-tier-header__meta\">2 earned · 5 total</span></div>",
-      "css": ".ds-tier-header { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 12px 2px 8px; border-bottom: 1px solid oklch(34% 0.02 275 / 0.35); } .ds-tier-header__label { font-family: 'Rajdhani', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; } .ds-tier-header--gold .ds-tier-header__label { color: oklch(78% 0.15 88); } .ds-tier-header__meta { font-size: 0.6875rem; color: oklch(58% 0.012 275); font-variant-numeric: tabular-nums; }"
     }
   ],
   "narrative": {
     "northStar": "The Trophy Case",
-    "overview": "AchieveMe is a late-night desktop companion: the Steam client is open, the room is dim, and the user is checking what they have left to platinum. The interface should feel like familiar dark gaming chrome with a trophy shelf inside it — progress you earned, metals that mean something, completion rings that read at a glance. Celebration comes from tier color and earned-state tinting, not from neon flash or loot-box motion. The canonical visual system is fully implemented on Game Detail; Library, Dashboard, and Settings must migrate from legacy inline purple styles.",
+    "overview": "AchieveMe is a late-night desktop companion: familiar dark gaming chrome with a trophy shelf inside it. The visual system has two canonical layers: Library chrome (black canvas, Rajdhani pill nav, library-chip actions) for Library, Dashboard, Settings, and Help; and Game Detail (Bebas titles, tier rows, completion rings) for per-game trophy surfaces. Library is the reference app shell. Dashboard, Settings, and Help must migrate off legacy app-nav onto library-chrome. Game Detail is complete.",
     "keyCharacteristics": [
-      "Hue-275 tinted dark neutrals for the shell; trophy metals carry identity",
-      "Bebas Neue for game titles only; Rajdhani for stats, filters, and chips",
-      "Frosted pill chips on cover art and matte pill filters in the achievement toolbar",
+      "Pure-black app canvas on Library and all migrated app pages",
+      "library-chip Rajdhani pills for app nav, sort, and page actions",
+      "library-chrome embedded header — not a separate app-nav bar",
+      "Bebas Neue for game titles only; system UI for lists and settings copy",
+      "Frosted hero pills on cover art; matte pills everywhere else",
       "Tier-tinted earned rows with full borders — never side-stripe accents",
-      "Restrained progress blue for rings and bars; accent blue for focus only",
+      "Progress blue for rings, bars, and active nav chip; action blue for focus only",
       "State-only motion with reduced-motion alternatives"
     ],
     "rules": [
+      {
+        "name": "The Black Canvas Rule",
+        "body": "App pages use oklch(0% 0 0) as the page background via .library. Do not put Dashboard, Settings, or Help on --bg-base alone.",
+        "section": "colors"
+      },
       {
         "name": "The Metals Mean Earned Rule",
         "body": "Trophy metal colors appear on earned achievements, tier filter active states, and completion celebration — never as generic decoration on inactive chrome.",
@@ -276,13 +307,23 @@
       },
       {
         "name": "The One Accent Rule",
-        "body": "Progress blue carries functional progress UI. Action blue is focus-only. Do not reintroduce Discord-purple (#5865f2) or blue-outlined ghost buttons on product surfaces.",
+        "body": "Progress blue carries functional progress UI and active app-page nav state. Action blue is focus-only. Do not reintroduce Discord-purple (#5865f2).",
         "section": "colors"
       },
       {
         "name": "The Display Boundary Rule",
-        "body": "Bebas Neue is reserved for game titles on the detail hero. Everything interactive uses Rajdhani or system UI.",
+        "body": "Bebas Neue is reserved for game titles on the detail hero. Everything interactive on app pages uses Rajdhani chips or system UI.",
         "section": "typography"
+      },
+      {
+        "name": "The Chip Voice Rule",
+        "body": "App navigation, sort controls, and page-level actions speak in Rajdhani uppercase pills (library-chip) — not system-font rectangular buttons.",
+        "section": "typography"
+      },
+      {
+        "name": "The Flush Chrome Rule",
+        "body": "App navigation lives inside .library-chrome, not a separate elevated app-nav bar. One header row, one bottom border, content below.",
+        "section": "elevation"
       },
       {
         "name": "The Cover Glass Rule",
@@ -291,25 +332,26 @@
       },
       {
         "name": "The Flat Row Rule",
-        "body": "Achievement rows do not use box-shadow at rest. Icon wraps on earned rows may use a 1px tier-colored ring.",
+        "body": "Achievement rows and library list rows do not use box-shadow at rest.",
         "section": "elevation"
       }
     ],
     "dos": [
-      "Do use CSS custom properties from :root for all new surfaces — never hardcode #1a1a22 or #5865f2 on migrated pages.",
-      "Do use Rajdhani uppercase pills for filters, sort controls, and hero actions on game surfaces.",
-      "Do tint earned achievement rows with color-mix(in oklch, var(--tier-*) …) and full borders.",
-      "Do keep body text and placeholders at --ink-muted or darker on tinted near-dark backgrounds.",
-      "Do provide prefers-reduced-motion alternatives for bar fills, ring transitions, and skeleton pulse.",
-      "Do cap hero display type at clamp(…, 4rem) and use text-wrap: balance on game titles."
+      "Do use Library chrome (.library + .library-chrome + .library-chip) as the app shell for Dashboard, Settings, Help, and Library.",
+      "Do use CSS custom properties from :root — never hardcode #1a1a22 or #5865f2.",
+      "Do use library-chip for app navigation, page actions, and sort/filter on app pages.",
+      "Do use library-chrome__search styling for text inputs on app pages.",
+      "Do use Rajdhani uppercase pills for tier filters and hero actions on game detail.",
+      "Do tint earned achievement rows with color-mix and full borders.",
+      "Do provide prefers-reduced-motion alternatives for bar fills, ring transitions, and skeleton pulse."
     ],
     "donts": [
+      "Don't use or extend app-nav / app-nav__link — deprecated in favor of library-chrome embedded nav.",
+      "Don't put Dashboard, Settings, or Help on a separate shell from Library.",
       "Don't use generic SaaS dashboard patterns: cream backgrounds, identical card grids, eyebrow kickers, hero-metric templates.",
-      "Don't use gambling or RGB-neon aesthetics: flashy gradients, loot-box energy, overstimulating motion.",
-      "Don't ship bare spreadsheet utility: raw tables with zero personality and no earned celebration.",
+      "Don't use gambling or RGB-neon aesthetics.",
+      "Don't use rectangular default button for primary actions on app pages when library-chip applies.",
       "Don't use border-left or border-right greater than 1px as a colored accent on rows or cards.",
-      "Don't use gradient text (background-clip: text) for emphasis.",
-      "Don't use blue accent outlines on resting buttons.",
       "Don't apply Bebas Neue to buttons, nav labels, or achievement list items.",
       "Don't use decorative glassmorphism on list rows or library cards."
     ]

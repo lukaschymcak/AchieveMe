@@ -1,20 +1,32 @@
 import React, { useEffect, useState } from 'react'
 import type { AppSettings, SourceId } from '../../../shared/types'
 import { ALL_SOURCES } from '../../../shared/types'
+import { AppChrome, AppNav, AppSearchInput, AppShell, Chip } from '../components/app'
+import HelpTip from '../components/HelpTip'
+import type { AppPage } from '../lib/appNavigation'
+import {
+  EMULATOR_SOURCES,
+  SETTINGS_HINTS,
+  TOOLTIPS,
+  getSourceHelp
+} from '../lib/helpContent'
 
-export default function SettingsPage(): React.ReactElement {
+interface Props {
+  page: AppPage
+  onNavigate: (page: AppPage) => void
+}
+
+export default function SettingsPage({ page, onNavigate }: Props): React.ReactElement {
   const [settings, setSettings] = useState<AppSettings | null>(null)
   const [saved, setSaved] = useState(false)
+  const [saveHint, setSaveHint] = useState(false)
   const [importMsg, setImportMsg] = useState<string | null>(null)
   const [newFolder, setNewFolder] = useState('')
+  const [showSourcesTable, setShowSourcesTable] = useState(false)
 
   useEffect(() => {
     window.api.getSettings().then(setSettings)
   }, [])
-
-  if (!settings) {
-    return <div style={{ padding: 24 }}>Loading...</div>
-  }
 
   function setApiKey(key: string): void {
     setSettings((s) => s && { ...s, steamApiKey: key })
@@ -52,197 +64,221 @@ export default function SettingsPage(): React.ReactElement {
     if (!settings) return
     window.api.saveSettings(settings).then(() => {
       setSaved(true)
+      setSaveHint(true)
       setTimeout(() => setSaved(false), 2000)
+      setTimeout(() => setSaveHint(false), 6000)
     })
   }
 
   function importZip(): void {
+    if (!window.confirm(SETTINGS_HINTS.importConfirm)) return
     window.api.importZip().then((result) => {
       if (!result) return
       const errNote = result.errors.length > 0 ? ` (${result.errors.length} warnings)` : ''
       setImportMsg(
-        `Imported ${result.gamesImported} games, wrote ${result.filesWritten} files${errNote}`
+        `Imported ${result.gamesImported} games, wrote ${result.filesWritten} files${errNote}. Open Library and click Refresh if the list looks stale.`
       )
-      setTimeout(() => setImportMsg(null), 4000)
+      setTimeout(() => setImportMsg(null), 6000)
     })
   }
 
+  if (!settings) {
+    return (
+      <AppShell centered>
+        <p className="settings-page__loading">Loading settings…</p>
+      </AppShell>
+    )
+  }
+
   return (
-    <div style={{ padding: 24, maxWidth: 640 }}>
-      <h2 style={{ marginBottom: 24 }}>Settings</h2>
-
-      {/* Steam API Key */}
-      <section style={{ marginBottom: 32 }}>
-        <h3 style={{ marginBottom: 8 }}>Steam API Key</h3>
-        <p style={{ fontSize: 12, color: '#888', marginBottom: 8 }}>
-          Required to fetch achievement names, icons, and global percentages.
-          Get one at{' '}
-          <a
-            href="https://steamcommunity.com/dev/apikey"
-            target="_blank"
-            rel="noreferrer"
-            style={{ color: '#5865f2' }}
-          >
-            steamcommunity.com/dev/apikey
-          </a>
-        </p>
-        <input
-          type="text"
-          value={settings.steamApiKey}
-          onChange={(e) => setApiKey(e.target.value)}
-          placeholder="Your Steam Web API key"
-          style={{
-            width: '100%',
-            padding: '8px 12px',
-            background: '#1a1a22',
-            border: '1px solid #3a3a48',
-            borderRadius: 6,
-            color: '#e8e8e8',
-            fontSize: 13
-          }}
-        />
-      </section>
-
-      {/* Enabled Sources */}
-      <section style={{ marginBottom: 32 }}>
-        <h3 style={{ marginBottom: 12 }}>Emulator Sources</h3>
-        <div
-          style={{
-            background: '#1a1a22',
-            border: '1px solid #2a2a35',
-            borderRadius: 8,
-            padding: '12px 14px',
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))',
-            gap: 8
-          }}
-        >
-          {ALL_SOURCES.map((source) => {
-            const enabled = settings.enabledSources.includes(source)
-            return (
-              <label
-                key={source}
-                style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}
+    <AppShell column>
+      <AppChrome
+        left={<AppNav page={page} onNavigate={onNavigate} />}
+        right={
+          <>
+            {saved && (
+              <span
+                className="settings-page__status settings-page__status--success settings-page__chrome-status"
+                role="status"
               >
-                <input
-                  type="checkbox"
-                  checked={enabled}
-                  onChange={(e) => toggleSource(source, e.target.checked)}
-                />
-                <span style={{ fontSize: 13 }}>{source}</span>
-              </label>
-            )
-          })}
-        </div>
-      </section>
+                Saved!
+              </span>
+            )}
+            {saveHint && !saved && (
+              <span
+                className="settings-page__status settings-page__status--muted settings-page__chrome-status"
+                role="status"
+              >
+                {SETTINGS_HINTS.saveSuccess}
+              </span>
+            )}
+            {importMsg && (
+              <span
+                className="settings-page__status settings-page__status--success settings-page__chrome-status"
+                role="status"
+              >
+                {importMsg}
+              </span>
+            )}
+            <Chip variant="action" onClick={save}>
+              Save Settings
+            </Chip>
+          </>
+        }
+      />
 
-      {/* Custom watch folders */}
-      <section style={{ marginBottom: 32 }}>
-        <h3 style={{ marginBottom: 8 }}>Custom Watch Folders</h3>
-        <p style={{ fontSize: 12, color: '#888', marginBottom: 12 }}>
-          Extra folders to monitor for achievement saves. Each enabled emulator source is scanned
-          in these folders in addition to its default locations.
-        </p>
-        <div
-          style={{
-            background: '#1a1a22',
-            border: '1px solid #2a2a35',
-            borderRadius: 8,
-            padding: '12px 14px'
-          }}
-        >
-          {settings.customWatchFolders.length > 0 && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 8 }}>
-              {settings.customWatchFolders.map((folder, i) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span
-                    style={{
-                      fontSize: 12,
-                      color: '#888',
-                      flex: 1,
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap'
-                    }}
-                  >
-                    {folder}
+      <div className="settings-page">
+        <section className="settings-page__section" aria-labelledby="settings-api-key">
+          <h2 id="settings-api-key" className="settings-page__section-title">
+            Steam API Key
+            <HelpTip content={TOOLTIPS.settingsApiKey} label="Steam API key help" />
+          </h2>
+          <p className="settings-page__lead">
+            {SETTINGS_HINTS.apiKey}{' '}
+            Get one at{' '}
+            <a
+              href="https://steamcommunity.com/dev/apikey"
+              target="_blank"
+              rel="noreferrer"
+              className="settings-page__external-link"
+            >
+              steamcommunity.com/dev/apikey
+            </a>
+          </p>
+          <p className="settings-page__note">{SETTINGS_HINTS.apiKeySettingsNote}</p>
+          <AppSearchInput
+            type="text"
+            value={settings.steamApiKey}
+            onChange={(e) => setApiKey(e.target.value)}
+            placeholder="Your Steam Web API key"
+            autoComplete="off"
+            spellCheck={false}
+          />
+        </section>
+
+        <section className="settings-page__section" aria-labelledby="settings-sources">
+          <h2 id="settings-sources" className="settings-page__section-title">
+            Emulator Sources
+            <HelpTip content={TOOLTIPS.settingsSources} label="Emulator sources help" />
+          </h2>
+          <div className="settings-page__panel settings-page__sources-grid">
+            {ALL_SOURCES.map((source) => {
+              const enabled = settings.enabledSources.includes(source)
+              const meta = getSourceHelp(source)
+              return (
+                <label key={source} className="settings-page__source-label">
+                  <input
+                    type="checkbox"
+                    checked={enabled}
+                    onChange={(e) => toggleSource(source, e.target.checked)}
+                    className="settings-page__checkbox"
+                  />
+                  <span className="settings-page__source-name">
+                    {source}
+                    {meta?.notes && (
+                      <span className="settings-source-note">{meta.notes}</span>
+                    )}
                   </span>
-                  <button
-                    onClick={() => removeFolder(i)}
-                    style={{ padding: '2px 8px', fontSize: 11, color: '#f87171', borderColor: '#f87171' }}
-                  >
-                    ×
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-          <div style={{ display: 'flex', gap: 8 }}>
-            <input
-              type="text"
-              value={newFolder}
-              onChange={(e) => setNewFolder(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') addFolder()
-              }}
-              placeholder="C:\path\to\folder"
-              style={{
-                flex: 1,
-                padding: '4px 8px',
-                background: '#0f0f13',
-                border: '1px solid #3a3a48',
-                borderRadius: 4,
-                color: '#e8e8e8',
-                fontSize: 12
-              }}
-            />
-            <button onClick={addFolder} style={{ fontSize: 12, padding: '4px 10px' }}>
-              Add
-            </button>
+                </label>
+              )
+            })}
           </div>
-        </div>
-      </section>
-
-      {/* Backup */}
-      <section style={{ marginBottom: 32 }}>
-        <h3 style={{ marginBottom: 8 }}>Backup &amp; Restore</h3>
-        <p style={{ fontSize: 12, color: '#888', marginBottom: 12 }}>
-          Export creates a ZIP backup of Goldberg/GSE appid folders plus the global emulator{' '}
-          <code>settings</code> folder. Import merges file-by-file and does not delete other games
-          on disk.
-        </p>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
           <button
-            onClick={() => window.api.exportZip()}
-            style={{ padding: '8px 16px', fontSize: 13 }}
+            type="button"
+            className="settings-page__disclosure-link"
+            aria-expanded={showSourcesTable}
+            onClick={() => setShowSourcesTable((v) => !v)}
           >
-            Export
+            {showSourcesTable ? 'Hide default paths' : 'Show default paths and save files'}
           </button>
-          <button onClick={importZip} style={{ padding: '8px 16px', fontSize: 13 }}>
-            Import
-          </button>
-        </div>
-      </section>
+          {showSourcesTable && (
+            <table className="settings-sources-table">
+              <thead>
+                <tr>
+                  <th>Source</th>
+                  <th>Default path</th>
+                  <th>File</th>
+                </tr>
+              </thead>
+              <tbody>
+                {EMULATOR_SOURCES.map((row) => (
+                  <tr key={row.id}>
+                    <td>{row.id}</td>
+                    <td>{row.defaultPath}</td>
+                    <td>
+                      <code>{row.fileName}</code>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </section>
 
-      {/* Save */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-        <button
-          onClick={save}
-          style={{
-            padding: '8px 24px',
-            background: '#5865f2',
-            border: 'none',
-            borderRadius: 6,
-            color: '#fff',
-            fontWeight: 600,
-            fontSize: 13
-          }}
-        >
-          Save Settings
-        </button>
-        {saved && <span style={{ fontSize: 13, color: '#4ade80' }}>Saved!</span>}
-        {importMsg && <span style={{ fontSize: 13, color: '#4ade80' }}>{importMsg}</span>}
+        <section className="settings-page__section" aria-labelledby="settings-folders">
+          <h2 id="settings-folders" className="settings-page__section-title">
+            Custom Watch Folders
+            <HelpTip content={TOOLTIPS.settingsCustomFolders} label="Custom watch folders help" />
+          </h2>
+          <p className="settings-page__lead">{SETTINGS_HINTS.customFolders}</p>
+          <div className="settings-page__panel">
+            {settings.customWatchFolders.length > 0 && (
+              <ul className="settings-page__folder-list">
+                {settings.customWatchFolders.map((folder, i) => (
+                  <li key={folder} className="settings-page__folder-row">
+                    <span className="settings-page__folder-path" title={folder}>
+                      {folder}
+                    </span>
+                    <button
+                      type="button"
+                      className="settings-page__icon-btn settings-page__icon-btn--remove"
+                      onClick={() => removeFolder(i)}
+                      aria-label={`Remove folder ${folder}`}
+                    >
+                      ×
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <div className="settings-page__folder-add">
+              <AppSearchInput
+                type="text"
+                value={newFolder}
+                onChange={(e) => setNewFolder(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') addFolder()
+                }}
+                placeholder="C:\path\to\folder"
+                className="settings-page__input--nested"
+                spellCheck={false}
+              />
+              <Chip onClick={addFolder}>Add</Chip>
+            </div>
+          </div>
+        </section>
+
+        <section className="settings-page__section" aria-labelledby="settings-backup">
+          <h2 id="settings-backup" className="settings-page__section-title">
+            Backup &amp; Restore
+            <HelpTip content={TOOLTIPS.settingsBackup} label="Backup and restore help" />
+          </h2>
+          <p className="settings-page__lead">{SETTINGS_HINTS.backup}</p>
+          <div className="settings-page__action-row">
+            <Chip variant="action" onClick={() => window.api.exportZip()}>
+              Export
+            </Chip>
+            <Chip variant="action" onClick={importZip}>
+              Import
+            </Chip>
+          </div>
+        </section>
+
+        <p className="settings-page__footer-note">
+          All data is stored locally. Your API key is saved in settings.json under AchieveMe user
+          data. Hidden achievement descriptions may be fetched from SteamDB.
+        </p>
       </div>
-    </div>
+    </AppShell>
   )
 }

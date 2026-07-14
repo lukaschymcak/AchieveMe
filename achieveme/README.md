@@ -1,6 +1,6 @@
 # AchieveMe
 
-AchieveMe is a desktop app (Electron) that tracks Steam achievements across emulator save formats. It watches Goldberg, GSE, CODEX, RUNE, Hoodlum, CreamAPI, and Reloaded save folders, merges progress into a local library, and enriches achievements with Steam Web API metadata.
+AchieveMe is a desktop app (Electron) that tracks Steam achievements across emulator save formats. It watches Goldberg, GSE, CODEX, and RUNE save folders, merges progress into a local library, and enriches achievements with Steam Web API metadata.
 
 ## Supported emulator sources
 
@@ -10,11 +10,18 @@ AchieveMe is a desktop app (Electron) that tracks Steam achievements across emul
 | gse | `%APPDATA%\GSE Saves` | `achievements.json` |
 | codex | `%PUBLIC%\Documents\Steam\CODEX` | `achievements.ini` |
 | rune | `%PUBLIC%\Documents\Steam\RUNE` | `achievements.ini` |
-| hoodlum | *(custom folders only)* | `hlm.ini` |
-| creamapi | `%APPDATA%\CreamAPI` | `CreamAPI.Achievements.cfg` |
-| reloaded | `%PROGRAMDATA%\Steam` | `achievements.ini` |
 
-Goldberg and GSE saves can be written back on import. All other sources are read-only.
+Goldberg and GSE saves can be written back on import. CODEX and RUNE are read-only.
+
+## In-app help
+
+The app includes a **Help** page (top nav and Library header) with guides for discovery, sync, scoring, backup, and FAQ. Contextual **?** tooltips appear on Dashboard stats, Library Refresh, Settings sections, and game detail controls. First launch shows a welcome dialog; the Library shows a one-time long-press tip.
+
+Help copy lives in `src/renderer/src/lib/helpContent.ts`.
+
+## Dashboard
+
+The **Dashboard** is the progress pulse home screen: level + XP ring, library snapshot, proportional trophy shelf, monthly unlock chart, recent unlocks, and games close to 100%. Stats are precomputed in `profile_stats.json` via `src/main/achievement/profileStatsService.ts` (regenerated on library refresh and save-file updates). Legacy stats files missing new fields are normalized at read time; run **Refresh** in Library to populate recent unlocks and near-completion games.
 
 ## Development
 
@@ -68,7 +75,8 @@ Full Backup import **does not delete** emulator folders. It only overwrites file
 5. **Long-press card menu** — Quick-click a library card to open game detail with no hold blur or progress flash. Hold ~0.5s to show a dark overlay with horizontal Open / Refresh / Delete chips; releasing or moving off the card before the menu opens dismisses the overlay instantly (no left-to-right blur sweep). Delete confirms inline and removes the game; Refresh updates that game only.
 6. **Library search/sort** — Search by name and switch sort modes (least complete, most unlocked, recently unlocked). Hover game cards for a blue glow.
 7. **Live library update** — With the library open, edit a game's `achievements.json` on disk and save; the card fraction, %, and progress bar should update within ~1s without opening the game. Dashboard stats and open game detail should also refresh automatically.
-8. **Game detail nav & hidden descriptions** — Open a game from the library; confirm **← Library** and **Refresh** appear as frosted pills on the hero (no separate top nav). Use the left/right arrow buttons on the screen edges to move through games in the library's current sort order without returning to the list; each transition should slide in from the direction of travel. For games with unearned hidden achievements, use the **Hidden** filter pill (with count) to toggle description text; achievement rows always stay visible.
+8. **Game detail nav & hidden descriptions** — Open a game from the library; confirm **← Library** and **Refresh all** appear as frosted pills on the hero (no separate top nav). Use the left/right arrow buttons on the screen edges to move through games in the library's current sort order without returning to the list; each transition should slide in from the direction of travel. For games with unearned hidden achievements, use the **Hidden** filter pill (with count) to toggle description text; achievement rows always stay visible.
+9. **Help & tooltips** — Open **Help** from the nav; confirm sections load. Click **?** on Dashboard stats and Library Refresh; dismiss first-run welcome and long-press coach mark on Library.
 
 ### In-detail navigation
 

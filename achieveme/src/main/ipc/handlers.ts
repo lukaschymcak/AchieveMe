@@ -19,7 +19,7 @@ import { scanAllSources } from '../achievement/discoveryService'
 import { processAppId } from '../achievement/processAppId'
 import { buildFullBackupZip } from '../achievement/exportZipService'
 import { importFullBackupZip } from '../achievement/importZipService'
-import { regenerateProfileStats } from '../achievement/profileStatsService'
+import { normalizeProfileStats, regenerateProfileStats } from '../achievement/profileStatsService'
 import { applyGoldberg } from '../achievement/goldbergSetupService'
 import type { ProfileStats, GameSummary, GameDetail, AppSettings, ImportResult, SteamSearchResult, GoldbergApplyRequest, SteamApiDllInfo } from '../../shared/types'
 
@@ -28,7 +28,7 @@ export function registerIpcHandlers(): void {
     const statsPath = path.join(app.getPath('userData'), 'profile_stats.json')
     try {
       const text = fs.readFileSync(statsPath, 'utf8')
-      return JSON.parse(text) as ProfileStats
+      return normalizeProfileStats(JSON.parse(text) as ProfileStats)
     } catch {
       return null
     }

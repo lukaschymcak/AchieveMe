@@ -14,7 +14,7 @@ Primary audience spans casual PC gamers who use Steam emulators or offline saves
 
 ## Product Purpose
 
-AchieveMe unifies achievement progress from Goldberg, GSE, CODEX, RUNE, Hoodlum, CreamAPI, and Reloaded save folders into one local library, enriched with Steam Web API metadata. The primary job is at-a-glance progress: completion percentages, recent unlocks, and what's left per game. Backup and restore (export/import ZIPs) is the secondary job — keeping emulator saves portable and safe across machines. Success means progress feels share-worthy: users should want to show off tiers, rings, and completion, setting up a future web layer for social sharing without redesigning the core data model.
+AchieveMe unifies achievement progress from Goldberg, GSE, CODEX, and RUNE save folders into one local library, enriched with Steam Web API metadata. The primary job is at-a-glance progress: completion percentages, recent unlocks, and what's left per game. Backup and restore (export/import ZIPs) is the secondary job — keeping emulator saves portable and safe across machines. Success means progress feels share-worthy: users should want to show off tiers, rings, and completion, setting up a future web layer for social sharing without redesigning the core data model.
 
 ## Positioning
 

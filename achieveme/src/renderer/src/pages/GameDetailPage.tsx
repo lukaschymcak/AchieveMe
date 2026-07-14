@@ -1,5 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import type { Achievement, GameDetail, TrophyTier } from '../../../shared/types'
+import { getSteamLibraryHeroUrl } from '../../../shared/steamUrls'
+import HelpTip from '../components/HelpTip'
+import { EMPTY_STATES, TOOLTIPS } from '../lib/helpContent'
 import {
   type ActiveFilter,
   type DisplayTier,
@@ -124,14 +127,17 @@ function GameDetailHeroBar({
         </span>
         Library
       </button>
+      <span className="game-detail__refresh-wrap">
       <button
         type="button"
         className="game-detail__pill game-detail__hero-action"
         onClick={onRefresh}
         disabled={refreshing}
       >
-        {refreshing ? 'Refreshing…' : 'Refresh'}
+        {refreshing ? 'Refreshing…' : 'Refresh all'}
       </button>
+      <HelpTip content={TOOLTIPS.refreshGameDetail} label="Refresh library help" />
+      </span>
     </div>
   )
 }
@@ -151,6 +157,7 @@ function GameDetailNavArrows({
           className="game-detail__nav-arrow game-detail__nav-arrow--prev"
           onClick={onPrev}
           aria-label="Previous game"
+          title={TOOLTIPS.navArrows}
         >
           <span className="game-detail__nav-arrow-glyph" aria-hidden>
             ‹
@@ -163,6 +170,7 @@ function GameDetailNavArrows({
           className="game-detail__nav-arrow game-detail__nav-arrow--next"
           onClick={onNext}
           aria-label="Next game"
+          title={TOOLTIPS.navArrows}
         >
           <span className="game-detail__nav-arrow-glyph" aria-hidden>
             ›
@@ -374,11 +382,10 @@ export default function GameDetailPage({
     setError(null)
     setDetail(null)
     setActiveFilter('all')
-    setResolvedBackdrop('')
     window.api
       .getGameDetail(appid)
       .then(setDetail)
-      .catch(() => setError('Could not load game details. Try Refresh from the toolbar.'))
+      .catch(() => setError('Could not load game details. Try Refresh all from the toolbar.'))
   }, [appid])
 
   useEffect(() => {
@@ -387,7 +394,7 @@ export default function GameDetailPage({
       window.api
         .getGameDetail(appid)
         .then(setDetail)
-        .catch(() => setError('Could not load game details. Try Refresh from the toolbar.'))
+        .catch(() => setError('Could not load game details. Try Refresh all from the toolbar.'))
     }
 
     window.api.onLibraryUpdated(handleLibraryUpdated)
@@ -398,35 +405,37 @@ export default function GameDetailPage({
   }, [appid])
 
   useEffect(() => {
-    if (!detail) {
-      setResolvedBackdrop('')
-      return
-    }
-
-    const fallback = detail.cover_url
-    const candidate = detail.backdrop_url
-
-    if (!candidate) {
-      setResolvedBackdrop(fallback)
-      return
-    }
-
-    setResolvedBackdrop(fallback)
-
     let cancelled = false
+    const heroUrl = getSteamLibraryHeroUrl(appid)
+
+    const applyCoverFallback = (): void => {
+      void window.api.getGameDetail(appid).then((d) => {
+        if (!cancelled && d?.cover_url) setResolvedBackdrop(d.cover_url)
+      })
+    }
+
+    setResolvedBackdrop('')
+
+    if (!heroUrl) {
+      applyCoverFallback()
+      return () => {
+        cancelled = true
+      }
+    }
+
     const img = new Image()
     img.onload = () => {
-      if (!cancelled) setResolvedBackdrop(candidate)
+      if (!cancelled) setResolvedBackdrop(heroUrl)
     }
     img.onerror = () => {
-      if (!cancelled) setResolvedBackdrop(fallback)
+      if (!cancelled) applyCoverFallback()
     }
-    img.src = candidate
+    img.src = heroUrl
 
     return () => {
       cancelled = true
     }
-  }, [detail])
+  }, [appid])
 
   const tierGroups = useMemo(() => {
     if (!detail) return []
@@ -467,7 +476,7 @@ export default function GameDetailPage({
     <div className={`game-detail${isLoading ? ' game-detail--loading' : ''}`}>
       <GameDetailNavArrows onPrev={onPrev} onNext={onNext} />
       <div
-        className={`game-detail__backdrop${resolvedBackdrop ? '' : ' game-detail__backdrop--placeholder'}`}
+        className="game-detail__backdrop"
         style={backdropStyle}
         aria-hidden
       >
@@ -575,30 +584,32 @@ export default function GameDetailPage({
                       )
                     })}
                     {hasHiddenUnearned && (
-                      <button
-                        type="button"
-                        className={`game-detail__filter-btn game-detail__filter-btn--hidden${
-                          showDescriptions ? ' game-detail__filter-btn--active' : ''
-                        }`}
-                        aria-pressed={showDescriptions}
-                        aria-label={
-                          showDescriptions
-                            ? 'Hide hidden achievement descriptions'
-                            : 'Show hidden achievement descriptions'
-                        }
-                        onClick={() => setShowDescriptions((v) => !v)}
-                      >
-                        Hidden
-                        <span className="game-detail__filter-btn__count">{hiddenUnearnedCount}</span>
-                      </button>
+                      <span className="game-detail__filter-hidden-wrap">
+                        <button
+                          type="button"
+                          className={`game-detail__filter-btn game-detail__filter-btn--hidden${
+                            showDescriptions ? ' game-detail__filter-btn--active' : ''
+                          }`}
+                          aria-pressed={showDescriptions}
+                          aria-label={
+                            showDescriptions
+                              ? 'Hide hidden achievement descriptions'
+                              : 'Show hidden achievement descriptions'
+                          }
+                          title={TOOLTIPS.hiddenFilter}
+                          onClick={() => setShowDescriptions((v) => !v)}
+                        >
+                          Hidden
+                          <span className="game-detail__filter-btn__count">{hiddenUnearnedCount}</span>
+                        </button>
+                        <HelpTip content={TOOLTIPS.hiddenFilter} label="Hidden achievements help" />
+                      </span>
                     )}
                   </div>
                 )}
 
                 {achievements.length === 0 ? (
-                  <p className="game-detail__empty">
-                    No achievements are loaded for this game yet. Refresh the library to fetch Steam metadata.
-                  </p>
+                  <p className="game-detail__empty">{EMPTY_STATES.noAchievements}</p>
                 ) : (
                   <ul className="game-detail__list">
                     {activeFilter === 'all'

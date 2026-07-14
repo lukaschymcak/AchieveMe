@@ -1,4 +1,5 @@
 import React from 'react'
+import { DELETE_CONFIRM, TOOLTIPS } from '../lib/helpContent'
 
 export type GameCardMenuMode = 'actions' | 'confirm-delete'
 
@@ -58,6 +59,7 @@ export default function GameCardMenu({
             className="library-menu-chip"
             onClick={onRefresh}
             disabled={refreshing}
+            title={TOOLTIPS.refreshGameMenu}
           >
             {refreshing ? 'Refreshing…' : 'Refresh'}
           </button>
@@ -69,7 +71,7 @@ export default function GameCardMenu({
         <div className={`${base}-confirm`}>
           <p className={`${base}-confirm-title`}>Delete this game?</p>
           <p className={`${base}-confirm-name`}>{gameName}</p>
-          <p className={`${base}-confirm-hint`}>Removes the game and its save folder from disk.</p>
+          <p className={`${base}-confirm-hint`}>{DELETE_CONFIRM}</p>
           <div className={`${base}-actions`} role="group" aria-label="Confirm delete">
             <button
               type="button"

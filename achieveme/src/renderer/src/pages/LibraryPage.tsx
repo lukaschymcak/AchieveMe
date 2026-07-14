@@ -4,10 +4,22 @@ import SteamApiKeyForm from '../components/SteamApiKeyForm'
 import AddGameModal from '../components/AddGameModal'
 import GameCardMenu, { type GameCardMenuMode } from '../components/GameCardMenu'
 import GameCardHoldOverlay from '../components/GameCardHoldOverlay'
+import HelpTip from '../components/HelpTip'
+import LibraryCoachMark from '../components/LibraryCoachMark'
+import {
+  AppChrome,
+  AppNav,
+  AppSearchInput,
+  AppShell,
+  AppToolbarButton,
+  Chip
+} from '../components/app'
+import { shouldShowLongPressHint } from '../lib/helpStorage'
 import { useLongPress } from '../hooks/useLongPress'
+import type { AppPage } from '../lib/appNavigation'
 import { filterAndSortGames, type SortOption } from '../lib/libraryUtils'
+import { EMPTY_STATES, TOOLTIPS } from '../lib/helpContent'
 
-type AppPage = 'dashboard' | 'library' | 'settings'
 type ViewMode = 'grid' | 'list'
 
 const LIBRARY_VIEW_MODE_KEY = 'library-view-mode'
@@ -20,18 +32,13 @@ function readStoredViewMode(): ViewMode {
 interface Props {
   onSelect: (appid: string) => void
   onGoToSettings?: () => void
+  onGoToHelp?: () => void
   page: AppPage
   onNavigate: (page: AppPage) => void
   onRefresh: () => void
   refreshing: boolean
   onDisplayedGamesChange?: (games: GameSummary[]) => void
 }
-
-const NAV_ITEMS: Array<{ id: AppPage; label: string }> = [
-  { id: 'dashboard', label: 'Dashboard' },
-  { id: 'library', label: 'Library' },
-  { id: 'settings', label: 'Settings' }
-]
 
 const SORT_OPTIONS: Array<{ id: SortOption; label: string; shortLabel: string }> = [
   { id: 'completion-asc', label: 'Least complete', shortLabel: 'Least' },
@@ -42,6 +49,7 @@ const SORT_OPTIONS: Array<{ id: SortOption; label: string; shortLabel: string }>
 export default function LibraryPage({
   onSelect,
   onGoToSettings,
+  onGoToHelp,
   page,
   onNavigate,
   onRefresh,
@@ -59,6 +67,7 @@ export default function LibraryPage({
   const [refreshingAppid, setRefreshingAppid] = useState<string | null>(null)
   const [viewMode, setViewMode] = useState<ViewMode>(readStoredViewMode)
   const [showAddModal, setShowAddModal] = useState(false)
+  const [showLongPressHint, setShowLongPressHint] = useState(() => shouldShowLongPressHint())
 
   useEffect(() => {
     localStorage.setItem(LIBRARY_VIEW_MODE_KEY, viewMode)
@@ -162,15 +171,15 @@ export default function LibraryPage({
 
   if (hasApiKey === null) {
     return (
-      <div className="library library--centered">
+      <AppShell centered>
         <p className="library__status">Loading…</p>
-      </div>
+      </AppShell>
     )
   }
 
   if (!hasApiKey) {
     return (
-      <div className="library library--centered">
+      <AppShell centered>
         <SteamApiKeyForm prominent onSaved={handleKeySaved} />
         {onGoToSettings && (
           <p className="library__settings-hint">
@@ -178,101 +187,95 @@ export default function LibraryPage({
             <button type="button" className="library__link-btn" onClick={onGoToSettings}>
               Settings
             </button>
+            {onGoToHelp && (
+              <>
+                {' '}
+                ·{' '}
+                <button type="button" className="library__link-btn" onClick={onGoToHelp}>
+                  Help
+                </button>
+              </>
+            )}
           </p>
         )}
-      </div>
+      </AppShell>
     )
   }
 
   return (
-    <div className="library">
-      <div className="library-chrome-wrap">
-        <header className="library-chrome">
-          <div className="library-chrome__left">
-          <nav className="library-chrome__nav" aria-label="Main">
-            {NAV_ITEMS.map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                className={`library-chip library-chip--nav${
-                  page === item.id ? ' library-chip--active' : ''
-                }`}
-                aria-current={page === item.id ? 'page' : undefined}
-                onClick={() => onNavigate(item.id)}
-              >
-                {item.label}
-              </button>
-            ))}
-          </nav>
-          <div className="library-chrome__sorts" role="group" aria-label="Sort games">
-            {SORT_OPTIONS.map((option) => (
-              <button
-                key={option.id}
-                type="button"
-                className={`library-chip${
-                  sort === option.id ? ' library-chip--active' : ''
-                }`}
-                aria-pressed={sort === option.id}
-                title={option.label}
-                onClick={() => setSort(option.id)}
-              >
-                {option.shortLabel}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="library-chrome__search-wrap">
-          <label className="library-chrome__search-label" htmlFor="library-search">
-            <span className="visually-hidden">Search games</span>
-          </label>
-          <input
-            id="library-search"
-            type="search"
-            className="library-chrome__search"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search games…"
-            autoComplete="off"
-          />
-        </div>
-
-        <div className="library-chrome__right">
-          <span className="library-chrome__count" aria-live="polite">
-            {displayedGames.length} {displayedGames.length === 1 ? 'game' : 'games'}
-          </span>
-          <button
-            type="button"
-            className="library-chip library-chip--action"
-            onClick={onRefresh}
-            disabled={refreshing}
-          >
-            {refreshing ? 'Refreshing…' : 'Refresh'}
-          </button>
-        </div>
-        </header>
-
-        <div className="library-chrome__toolbar">
-          <button
-            type="button"
-            className="library-view-toggle"
-            onClick={() => setShowAddModal(true)}
-            aria-label="Add game to library"
-            title="Add game"
-          >
-            <PlusIcon />
-          </button>
-          <button
-            type="button"
-            className="library-view-toggle"
-            onClick={() => setViewMode((mode) => (mode === 'grid' ? 'list' : 'grid'))}
-            aria-label={viewMode === 'grid' ? 'Switch to list view' : 'Switch to grid view'}
-            title={viewMode === 'grid' ? 'List view' : 'Grid view'}
-          >
-            {viewMode === 'grid' ? <ViewListIcon /> : <ViewGridIcon />}
-          </button>
-        </div>
-      </div>
+    <AppShell>
+      <AppChrome
+        left={
+          <>
+            <AppNav page={page} onNavigate={onNavigate} />
+            <div
+              className="app-chrome__sorts library-chrome__sorts"
+              role="group"
+              aria-label="Sort games"
+            >
+              {SORT_OPTIONS.map((option) => (
+                <Chip
+                  key={option.id}
+                  active={sort === option.id}
+                  aria-pressed={sort === option.id}
+                  title={option.label}
+                  aria-label={option.label}
+                  onClick={() => setSort(option.id)}
+                >
+                  {option.shortLabel}
+                </Chip>
+              ))}
+            </div>
+          </>
+        }
+        center={
+          <>
+            <label className="app-chrome__search-label library-chrome__search-label" htmlFor="library-search">
+              <span className="visually-hidden">Search games</span>
+            </label>
+            <AppSearchInput
+              id="library-search"
+              type="search"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search games…"
+              autoComplete="off"
+              title={TOOLTIPS.search}
+            />
+          </>
+        }
+        right={
+          <>
+            <span className="app-chrome__count library-chrome__count" aria-live="polite">
+              {displayedGames.length} {displayedGames.length === 1 ? 'game' : 'games'}
+            </span>
+            <span className="app-chrome__refresh-wrap library-chrome__refresh-wrap">
+              <Chip variant="action" onClick={onRefresh} disabled={refreshing}>
+                {refreshing ? 'Refreshing…' : 'Refresh'}
+              </Chip>
+              <HelpTip content={TOOLTIPS.refreshLibrary} label="Refresh library help" />
+            </span>
+          </>
+        }
+        toolbar={
+          <>
+            <AppToolbarButton
+              onClick={() => setShowAddModal(true)}
+              aria-label="Set up Goldberg emulator for a new game"
+              title={TOOLTIPS.addGame}
+            >
+              <PlusIcon />
+            </AppToolbarButton>
+            <AppToolbarButton
+              onClick={() => setViewMode((mode) => (mode === 'grid' ? 'list' : 'grid'))}
+              aria-label={viewMode === 'grid' ? 'Switch to list view' : 'Switch to grid view'}
+              title={TOOLTIPS.gridList}
+            >
+              {viewMode === 'grid' ? <ViewListIcon /> : <ViewGridIcon />}
+            </AppToolbarButton>
+          </>
+        }
+      />
 
       {loading ? (
         viewMode === 'list' ? (
@@ -289,11 +292,12 @@ export default function LibraryPage({
           </div>
         )
       ) : games.length === 0 ? (
-        <p className="library__status library__status--empty">
-          No games found. Make sure your emulator save folders exist, then click Refresh.
-        </p>
+        <div className="library__status library__status--empty library__status--empty-block">
+          <strong>{EMPTY_STATES.noGames.title}</strong>
+          {EMPTY_STATES.noGames.body}
+        </div>
       ) : displayedGames.length === 0 ? (
-        <p className="library__status library__status--empty">No games match your search.</p>
+        <p className="library__status library__status--empty">{EMPTY_STATES.noSearchMatch}</p>
       ) : viewMode === 'list' ? (
         <ul className="library__list">
           {displayedGames.map((game) => (
@@ -342,6 +346,10 @@ export default function LibraryPage({
         </div>
       )}
 
+      {hasApiKey && !loading && showLongPressHint && (
+        <LibraryCoachMark onDismiss={() => setShowLongPressHint(false)} />
+      )}
+
       {showAddModal && (
         <AddGameModal
           onClose={() => setShowAddModal(false)}
@@ -355,7 +363,7 @@ export default function LibraryPage({
           }}
         />
       )}
-    </div>
+    </AppShell>
   )
 }
 
@@ -592,7 +600,7 @@ function GameListRow({
 
 function PlusIcon(): React.ReactElement {
   return (
-    <svg className="library-view-toggle__icon" viewBox="0 0 16 16" aria-hidden>
+    <svg className="app-toolbar-btn__icon library-view-toggle__icon" viewBox="0 0 16 16" aria-hidden>
       <rect x="7" y="2" width="2" height="12" rx="1" fill="currentColor" />
       <rect x="2" y="7" width="12" height="2" rx="1" fill="currentColor" />
     </svg>
@@ -601,7 +609,7 @@ function PlusIcon(): React.ReactElement {
 
 function ViewListIcon(): React.ReactElement {
   return (
-    <svg className="library-view-toggle__icon" viewBox="0 0 16 16" aria-hidden>
+    <svg className="app-toolbar-btn__icon library-view-toggle__icon" viewBox="0 0 16 16" aria-hidden>
       <rect x="1.5" y="2.5" width="13" height="2" rx="0.75" fill="currentColor" />
       <rect x="1.5" y="7" width="13" height="2" rx="0.75" fill="currentColor" />
       <rect x="1.5" y="11.5" width="13" height="2" rx="0.75" fill="currentColor" />
@@ -611,7 +619,7 @@ function ViewListIcon(): React.ReactElement {
 
 function ViewGridIcon(): React.ReactElement {
   return (
-    <svg className="library-view-toggle__icon" viewBox="0 0 16 16" aria-hidden>
+    <svg className="app-toolbar-btn__icon library-view-toggle__icon" viewBox="0 0 16 16" aria-hidden>
       <rect x="1.5" y="1.5" width="5.5" height="5.5" rx="0.75" fill="currentColor" />
       <rect x="9" y="1.5" width="5.5" height="5.5" rx="0.75" fill="currentColor" />
       <rect x="1.5" y="9" width="5.5" height="5.5" rx="0.75" fill="currentColor" />

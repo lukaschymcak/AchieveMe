@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react'
+import { EMPTY_STATES } from '../lib/helpContent'
 
 interface Props {
   prominent?: boolean
@@ -62,9 +63,12 @@ export default function SteamApiKeyForm({
         <>
           <div style={{ fontSize: 40, marginBottom: 12 }}>⚠</div>
           <h2 style={{ marginBottom: 8, color: '#f5c518' }}>Steam API key required</h2>
-          <p style={{ fontSize: 14, color: '#aaa', marginBottom: 24, lineHeight: 1.5 }}>
-            AchieveMe needs a Steam Web API key to load achievement names, descriptions, and icons.
-            Your library will stay hidden until one is set.
+          <p style={{ fontSize: 14, color: '#aaa', marginBottom: 12, lineHeight: 1.5 }}>
+            AchieveMe needs a Steam Web API key to load achievement display names, descriptions,
+            icons, and hidden flags. Your library will stay hidden until one is set.
+          </p>
+          <p style={{ fontSize: 12, color: '#777', marginBottom: 24, lineHeight: 1.5 }}>
+            {EMPTY_STATES.noApiKeyExtra}
           </p>
         </>
       )}
@@ -92,7 +96,15 @@ export default function SteamApiKeyForm({
       />
 
       <p style={{ fontSize: 12, color: '#666', textAlign: 'left', marginBottom: 16, lineHeight: 1.5 }}>
-        Get a free key at steamcommunity.com/dev/apikey
+        Get a free key at{' '}
+        <a
+          href="https://steamcommunity.com/dev/apikey"
+          target="_blank"
+          rel="noreferrer"
+          style={{ color: '#5865f2' }}
+        >
+          steamcommunity.com/dev/apikey
+        </a>
       </p>
 
       {error && <p style={{ color: '#f87171', fontSize: 13, marginBottom: 12 }}>{error}</p>}

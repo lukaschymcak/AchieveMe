@@ -1,5 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import type { SteamApiDllInfo, SteamSearchResult } from '../../../shared/types'
+import { Chip, AppSearchInput } from './app'
+import { ADD_GAME } from '../lib/helpContent'
 
 type Step = 'search' | 'dll' | 'apply'
 type ApplyState = 'idle' | 'running' | 'done' | 'error'
@@ -228,74 +230,42 @@ export default function AddGameModal({ onClose, onGameAdded }: Props): React.Rea
         >
           {step === 'search' && (
             <>
-              <button type="button" className="library-chip" onClick={onClose}>
-                Cancel
-              </button>
-              <button
-                type="button"
-                className="library-chip library-chip--active"
-                onClick={goToDllStep}
-                disabled={!selected}
-              >
+              <Chip onClick={onClose}>Cancel</Chip>
+              <Chip active onClick={goToDllStep} disabled={!selected}>
                 Next
-              </button>
+              </Chip>
             </>
           )}
           {step === 'dll' && (
             <>
-              <button type="button" className="library-chip" onClick={() => setStep('search')}>
-                Back
-              </button>
-              <button
-                type="button"
-                className="library-chip library-chip--active"
-                onClick={goToApplyStep}
-                disabled={!dllInfo}
-              >
+              <Chip onClick={() => setStep('search')}>Back</Chip>
+              <Chip active onClick={goToApplyStep} disabled={!dllInfo}>
                 Next
-              </button>
+              </Chip>
             </>
           )}
           {step === 'apply' && applyState === 'idle' && (
             <>
-              <button type="button" className="library-chip" onClick={() => setStep('dll')}>
-                Back
-              </button>
-              <button
-                type="button"
-                className="library-chip library-chip--active"
-                onClick={handleApply}
-              >
+              <Chip onClick={() => setStep('dll')}>Back</Chip>
+              <Chip active onClick={handleApply}>
                 Add to Library
-              </button>
+              </Chip>
             </>
           )}
           {step === 'apply' && applyState === 'running' && (
-            <button type="button" className="library-chip" disabled>
-              Adding…
-            </button>
+            <Chip disabled>Adding…</Chip>
           )}
           {step === 'apply' && applyState === 'done' && (
-            <button
-              type="button"
-              className="library-chip library-chip--active"
-              onClick={handleDone}
-            >
+            <Chip active onClick={handleDone}>
               Done
-            </button>
+            </Chip>
           )}
           {step === 'apply' && applyState === 'error' && (
             <>
-              <button type="button" className="library-chip" onClick={() => setStep('dll')}>
-                Back
-              </button>
-              <button
-                type="button"
-                className="library-chip library-chip--active"
-                onClick={handleApply}
-              >
+              <Chip onClick={() => setStep('dll')}>Back</Chip>
+              <Chip active onClick={handleApply}>
                 Retry
-              </button>
+              </Chip>
             </>
           )}
         </div>
@@ -321,10 +291,12 @@ function SearchStep({
 }): React.ReactElement {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden', padding: '16px 20px', gap: 12, minHeight: 0 }}>
+      <p style={{ fontSize: 12, color: 'oklch(60% 0.01 275)', margin: 0, lineHeight: 1.5 }}>
+        {ADD_GAME.searchHelp}
+      </p>
       <div style={{ position: 'relative' }}>
-        <input
+        <AppSearchInput
           type="search"
-          className="library-chrome__search"
           value={query}
           onChange={(e) => onQueryChange(e.target.value)}
           placeholder="Search by game name, Steam URL, or AppID…"
@@ -484,14 +456,12 @@ function DllStep({
       </div>
 
       <p style={{ fontSize: 13, color: 'oklch(60% 0.01 275)', margin: 0, lineHeight: 1.5 }}>
-        Select <code>steam_api.dll</code> or <code>steam_api64.dll</code> from the game&apos;s install
-        folder. Goldberg will install <code>steam_settings</code> beside it (replacing any existing
-        folder).
+        {ADD_GAME.dllHelp}
       </p>
 
-      <button type="button" className="library-chip library-chip--action" onClick={onBrowse}>
+      <Chip variant="action" onClick={onBrowse}>
         Browse for Steam API DLL…
-      </button>
+      </Chip>
 
       {dllInfo && (
         <div
@@ -580,9 +550,7 @@ function ApplyStep({
 
       {applyState === 'idle' && (
         <p style={{ fontSize: 13, color: 'oklch(60% 0.01 275)', margin: 0, lineHeight: 1.5 }}>
-          This will run <code>generate_emu_config</code>, copy <code>steam_settings</code> into the
-          game folder next to the DLL, and seed a Goldberg save file at 0%. Click{' '}
-          <strong>Add to Library</strong> to begin.
+          {ADD_GAME.applyHelp}
         </p>
       )}
 

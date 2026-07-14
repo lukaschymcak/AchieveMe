@@ -12,20 +12,14 @@ export const DEFAULT_ROOTS: Record<SourceId, string[]> = {
   goldberg: [expandEnv('%APPDATA%\\Goldberg SteamEmu Saves')],
   gse: [expandEnv('%APPDATA%\\GSE Saves')],
   codex: [expandEnv('%PUBLIC%\\Documents\\Steam\\CODEX')],
-  rune: [expandEnv('%PUBLIC%\\Documents\\Steam\\RUNE')],
-  hoodlum: [],
-  creamapi: [expandEnv('%APPDATA%\\CreamAPI')],
-  reloaded: [expandEnv('%PROGRAMDATA%\\Steam')]
+  rune: [expandEnv('%PUBLIC%\\Documents\\Steam\\RUNE')]
 }
 
 export const SOURCE_FILE: Record<SourceId, string> = {
   goldberg: 'achievements.json',
   gse: 'achievements.json',
   codex: 'achievements.ini',
-  rune: 'achievements.ini',
-  hoodlum: 'hlm.ini',
-  creamapi: 'CreamAPI.Achievements.cfg',
-  reloaded: 'achievements.ini'
+  rune: 'achievements.ini'
 }
 
 export function getDefaultRootsForSource(source: SourceId): string[] {

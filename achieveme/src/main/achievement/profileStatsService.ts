@@ -3,11 +3,27 @@ import path from 'node:path'
 import { app } from 'electron'
 import type Database from 'better-sqlite3'
 import type { ProfileStats } from '../../shared/types'
+import {
+  computeLevelProgress,
+  computeLibraryCompletionPct,
+  computeProfileXp,
+  pickNearCompletionGames,
+  pickRecentUnlocks
+} from '../../shared/profileStatsUtils'
 import { getAllGames, getAllEarnedAchievements } from '../db/repository'
+
+export {
+  computeLevelProgress,
+  computeLibraryCompletionPct,
+  normalizeProfileStats,
+  pickNearCompletionGames,
+  pickRecentUnlocks
+} from '../../shared/profileStatsUtils'
 
 export function regenerateProfileStats(db: Database.Database): void {
   const games = getAllGames(db)
   const earned = getAllEarnedAchievements(db)
+  const gameNames = new Map(games.map((game) => [game.appid, game.name]))
 
   let bronze = 0
   let silver = 0
@@ -24,10 +40,9 @@ export function regenerateProfileStats(db: Database.Database): void {
     else bronze++
   }
 
-  const xp = bronze * 50 + silver * 100 + gold * 200 + platinum * 500
-  const level = Math.floor(xp / 1000)
+  const xp = computeProfileXp({ bronze, silver, gold, platinum })
+  const { level } = computeLevelProgress(xp)
 
-  // Monthly activity — count unlocks per YYYY-MM
   const monthlyCounts = new Map<string, number>()
   for (const ach of earned) {
     if (!ach.earned_time || ach.earned_time <= 0) continue
@@ -40,17 +55,18 @@ export function regenerateProfileStats(db: Database.Database): void {
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([month, count]) => ({ month, count }))
 
-  const totalUnlocked = earned.length
-
   const stats: ProfileStats = {
     totalGames: games.length,
-    totalUnlocked,
+    totalUnlocked: earned.length,
     platinum,
     gold,
     silver,
     bronze,
     level,
     xp,
+    libraryCompletionPct: computeLibraryCompletionPct(games),
+    recentUnlocks: pickRecentUnlocks(earned, gameNames),
+    nearCompletionGames: pickNearCompletionGames(games),
     monthlyActivity
   }
 
