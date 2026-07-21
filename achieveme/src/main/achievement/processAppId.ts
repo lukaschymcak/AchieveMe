@@ -4,7 +4,8 @@ import {
   upsertAchievements,
   upsertSaveLocation,
   deleteSaveLocationsForApp,
-  deleteGame
+  deleteGame,
+  getAchievementsForGame
 } from '../db/repository'
 import { scanAllSources } from './discoveryService'
 import { parseAchievementsBySource } from './parsers/parseBySource'
@@ -13,14 +14,19 @@ import { enrichApp } from './steamApiClient'
 import { regenerateProfileStats } from './profileStatsService'
 import { encodePortablePath, GOLDBERG_JSON_SOURCES } from './savePathUtils'
 import { notifyLibraryUpdated } from './libraryNotifyService'
+import { diffAchievements } from './achievementDiff'
+import { notifyUnlocks } from './unlockNotifyService'
 import type { AppSettings } from '../../shared/types'
 
 export async function processAppId(
   appid: string,
   settings: AppSettings,
-  forceRefresh = false
+  forceRefresh = false,
+  suppressNotifications = false
 ): Promise<void> {
   const db = getDb()
+  const previousAchievements = getAchievementsForGame(db, appid)
+  const hadPriorRows = previousAchievements.length > 0
 
   // 1. Find all save files on disk for this appid
   const allDiscovered = scanAllSources(settings)
@@ -62,11 +68,18 @@ export async function processAppId(
   // 4. Enrich with Steam API data (schema, global %, app name)
   const enriched = await enrichApp(appid, settings.steamApiKey, mergedRaw, db, forceRefresh)
 
+  const diff = diffAchievements(previousAchievements, enriched.achievements)
+
   // 5. Write to SQLite
   upsertGame(db, enriched.game)
   upsertAchievements(db, enriched.achievements)
 
   // 6. Rebuild profile_stats.json
   regenerateProfileStats(db)
+
+  if (!suppressNotifications && hadPriorRows && diff.unlocked.length > 0) {
+    notifyUnlocks(appid, enriched.game.name, diff.unlocked)
+  }
+
   notifyLibraryUpdated(appid)
 }

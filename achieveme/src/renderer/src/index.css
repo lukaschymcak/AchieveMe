@@ -962,6 +962,40 @@ button:focus-visible {
   margin-top: 3px;
 }
 
+.achievement-row__progress-track {
+  position: relative;
+  margin-top: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: color-mix(in oklch, var(--surface-3) 80%, transparent);
+  overflow: hidden;
+}
+
+.achievement-row__progress-fill {
+  height: 100%;
+  width: var(--bar-width, 0%);
+  border-radius: inherit;
+  background: var(--color-progress);
+  transition: width 0.25s ease;
+}
+
+.achievement-row__progress-label {
+  display: block;
+  margin-top: 3px;
+  font-size: 10px;
+  color: var(--ink-subtle);
+}
+
+.game-detail__meta--playtime {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--ink-muted);
+}
+
+.settings-page__folder-add--sound {
+  margin-top: var(--space-3);
+}
+
 .achievement-row__aside {
   text-align: right;
   flex-shrink: 0;

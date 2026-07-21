@@ -4,10 +4,15 @@ import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { initDb } from './db/database'
 import { loadSettings } from './settings'
 import { startWatcher } from './achievement/watcherService'
+import { startPlaytimeTracker, stopPlaytimeTracker } from './achievement/playtimeService'
+import { setUnlockNavigationHandler } from './achievement/unlockNotifyService'
 import { registerIpcHandlers } from './ipc/handlers'
+import { destroyTray, initTray, isQuitting, setQuitting } from './trayService'
+
+let mainWindow: BrowserWindow | null = null
 
 function createWindow(): void {
-  const mainWindow = new BrowserWindow({
+  mainWindow = new BrowserWindow({
     width: 1280,
     height: 800,
     minWidth: 1024,
@@ -21,7 +26,14 @@ function createWindow(): void {
   })
 
   mainWindow.on('ready-to-show', () => {
-    mainWindow.show()
+    mainWindow?.show()
+  })
+
+  mainWindow.on('close', (event) => {
+    if (!isQuitting() && loadSettings().closeToTray) {
+      event.preventDefault()
+      mainWindow?.hide()
+    }
   })
 
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
@@ -36,6 +48,14 @@ function createWindow(): void {
   }
 }
 
+function showMainWindowAndNavigate(appid: string): void {
+  if (!mainWindow || mainWindow.isDestroyed()) return
+  if (!mainWindow.isVisible()) mainWindow.show()
+  if (mainWindow.isMinimized()) mainWindow.restore()
+  mainWindow.focus()
+  mainWindow.webContents.send('navigate-to-game', appid)
+}
+
 app.whenReady().then(() => {
   electronApp.setAppUserModelId('com.achieveme')
 
@@ -47,14 +67,24 @@ app.whenReady().then(() => {
   registerIpcHandlers()
   const settings = loadSettings()
   startWatcher(settings).catch(() => {})
+  startPlaytimeTracker()
 
   createWindow()
+  initTray(() => mainWindow)
+  setUnlockNavigationHandler(showMainWindowAndNavigate)
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
   })
 })
 
+app.on('before-quit', () => {
+  setQuitting(true)
+  stopPlaytimeTracker()
+  destroyTray()
+})
+
 app.on('window-all-closed', () => {
+  if (loadSettings().closeToTray) return
   if (process.platform !== 'darwin') app.quit()
 })

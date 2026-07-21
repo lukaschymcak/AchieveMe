@@ -13,7 +13,8 @@ import {
 } from '../db/repository'
 import { getStoreCoverUrl } from '../achievement/steamApiClient'
 import { getSteamLibraryHeroUrl } from '../../shared/steamUrls'
-import { loadSettings, saveSettings } from '../settings'
+import { loadSettings, saveSettings, normalizeSettings } from '../settings'
+import { startPlaytimeTracker, stopPlaytimeTracker } from '../achievement/playtimeService'
 import { startWatcher, pruneOrphanedGames } from '../achievement/watcherService'
 import { scanAllSources } from '../achievement/discoveryService'
 import { processAppId } from '../achievement/processAppId'
@@ -21,6 +22,7 @@ import { buildFullBackupZip } from '../achievement/exportZipService'
 import { importFullBackupZip } from '../achievement/importZipService'
 import { normalizeProfileStats, regenerateProfileStats } from '../achievement/profileStatsService'
 import { applyGoldberg } from '../achievement/goldbergSetupService'
+import { updateGameInstallPath } from '../db/repository'
 import type { ProfileStats, GameSummary, GameDetail, AppSettings, ImportResult, SteamSearchResult, GoldbergApplyRequest, SteamApiDllInfo } from '../../shared/types'
 
 export function registerIpcHandlers(): void {
@@ -49,7 +51,8 @@ export function registerIpcHandlers(): void {
         unlocked_achievements: g.unlocked_achievements,
         completion_pct: g.completion_pct,
         has_platinum: g.has_platinum === 1,
-        last_unlocked_at: g.last_unlocked_at
+        last_unlocked_at: g.last_unlocked_at,
+        playtime_seconds: g.playtime_seconds ?? 0
       })
     }
     return summaries
@@ -70,13 +73,19 @@ export function registerIpcHandlers(): void {
   })
 
   ipcMain.handle('save-settings', async (_event, settings: AppSettings): Promise<void> => {
-    saveSettings(settings)
-    await startWatcher(settings)
+    const normalized = normalizeSettings(settings)
+    saveSettings(normalized)
+    if (normalized.playtimeTrackingEnabled) {
+      startPlaytimeTracker()
+    } else {
+      stopPlaytimeTracker()
+    }
+    await startWatcher(normalized)
   })
 
   ipcMain.handle('refresh-game', async (_event, appid: string): Promise<void> => {
     const settings = loadSettings()
-    await processAppId(appid, settings, true)
+    await processAppId(appid, settings, true, true)
   })
 
   ipcMain.handle('refresh', async (): Promise<void> => {
@@ -88,12 +97,12 @@ export function registerIpcHandlers(): void {
     const discovered = scanAllSources(settings)
     const appids = [...new Set(discovered.map((d) => d.appid))]
     for (const appid of appids) {
-      await processAppId(appid, settings, true)
+      await processAppId(appid, settings, true, true)
     }
     const dbGames = getAllGames(db)
     for (const game of dbGames) {
       if (!appids.includes(game.appid)) {
-        await processAppId(game.appid, settings, true)
+        await processAppId(game.appid, settings, true, true)
       }
     }
   })
@@ -141,6 +150,16 @@ export function registerIpcHandlers(): void {
     const db = getDb()
     const settings = loadSettings()
     return importFullBackupZip(db, filePaths[0], settings)
+  })
+
+  ipcMain.handle('browse-sound-path', async (): Promise<string | null> => {
+    const { canceled, filePaths } = await dialog.showOpenDialog({
+      title: 'Select unlock sound',
+      filters: [{ name: 'Audio', extensions: ['wav', 'mp3'] }],
+      properties: ['openFile']
+    })
+    if (canceled || filePaths.length === 0) return null
+    return filePaths[0]
   })
 
   ipcMain.handle('search-steam-games', (_event, query: string): Promise<SteamSearchResult[]> => {

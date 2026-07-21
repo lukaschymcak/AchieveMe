@@ -1,9 +1,9 @@
 // @see - https://www.electron.build/configuration/configuration
 {
   "$schema": "https://raw.githubusercontent.com/electron-userland/electron-builder/master/packages/app-builder-lib/scheme.json",
-  "appId": "YourAppID",
+  "appId": "com.achieveme.app",
   "asar": true,
-  "productName": "YourAppName",
+  "productName": "AchieveMe",
   "directories": {
     "output": "release/${version}"
   },
@@ -13,7 +13,14 @@
   "extraResources": [
     {
       "from": "../goldberg-files/generate_emu_config",
-      "to": "generate_emu_config"
+      "to": "generate_emu_config",
+      "filter": [
+        "**/*",
+        "!_OUTPUT/**",
+        "!my_login.txt",
+        "!appid_finder/**",
+        "!bat/**"
+      ]
     }
   ],
   "mac": {

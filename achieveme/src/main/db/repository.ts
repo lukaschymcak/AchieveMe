@@ -1,17 +1,26 @@
 import type Database from 'better-sqlite3'
 import type { Game, Achievement, SaveLocation } from '../../shared/types'
 
+const GAME_COLUMNS =
+  'appid, name, total_achievements, unlocked_achievements, completion_pct, has_platinum, last_unlocked_at, schema_fetched_at, playtime_seconds, install_path'
+
 // ─── Games ───────────────────────────────────────────────────────────────────
 
 export function upsertGame(db: Database.Database, game: Game): void {
+  const existing = getGame(db, game.appid)
+  const playtimeSeconds = game.playtime_seconds ?? existing?.playtime_seconds ?? 0
+  const installPath = game.install_path ?? existing?.install_path ?? ''
+
   db.prepare(`
     INSERT INTO games (
       appid, name, total_achievements, unlocked_achievements,
-      completion_pct, has_platinum, last_unlocked_at, schema_fetched_at
+      completion_pct, has_platinum, last_unlocked_at, schema_fetched_at,
+      playtime_seconds, install_path
     )
     VALUES (
       @appid, @name, @total_achievements, @unlocked_achievements,
-      @completion_pct, @has_platinum, @last_unlocked_at, @schema_fetched_at
+      @completion_pct, @has_platinum, @last_unlocked_at, @schema_fetched_at,
+      @playtime_seconds, @install_path
     )
     ON CONFLICT(appid) DO UPDATE SET
       name                  = excluded.name,
@@ -20,28 +29,41 @@ export function upsertGame(db: Database.Database, game: Game): void {
       completion_pct        = excluded.completion_pct,
       has_platinum          = excluded.has_platinum,
       last_unlocked_at      = excluded.last_unlocked_at,
-      schema_fetched_at     = excluded.schema_fetched_at
-  `).run(game)
+      schema_fetched_at     = excluded.schema_fetched_at,
+      playtime_seconds      = CASE
+        WHEN excluded.playtime_seconds > games.playtime_seconds
+          THEN excluded.playtime_seconds
+        ELSE games.playtime_seconds
+      END,
+      install_path          = CASE
+        WHEN excluded.install_path != '' THEN excluded.install_path
+        ELSE games.install_path
+      END
+  `).run({
+    ...game,
+    playtime_seconds: playtimeSeconds,
+    install_path: installPath
+  })
 }
 
 export function getGame(db: Database.Database, appid: string): Game | undefined {
-  return db
-    .prepare(
-      `SELECT appid, name, total_achievements, unlocked_achievements,
-              completion_pct, has_platinum, last_unlocked_at, schema_fetched_at
-       FROM games WHERE appid = ?`
-    )
-    .get(appid) as Game | undefined
+  return db.prepare(`SELECT ${GAME_COLUMNS} FROM games WHERE appid = ?`).get(appid) as
+    | Game
+    | undefined
 }
 
 export function getAllGames(db: Database.Database): Game[] {
   return db
-    .prepare(
-      `SELECT appid, name, total_achievements, unlocked_achievements,
-              completion_pct, has_platinum, last_unlocked_at, schema_fetched_at
-       FROM games ORDER BY completion_pct DESC`
-    )
+    .prepare(`SELECT ${GAME_COLUMNS} FROM games ORDER BY completion_pct DESC`)
     .all() as Game[]
+}
+
+export function updateGamePlaytime(db: Database.Database, appid: string, seconds: number): void {
+  db.prepare('UPDATE games SET playtime_seconds = ? WHERE appid = ?').run(seconds, appid)
+}
+
+export function updateGameInstallPath(db: Database.Database, appid: string, installPath: string): void {
+  db.prepare('UPDATE games SET install_path = ? WHERE appid = ?').run(installPath, appid)
 }
 
 export function deleteGame(db: Database.Database, appid: string): void {
@@ -57,11 +79,13 @@ export function upsertAchievements(db: Database.Database, achievements: Achievem
   const stmt = db.prepare(`
     INSERT INTO achievements (
       appid, api_name, display_name, description, icon_url,
-      icon_gray_url, global_percent, earned, earned_time, trophy_tier, hidden
+      icon_gray_url, global_percent, earned, earned_time, trophy_tier, hidden,
+      progress, max_progress
     )
     VALUES (
       @appid, @api_name, @display_name, @description, @icon_url,
-      @icon_gray_url, @global_percent, @earned, @earned_time, @trophy_tier, @hidden
+      @icon_gray_url, @global_percent, @earned, @earned_time, @trophy_tier, @hidden,
+      @progress, @max_progress
     )
     ON CONFLICT(appid, api_name) DO UPDATE SET
       display_name   = excluded.display_name,
@@ -72,13 +96,18 @@ export function upsertAchievements(db: Database.Database, achievements: Achievem
       earned         = excluded.earned,
       earned_time    = excluded.earned_time,
       trophy_tier    = excluded.trophy_tier,
-      hidden         = excluded.hidden
+      hidden         = excluded.hidden,
+      progress       = excluded.progress,
+      max_progress   = excluded.max_progress
   `)
 
-  // Wrap in a transaction so all inserts happen in one disk write
   const insertMany = db.transaction((rows: Achievement[]) => {
     for (const row of rows) {
-      stmt.run(row)
+      stmt.run({
+        ...row,
+        progress: row.progress ?? 0,
+        max_progress: row.max_progress ?? 0
+      })
     }
   })
 

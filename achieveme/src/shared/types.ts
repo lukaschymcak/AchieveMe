@@ -18,6 +18,8 @@ export const ALL_SOURCES: SourceId[] = [
 export interface RawAchievement {
   achieved: boolean
   unlockTime: number // unix seconds, 0 if not earned
+  progress?: number
+  maxProgress?: number
 }
 
 // Persisted in settings.json inside userData
@@ -25,6 +27,17 @@ export interface AppSettings {
   steamApiKey: string
   enabledSources: SourceId[]
   customWatchFolders: string[]
+  notificationsEnabled: boolean
+  closeToTray: boolean
+  soundEnabled: boolean
+  customSoundPath: string
+  playtimeTrackingEnabled: boolean
+}
+
+export interface UnlockChange {
+  apiName: string
+  displayName: string
+  earnedTime: number
 }
 
 // One row in the `games` SQLite table
@@ -37,6 +50,8 @@ export interface Game {
   has_platinum: number // 0 or 1 (SQLite has no boolean)
   last_unlocked_at: number // unix seconds
   schema_fetched_at: number // unix seconds
+  playtime_seconds: number
+  install_path: string
 }
 
 // One row in the `achievements` SQLite table
@@ -52,6 +67,8 @@ export interface Achievement {
   earned_time: number // unix seconds
   trophy_tier: TrophyTier
   hidden: number // 0 or 1 (SQLite has no boolean)
+  progress: number
+  max_progress: number
 }
 
 export interface RecentUnlock {
@@ -83,6 +100,7 @@ export interface ProfileStats {
   nearCompletionGames: NearCompletionGame[]
   // e.g. [{ month: "2024-01", count: 5 }, ...]
   monthlyActivity: Array<{ month: string; count: number }>
+  totalPlaytimeSeconds: number
 }
 
 // Sent over IPC to renderer for the game list page
@@ -95,6 +113,7 @@ export interface GameSummary {
   completion_pct: number
   has_platinum: boolean
   last_unlocked_at: number
+  playtime_seconds: number
 }
 
 // Sent over IPC to renderer for the game detail page
@@ -106,7 +125,15 @@ export interface GameDetail {
 }
 
 /** Goldberg-style save progress (matches achievements.json on disk). */
-export type GoldbergProgress = Record<string, { earned: boolean; earned_time: number }>
+export type GoldbergProgress = Record<
+  string,
+  {
+    earned: boolean
+    earned_time: number
+    progress?: number
+    max_progress?: number
+  }
+>
 
 export interface PortableSaveFile {
   appid: string

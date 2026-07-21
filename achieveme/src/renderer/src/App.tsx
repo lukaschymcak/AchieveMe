@@ -36,6 +36,19 @@ export default function App(): React.ReactElement {
     }
   }, [])
 
+  useEffect(() => {
+    function handleNavigateToGame(appid: string): void {
+      setPage('library')
+      setTransitionDir(null)
+      setSelectedAppid(appid)
+    }
+
+    window.api.onNavigateToGame(handleNavigateToGame)
+    return () => {
+      window.api.offNavigateToGame(handleNavigateToGame)
+    }
+  }, [])
+
   if (selectedAppid) {
     const currentIdx = libraryGames.findIndex((g) => g.appid === selectedAppid)
     const prevAppid = currentIdx > 0 ? libraryGames[currentIdx - 1].appid : null

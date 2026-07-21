@@ -55,6 +55,11 @@ export function regenerateProfileStats(db: Database.Database): void {
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([month, count]) => ({ month, count }))
 
+  const totalPlaytimeSeconds = games.reduce(
+    (sum, game) => sum + (game.playtime_seconds ?? 0),
+    0
+  )
+
   const stats: ProfileStats = {
     totalGames: games.length,
     totalUnlocked: earned.length,
@@ -67,7 +72,8 @@ export function regenerateProfileStats(db: Database.Database): void {
     libraryCompletionPct: computeLibraryCompletionPct(games),
     recentUnlocks: pickRecentUnlocks(earned, gameNames),
     nearCompletionGames: pickNearCompletionGames(games),
-    monthlyActivity
+    monthlyActivity,
+    totalPlaytimeSeconds
   }
 
   const statsPath = path.join(app.getPath('userData'), 'profile_stats.json')

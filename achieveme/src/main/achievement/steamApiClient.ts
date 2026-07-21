@@ -1,5 +1,5 @@
 import https from 'node:https'
-import type { Achievement, Game } from '../../shared/types'
+import type { Achievement, Game, RawAchievement } from '../../shared/types'
 import { normalizeSteamIconUrl } from '../../shared/steamUrls'
 import {
   getCacheEntry,
@@ -185,7 +185,7 @@ function getTrophyTier(globalPercent: number): 'gold' | 'silver' | 'bronze' {
 
 function buildAchievementRecords(
   appid: string,
-  mergedRaw: Record<string, { achieved: boolean; unlockTime: number }>,
+  mergedRaw: Record<string, RawAchievement>,
   schema: SteamSchemaAchievement[] | null,
   percentages: Record<string, number> | null
 ): Achievement[] {
@@ -201,6 +201,8 @@ function buildAchievementRecords(
     const raw = mergedRaw[apiName]
     const earned = raw?.achieved ? 1 : 0
     const earnedTime = raw?.unlockTime ?? 0
+    const maxProgress = raw?.maxProgress ?? 0
+    const progress = maxProgress > 0 ? (raw?.progress ?? 0) : 0
 
     const schemaEntry = schemaMap.get(apiName)
     const globalPercent = percentages?.[apiName] ?? 0
@@ -221,7 +223,9 @@ function buildAchievementRecords(
       earned,
       earned_time: earnedTime,
       trophy_tier: tier,
-      hidden: schemaEntry?.hidden === 1 ? 1 : 0
+      hidden: schemaEntry?.hidden === 1 ? 1 : 0,
+      progress,
+      max_progress: maxProgress
     })
   }
 
@@ -250,7 +254,9 @@ function buildGameRecord(
     completion_pct: completionPct,
     has_platinum: hasPlatinum,
     last_unlocked_at: lastUnlockedAt,
-    schema_fetched_at: schema ? Math.floor(Date.now() / 1000) : existingGame?.schema_fetched_at ?? 0
+    schema_fetched_at: schema ? Math.floor(Date.now() / 1000) : existingGame?.schema_fetched_at ?? 0,
+    playtime_seconds: existingGame?.playtime_seconds ?? 0,
+    install_path: existingGame?.install_path ?? ''
   }
 }
 
@@ -262,7 +268,7 @@ export interface EnrichResult {
 export async function enrichApp(
   appid: string,
   apiKey: string,
-  mergedRaw: Record<string, { achieved: boolean; unlockTime: number }>,
+  mergedRaw: Record<string, RawAchievement>,
   db: Database.Database,
   forceRefresh = false
 ): Promise<EnrichResult> {

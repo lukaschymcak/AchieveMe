@@ -53,6 +53,14 @@ function formatUnlockDate(unixSeconds: number): string | null {
   })
 }
 
+function formatPlaytime(seconds: number): string | null {
+  if (!seconds || seconds <= 0) return null
+  const hours = Math.floor(seconds / 3600)
+  const minutes = Math.floor((seconds % 3600) / 60)
+  if (hours > 0) return `${hours}h ${minutes}m played`
+  return `${minutes}m played`
+}
+
 function CompletionRing({
   pct,
   platinum,
@@ -294,6 +302,10 @@ function AchievementRow({
   const unlockDate = earned ? formatUnlockDate(ach.earned_time) : null
   const rarityLabel =
     ach.global_percent > 0 ? `${ach.global_percent.toFixed(1)}% of players` : 'No rarity data'
+  const hasProgress = !earned && (ach.max_progress ?? 0) > 0
+  const progressPct = hasProgress
+    ? Math.min(100, Math.round(((ach.progress ?? 0) / (ach.max_progress ?? 1)) * 100))
+    : 0
 
   return (
     <li
@@ -336,6 +348,24 @@ function AchievementRow({
           </div>
         )}
         {unlockDate && <div className="achievement-row__unlocked">Unlocked {unlockDate}</div>}
+        {hasProgress && (
+          <div
+            className="achievement-row__progress-track"
+            role="progressbar"
+            aria-valuenow={ach.progress ?? 0}
+            aria-valuemin={0}
+            aria-valuemax={ach.max_progress ?? 0}
+            aria-label={`${ach.progress ?? 0} of ${ach.max_progress ?? 0}`}
+          >
+            <div
+              className="achievement-row__progress-fill"
+              style={{ '--bar-width': `${progressPct}%` } as React.CSSProperties}
+            />
+            <span className="achievement-row__progress-label">
+              {ach.progress ?? 0} / {ach.max_progress ?? 0}
+            </span>
+          </div>
+        )}
       </div>
       <div className="achievement-row__aside">
         <span className={`achievement-row__tier-pill achievement-row__tier-pill--${ach.trophy_tier}`}>
@@ -455,6 +485,7 @@ export default function GameDetailPage({
   const achievements = detail?.achievements ?? []
   const completionPct = game ? Math.round(game.completion_pct) : 0
   const hasPlatinum = game?.has_platinum === 1
+  const playtimeLabel = game ? formatPlaytime(game.playtime_seconds ?? 0) : null
   const hasHiddenUnearned = achievements.some(
     (a) => isHiddenAchievement(a.hidden) && !a.earned
   )
@@ -526,6 +557,9 @@ export default function GameDetailPage({
                       </span>
                       <span className="game-detail__meta-label">achievements</span>
                     </p>
+                    {playtimeLabel && (
+                      <p className="game-detail__meta game-detail__meta--playtime">{playtimeLabel}</p>
+                    )}
                     <div
                       className="game-detail__progress-track game-detail__progress-track--hero"
                       role="progressbar"

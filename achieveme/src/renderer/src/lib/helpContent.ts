@@ -61,6 +61,8 @@ export const TOOLTIPS = {
   monthlyActivity: 'Unlock counts grouped by month from save file timestamps.',
   libraryCompletion: 'Average completion percentage across games that have achievements.',
   unlocksPerGame: 'Total unlocked achievements divided by games in your library.',
+  playtimeStat:
+    'Tracked playtime for games added via Add Game when their install-folder .exe is running.',
   hiddenFilter:
     'Toggle descriptions for unearned hidden achievements. Earned hidden achievements always show their text.',
   tierFilter: 'Filter the list by trophy tier. Counts show how many you have earned in that tier.',
@@ -73,7 +75,11 @@ export const TOOLTIPS = {
   settingsCustomFolders:
     'Extra roots scanned for every enabled source. Use for non-standard install paths.',
   settingsBackup:
-    'Export includes Goldberg/GSE saves and library metadata. Import merges file-by-file without deleting other games.'
+    'Export includes Goldberg/GSE saves and library metadata. Import merges file-by-file without deleting other games.',
+  settingsNotifications:
+    'Tray mode keeps AchieveMe watching save folders after you close the window. Unlock toasts fire on live save changes only — not on Refresh or first scan.',
+  settingsPlaytime:
+    'Playtime is tracked when a known game executable from an Add Game install folder is running.'
 } as const
 
 export const EMPTY_STATES = {
@@ -122,7 +128,11 @@ export const SETTINGS_HINTS = {
     'Export: library metadata plus Goldberg/GSE appid folders and emulator settings. Does not include CODEX or RUNE saves. Import merges file-by-file and never deletes other games on disk. Custom watch folders must exist on the target PC or imports may warn and skip paths.',
   saveSuccess: 'Saved. Open Library and click Refresh to rescan for games.',
   importConfirm:
-    'Import merges backup files into your emulator folders. Existing games not in the backup are left untouched. Continue?'
+    'Import merges backup files into your emulator folders. Existing games not in the backup are left untouched. Continue?',
+  notifications:
+    'AchieveMe can stay in the system tray and show Windows toasts when new achievements unlock from save file changes. Refresh and first library scan never trigger toasts.',
+  customSound:
+    'Leave blank to use the Windows default unlock sound. Pick a .wav or .mp3 file for a custom chime.'
 } as const
 
 export const ADD_GAME = {
@@ -199,10 +209,25 @@ export const HELP_SECTIONS: HelpSection[] = [
     ]
   },
   {
+    id: 'notifications',
+    title: 'Notifications & tray',
+    paragraphs: [
+      'Close the window to hide AchieveMe in the system tray — it keeps watching save folders. Use Show from the tray icon to reopen.',
+      'When a save file changes and a new achievement unlocks, Windows shows a toast (and optional sound). Library Refresh and first launch never spam toasts for existing unlocks.'
+    ],
+    bullets: [
+      'Notifications — unlock toasts on live save changes',
+      'Close to tray — app stays running in the background',
+      'Sound — default Windows chime or custom .wav/.mp3',
+      'Playtime — tracks hours for games added via Add Game wizard'
+    ]
+  },
+  {
     id: 'game-detail',
     title: 'Game detail',
     paragraphs: [
       'Completion reflects merged save data. The platinum row is earned at 100%. Tier filters show earned counts per rarity band.',
+      'Unearned achievements with progress counters show a partial progress bar (Goldberg/GSE saves).',
       'Hidden toggle reveals descriptions for unearned hidden achievements only. Global rarity is Steam-wide, not friends-only.',
       'Edge arrows move through the library in your current sort/search order.'
     ]

@@ -83,7 +83,8 @@ export function normalizeProfileStats(raw: Partial<ProfileStats>): ProfileStats 
     libraryCompletionPct: raw.libraryCompletionPct ?? 0,
     recentUnlocks: raw.recentUnlocks ?? [],
     nearCompletionGames: raw.nearCompletionGames ?? [],
-    monthlyActivity: raw.monthlyActivity ?? []
+    monthlyActivity: raw.monthlyActivity ?? [],
+    totalPlaytimeSeconds: raw.totalPlaytimeSeconds ?? 0
   }
 }
 

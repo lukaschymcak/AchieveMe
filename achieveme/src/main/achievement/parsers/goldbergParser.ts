@@ -1,6 +1,16 @@
 import fs from 'node:fs'
 import type { RawAchievement } from '../../../shared/types'
 
+function readProgressFields(obj: Record<string, unknown>): { progress: number; maxProgress: number } {
+  const progressRaw = obj['progress']
+  const maxProgressRaw = obj['max_progress']
+  const progress = typeof progressRaw === 'number' ? progressRaw : Number(progressRaw) || 0
+  const maxProgress =
+    typeof maxProgressRaw === 'number' ? maxProgressRaw : Number(maxProgressRaw) || 0
+
+  return { progress, maxProgress }
+}
+
 export function parseGoldbergAchievements(filePath: string): Record<string, RawAchievement> {
   const result: Record<string, RawAchievement> = {}
 
@@ -27,10 +37,13 @@ export function parseGoldbergAchievements(filePath: string): Record<string, RawA
     const earned = Boolean(obj['earned'])
     const t = obj['earned_time']
     const unlockTime = typeof t === 'number' ? t : Number(t) || 0
+    const { progress, maxProgress } = readProgressFields(obj)
 
     result[apiName] = {
       achieved: earned,
-      unlockTime: earned ? unlockTime : 0
+      unlockTime: earned ? unlockTime : 0,
+      progress: maxProgress > 0 ? progress : undefined,
+      maxProgress: maxProgress > 0 ? maxProgress : undefined
     }
   }
 

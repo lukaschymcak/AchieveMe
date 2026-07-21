@@ -4,6 +4,8 @@ import path from 'node:path'
 import { app } from 'electron'
 import { loadSettings } from '../settings'
 import { processAppId } from './processAppId'
+import { getDb } from '../db/database'
+import { updateGameInstallPath } from '../db/repository'
 import type { GoldbergApplyRequest } from '../../shared/types'
 import { expandEnv } from './savePathUtils'
 import {
@@ -182,6 +184,7 @@ export async function applyGoldberg(
   }
 
   log('Processing game into library...')
-  await processAppId(appid, settings, true)
+  await processAppId(appid, settings, true, true)
+  updateGameInstallPath(getDb(), appid, gameDir)
   log('Done. Game added to library.')
 }

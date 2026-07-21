@@ -19,6 +19,14 @@ The app includes a **Help** page (top nav and Library header) with guides for di
 
 Help copy lives in `src/renderer/src/lib/helpContent.ts`.
 
+## Play session features
+
+AchieveMe can run in the **system tray** after you close the window (Settings → Notifications & Tray). While watching save folders it shows **Windows unlock toasts** and optional **unlock sounds** when a new achievement appears in a save file — live changes only; Library Refresh and first scan never toast existing unlocks.
+
+**Progress bars** on game detail show partial achievement progress from Goldberg/GSE `progress` / `max_progress` fields in `achievements.json`.
+
+**Playtime** is tracked for games set up via **Add Game** (install folder stored on disk). Dashboard shows total tracked playtime when available; game detail shows per-title hours.
+
 ## Dashboard
 
 The **Dashboard** is the progress pulse home screen: level + XP ring, library snapshot, proportional trophy shelf, monthly unlock chart, recent unlocks, and games close to 100%. Stats are precomputed in `profile_stats.json` via `src/main/achievement/profileStatsService.ts` (regenerated on library refresh and save-file updates). Legacy stats files missing new fields are normalized at read time; run **Refresh** in Library to populate recent unlocks and near-completion games.
@@ -40,6 +48,30 @@ npm run dev
 | `npm run typecheck` | TypeScript check (main + renderer) |
 | `npm run lint` | ESLint |
 | `npm run test` | Unit tests (`node:test`) |
+
+## Packaging (Windows)
+
+AchieveMe ships as a Windows NSIS installer built with `electron-builder`.
+
+### Prerequisites
+
+1. Place the Goldberg generator beside the repo (gitignored): `goldberg-files/generate_emu_config/`
+2. That folder must include `generate_emu_config.exe` and `_internal/` (Add Game depends on it)
+3. Do **not** ship `my_login.txt` (Steam credentials). The build excludes `_OUTPUT/`, `appid_finder/`, `bat/`, and `my_login.txt` even if they exist locally.
+
+### Build
+
+```bash
+cd achieveme
+npm install
+npm run build
+```
+
+The installer is written to:
+
+`achieveme/release/0.1.0/AchieveMe-Windows-0.1.0-Setup.exe`
+
+After install, the generator lives at `resources/generate_emu_config/generate_emu_config.exe` next to the app binary.
 
 ## Backup & restore
 
@@ -77,6 +109,9 @@ Full Backup import **does not delete** emulator folders. It only overwrites file
 7. **Live library update** — With the library open, edit a game's `achievements.json` on disk and save; the card fraction, %, and progress bar should update within ~1s without opening the game. Dashboard stats and open game detail should also refresh automatically.
 8. **Game detail nav & hidden descriptions** — Open a game from the library; confirm **← Library** and **Refresh all** appear as frosted pills on the hero (no separate top nav). Use the left/right arrow buttons on the screen edges to move through games in the library's current sort order without returning to the list; each transition should slide in from the direction of travel. For games with unearned hidden achievements, use the **Hidden** filter pill (with count) to toggle description text; achievement rows always stay visible.
 9. **Help & tooltips** — Open **Help** from the nav; confirm sections load. Click **?** on Dashboard stats and Library Refresh; dismiss first-run welcome and long-press coach mark on Library.
+10. **Tray & unlock toast** — Close the window; confirm tray icon remains. Edit a save file to unlock an achievement; confirm Windows toast (+ sound if enabled). Tray → Show restores the window; Quit exits.
+11. **Progress bars** — Open a Goldberg/GSE game with `progress`/`max_progress` in its save; confirm unearned rows show a partial bar on game detail.
+12. **Playtime** — Add a game via Add Game, launch its `.exe`, play briefly, close it; confirm playtime appears on game detail and Dashboard snapshot after ~15s.
 
 ### In-detail navigation
 

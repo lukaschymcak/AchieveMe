@@ -15,11 +15,14 @@ declare global {
       importZip(): Promise<ImportResult | null>
       searchSteamGames(query: string): Promise<SteamSearchResult[]>
       browseDllPath(): Promise<SteamApiDllInfo | null>
+      browseSoundPath(): Promise<string | null>
       applyGoldberg(request: GoldbergApplyRequest): Promise<void>
       onGoldbergLog(cb: (line: string) => void): void
       offGoldbergLog(): void
       onLibraryUpdated(cb: (payload: LibraryUpdatedPayload) => void): void
       offLibraryUpdated(cb: (payload: LibraryUpdatedPayload) => void): void
+      onNavigateToGame(cb: (appid: string) => void): void
+      offNavigateToGame(cb: (appid: string) => void): void
     }
   }
 }

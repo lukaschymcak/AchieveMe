@@ -12,6 +12,14 @@ function dispatchLibraryUpdated(
   }
 }
 
+const navigateToGameCallbacks = new Set<(appid: string) => void>()
+
+function dispatchNavigateToGame(_event: IpcRendererEvent, appid: string): void {
+  for (const cb of navigateToGameCallbacks) {
+    cb(appid)
+  }
+}
+
 contextBridge.exposeInMainWorld('api', {
   getProfileStats: (): Promise<ProfileStats | null> =>
     ipcRenderer.invoke('get-profile-stats'),
@@ -49,6 +57,9 @@ contextBridge.exposeInMainWorld('api', {
   browseDllPath: (): Promise<SteamApiDllInfo | null> =>
     ipcRenderer.invoke('browse-dll-path'),
 
+  browseSoundPath: (): Promise<string | null> =>
+    ipcRenderer.invoke('browse-sound-path'),
+
   applyGoldberg: (request: GoldbergApplyRequest): Promise<void> =>
     ipcRenderer.invoke('apply-goldberg', request),
 
@@ -71,6 +82,20 @@ contextBridge.exposeInMainWorld('api', {
     libraryUpdatedCallbacks.delete(cb)
     if (libraryUpdatedCallbacks.size === 0) {
       ipcRenderer.removeListener('library-updated', dispatchLibraryUpdated)
+    }
+  },
+
+  onNavigateToGame: (cb: (appid: string) => void): void => {
+    if (navigateToGameCallbacks.size === 0) {
+      ipcRenderer.on('navigate-to-game', dispatchNavigateToGame)
+    }
+    navigateToGameCallbacks.add(cb)
+  },
+
+  offNavigateToGame: (cb: (appid: string) => void): void => {
+    navigateToGameCallbacks.delete(cb)
+    if (navigateToGameCallbacks.size === 0) {
+      ipcRenderer.removeListener('navigate-to-game', dispatchNavigateToGame)
     }
   }
 })

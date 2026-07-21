@@ -60,6 +60,17 @@ export default function SettingsPage({ page, onNavigate }: Props): React.ReactEl
     })
   }
 
+  function toggleSetting<K extends keyof AppSettings>(key: K, value: AppSettings[K]): void {
+    setSettings((s) => s && { ...s, [key]: value })
+  }
+
+  function browseSoundPath(): void {
+    window.api.browseSoundPath().then((picked) => {
+      if (!picked) return
+      setSettings((s) => s && { ...s, customSoundPath: picked })
+    })
+  }
+
   function save(): void {
     if (!settings) return
     window.api.saveSettings(settings).then(() => {
@@ -213,6 +224,64 @@ export default function SettingsPage({ page, onNavigate }: Props): React.ReactEl
               </tbody>
             </table>
           )}
+        </section>
+
+        <section className="settings-page__section" aria-labelledby="settings-notifications">
+          <h2 id="settings-notifications" className="settings-page__section-title">
+            Notifications &amp; Tray
+            <HelpTip content={TOOLTIPS.settingsNotifications} label="Notifications and tray help" />
+          </h2>
+          <p className="settings-page__lead">{SETTINGS_HINTS.notifications}</p>
+          <div className="settings-page__panel settings-page__sources-grid">
+            <label className="settings-page__source-label">
+              <input
+                type="checkbox"
+                checked={settings.notificationsEnabled}
+                onChange={(e) => toggleSetting('notificationsEnabled', e.target.checked)}
+                className="settings-page__checkbox"
+              />
+              <span className="settings-page__source-name">Show unlock toasts while playing</span>
+            </label>
+            <label className="settings-page__source-label">
+              <input
+                type="checkbox"
+                checked={settings.closeToTray}
+                onChange={(e) => toggleSetting('closeToTray', e.target.checked)}
+                className="settings-page__checkbox"
+              />
+              <span className="settings-page__source-name">Close to system tray (keep watching saves)</span>
+            </label>
+            <label className="settings-page__source-label">
+              <input
+                type="checkbox"
+                checked={settings.soundEnabled}
+                onChange={(e) => toggleSetting('soundEnabled', e.target.checked)}
+                className="settings-page__checkbox"
+              />
+              <span className="settings-page__source-name">Play sound on unlock</span>
+            </label>
+            <label className="settings-page__source-label">
+              <input
+                type="checkbox"
+                checked={settings.playtimeTrackingEnabled}
+                onChange={(e) => toggleSetting('playtimeTrackingEnabled', e.target.checked)}
+                className="settings-page__checkbox"
+              />
+              <span className="settings-page__source-name">Track playtime for games added via Add Game</span>
+            </label>
+          </div>
+          <div className="settings-page__folder-add settings-page__folder-add--sound">
+            <AppSearchInput
+              type="text"
+              value={settings.customSoundPath}
+              onChange={(e) => toggleSetting('customSoundPath', e.target.value)}
+              placeholder="Custom unlock sound (.wav or .mp3)"
+              className="settings-page__input--nested"
+              spellCheck={false}
+            />
+            <Chip onClick={browseSoundPath}>Browse</Chip>
+          </div>
+          <p className="settings-page__note">{SETTINGS_HINTS.customSound}</p>
         </section>
 
         <section className="settings-page__section" aria-labelledby="settings-folders">
