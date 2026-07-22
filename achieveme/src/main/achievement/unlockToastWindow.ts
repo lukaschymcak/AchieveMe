@@ -15,11 +15,11 @@ import {
   type ToastQueueState
 } from './unlockToastQueue'
 
-/** Locked to reference toast proportions — do not “hug” content. */
-const TOAST_WIDTH = 320
-const TOAST_HEIGHT = 78
+/** Locked toast window size — bump carefully; rebuild main after changing. */
+const TOAST_WIDTH = 387
+const TOAST_HEIGHT = 97
 const MARGIN = 16
-const BUSY_TIMEOUT_MS = 10_000
+const BUSY_TIMEOUT_MS = 15_000
 
 let queueState: ToastQueueState<UnlockToastPayload> = createToastQueueState()
 let toastWindow: BrowserWindow | null = null

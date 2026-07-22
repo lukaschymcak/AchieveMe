@@ -21,7 +21,7 @@ Help copy lives in `src/renderer/src/lib/helpContent.ts`.
 
 ## Play session features
 
-AchieveMe can run in the **system tray** after you close the window (Settings → Notifications & Tray). While watching save folders it shows a **Steam-style unlock toast** at the **top center** (icon appears first, then expands to reveal name + XP, with rarity chrome for bronze/silver/gold) and optional **unlock sound** when a new achievement appears in a save file. Hitting **100%** on a game fires a one-time **platinum** toast. Live changes only; Library Refresh and first scan never toast existing unlocks. Use **Test notification** in Settings to cycle all four rarity skins.
+AchieveMe can run in the **system tray** after you close the window (Settings → Notifications & Tray). While watching save folders it shows a **Steam-style unlock toast** at the **top center** (icon hold with rarity pulse + border shimmer, expand with content wipe / staggered text / XP count-up; exit fades copy, shrinks, then icon settle) and optional **unlock sound** when a new achievement appears in a save file. Hitting **100%** on a game fires a one-time **platinum** toast. Live changes only; Library Refresh and first scan never toast existing unlocks. Use **Test notification** in Settings to cycle all four rarity skins.
 
 **Progress bars** on game detail show partial achievement progress from Goldberg/GSE `progress` / `max_progress` fields in `achievements.json`.
 
@@ -109,7 +109,7 @@ Full Backup import **does not delete** emulator folders. It only overwrites file
 7. **Live library update** — With the library open, edit a game's `achievements.json` on disk and save; the card fraction, %, and progress bar should update within ~1s without opening the game. Dashboard stats and open game detail should also refresh automatically.
 8. **Game detail nav & hidden descriptions** — Open a game from the library; confirm **← Library** and **Refresh all** appear as frosted pills on the hero (no separate top nav). Use the left/right arrow buttons on the screen edges to move through games in the library's current sort order without returning to the list; each transition should slide in from the direction of travel. For games with unearned hidden achievements, use the **Hidden** filter pill (with count) to toggle description text; achievement rows always stay visible.
 9. **Help & tooltips** — Open **Help** from the nav; confirm sections load. Click **?** on Dashboard stats and Library Refresh; dismiss first-run welcome and long-press coach mark on Library.
-10. **Tray & unlock toast** — Close the window; confirm tray icon remains. Edit a save file to unlock an achievement; confirm the AchieveMe toast appears top-center (icon first, then expands) with sound if enabled. Or use Settings → Test notification. Click opens the game; Tray → Show restores the window; Quit exits.
+10. **Tray & unlock toast** — Close the window; confirm tray icon remains. Edit a save file to unlock an achievement; confirm the AchieveMe toast appears top-center (icon pulse → expand with staggered text/XP → text fades then shrink) with sound if enabled. Or use Settings → Test notification. Click opens the game; Tray → Show restores the window; Quit exits.
 11. **Progress bars** — Open a Goldberg/GSE game with `progress`/`max_progress` in its save; confirm unearned rows show a partial bar on game detail.
 12. **Playtime** — Add a game via Add Game, launch its `.exe`, play briefly, close it; confirm playtime appears on game detail and Dashboard snapshot after ~15s.
 

@@ -1,6 +1,10 @@
 import './toast.css'
 import type { ToastTier, UnlockToastPayload } from '../../../shared/types'
-import { formatToastXp, toastEyebrow } from '../../../shared/unlockToastUtils'
+import {
+  formatToastXp,
+  toastEyebrow,
+  toastXpForTier
+} from '../../../shared/unlockToastUtils'
 
 declare global {
   interface Window {
@@ -13,13 +17,17 @@ declare global {
   }
 }
 
-/** How long the icon-only square stays on screen before expanding. */
 const ICON_HOLD_MS = 500
+const PULSE_AT_MS = 40
 const EXPAND_MS = 450
-/** Slower than expand so the right edge eases in cleanly. */
 const SHRINK_MS = 650
+const TEXT_OUT_MS = 300
 const VISIBLE_MS = 4000
-const EXIT_MS = 240
+const EXIT_MS = 260
+const XP_COUNT_MS = 400
+
+const TEXT_FADE_SELECTOR =
+  '.unlock-toast__eyebrow, .unlock-toast__name, .unlock-toast__game, .unlock-toast__points'
 
 const rootEl = document.getElementById('root')
 if (!rootEl) {
@@ -30,25 +38,80 @@ const root: HTMLElement = rootEl
 let hideTimer: ReturnType<typeof setTimeout> | null = null
 let exitTimer: ReturnType<typeof setTimeout> | null = null
 let expandTimer: ReturnType<typeof setTimeout> | null = null
+let pulseTimer: ReturnType<typeof setTimeout> | null = null
+let xpRaf: number | null = null
 let currentAppid = ''
 
 function clearTimers(): void {
   if (hideTimer) clearTimeout(hideTimer)
   if (exitTimer) clearTimeout(exitTimer)
   if (expandTimer) clearTimeout(expandTimer)
+  if (pulseTimer) clearTimeout(pulseTimer)
+  if (xpRaf !== null) cancelAnimationFrame(xpRaf)
   hideTimer = null
   exitTimer = null
   expandTimer = null
+  pulseTimer = null
+  xpRaf = null
 }
 
 function prefersReducedMotion(): boolean {
   return window.matchMedia('(prefers-reduced-motion: reduce)').matches
 }
 
+function easeOutCubic(t: number): number {
+  return 1 - (1 - t) ** 3
+}
+
+function animateXpCount(el: HTMLElement, target: number, durationMs: number): void {
+  if (prefersReducedMotion() || target <= 0) {
+    el.textContent = `+${target}`
+    return
+  }
+
+  const start = performance.now()
+  el.textContent = '+0'
+
+  const tick = (now: number): void => {
+    const t = Math.min(1, (now - start) / durationMs)
+    el.textContent = `+${Math.round(target * easeOutCubic(t))}`
+    if (t < 1) {
+      xpRaf = requestAnimationFrame(tick)
+    } else {
+      xpRaf = null
+      el.textContent = `+${target}`
+    }
+  }
+
+  xpRaf = requestAnimationFrame(tick)
+}
+
 function finish(): void {
   clearTimers()
   root.innerHTML = ''
   window.toastApi.done()
+}
+
+function fadeOutTextAndXp(card: HTMLElement, onDone: () => void): void {
+  const targets = card.querySelectorAll<HTMLElement>(TEXT_FADE_SELECTOR)
+
+  // Kill enter animations and lock opacity at fully visible, then transition to 0.
+  // (Removing CSS animations otherwise snaps opacity back to the base "0" rule.)
+  for (const el of targets) {
+    el.style.animation = 'none'
+    el.style.opacity = '1'
+    el.style.transition = 'none'
+  }
+
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      for (const el of targets) {
+        el.style.transition = `opacity ${TEXT_OUT_MS}ms cubic-bezier(0.22, 1, 0.36, 1)`
+        el.style.opacity = '0'
+      }
+      expandTimer = setTimeout(onDone, TEXT_OUT_MS)
+    })
+  })
 }
 
 function scheduleDismiss(card: HTMLElement): void {
@@ -60,30 +123,40 @@ function scheduleDismiss(card: HTMLElement): void {
       return
     }
 
-    // Reverse of expand: shrink from the right (icon stays left), then fade out.
-    card.classList.remove('unlock-toast--expanded')
-    expandTimer = setTimeout(() => {
-      card.classList.remove('unlock-toast--visible')
-      card.classList.add('unlock-toast--exit')
-      exitTimer = setTimeout(finish, EXIT_MS)
-    }, SHRINK_MS)
+    fadeOutTextAndXp(card, () => {
+      card.classList.remove('unlock-toast--expanded')
+      expandTimer = setTimeout(() => {
+        card.classList.remove('unlock-toast--visible')
+        card.classList.add('unlock-toast--exit')
+        exitTimer = setTimeout(finish, EXIT_MS)
+      }, SHRINK_MS)
+    })
   }, VISIBLE_MS)
 }
 
-function startExpandSequence(card: HTMLElement): void {
-  // Paint collapsed icon first, then hold, then expand.
+function startExpandSequence(card: HTMLElement, pointsEl: HTMLElement, tier: ToastTier): void {
   requestAnimationFrame(() => {
     card.classList.add('unlock-toast--visible')
 
     if (prefersReducedMotion()) {
       card.classList.add('unlock-toast--expanded')
+      pointsEl.textContent = formatToastXp(tier)
       scheduleDismiss(card)
       return
     }
 
     requestAnimationFrame(() => {
+      pulseTimer = setTimeout(() => {
+        card.classList.add('unlock-toast--pulse')
+        card.classList.add('unlock-toast--shimmer')
+      }, PULSE_AT_MS)
+
       expandTimer = setTimeout(() => {
+        card.classList.remove('unlock-toast--pulse')
+        card.classList.remove('unlock-toast--shimmer')
         card.classList.add('unlock-toast--expanded')
+        animateXpCount(pointsEl, toastXpForTier(tier), XP_COUNT_MS)
+
         expandTimer = setTimeout(() => {
           scheduleDismiss(card)
         }, EXPAND_MS)
@@ -109,7 +182,7 @@ function renderToast(payload: UnlockToastPayload): void {
 
   const points = document.createElement('span')
   points.className = 'unlock-toast__points'
-  points.textContent = formatToastXp(tier)
+  points.textContent = '+0'
   points.setAttribute('aria-hidden', 'true')
 
   const iconWrap = document.createElement('span')
@@ -120,8 +193,8 @@ function renderToast(payload: UnlockToastPayload): void {
     img.className = 'unlock-toast__icon'
     img.src = payload.iconUrl
     img.alt = ''
-    img.width = 48
-    img.height = 48
+    img.width = 57
+    img.height = 57
     img.onerror = () => {
       const fallback = document.createElement('span')
       fallback.className = 'unlock-toast__icon-fallback'
@@ -165,7 +238,7 @@ function renderToast(payload: UnlockToastPayload): void {
     finish()
   })
 
-  startExpandSequence(card)
+  startExpandSequence(card, points, tier)
 }
 
 window.toastApi.onShow(renderToast)
