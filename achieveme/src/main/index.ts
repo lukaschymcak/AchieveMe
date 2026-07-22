@@ -5,7 +5,7 @@ import { initDb } from './db/database'
 import { loadSettings } from './settings'
 import { startWatcher } from './achievement/watcherService'
 import { startPlaytimeTracker, stopPlaytimeTracker } from './achievement/playtimeService'
-import { setUnlockNavigationHandler } from './achievement/unlockNotifyService'
+import { setUnlockNavigationHandler, cleanupUnlockNotifications } from './achievement/unlockNotifyService'
 import { registerIpcHandlers } from './ipc/handlers'
 import { destroyTray, initTray, isQuitting, setQuitting } from './trayService'
 
@@ -81,6 +81,7 @@ app.whenReady().then(() => {
 app.on('before-quit', () => {
   setQuitting(true)
   stopPlaytimeTracker()
+  cleanupUnlockNotifications()
   destroyTray()
 })
 

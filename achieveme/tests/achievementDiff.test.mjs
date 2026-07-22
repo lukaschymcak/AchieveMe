@@ -30,7 +30,13 @@ function ach(overrides) {
 test('diffAchievements reports newly earned achievements', () => {
   const previous = [ach({ api_name: 'A' }), ach({ api_name: 'B', earned: 1, earned_time: 100 })]
   const next = [
-    ach({ api_name: 'A', earned: 1, earned_time: 200 }),
+    ach({
+      api_name: 'A',
+      earned: 1,
+      earned_time: 200,
+      icon_url: 'https://example.com/a.png',
+      trophy_tier: 'gold'
+    }),
     ach({ api_name: 'B', earned: 1, earned_time: 100 })
   ]
 
@@ -38,6 +44,8 @@ test('diffAchievements reports newly earned achievements', () => {
   assert.equal(result.unlocked.length, 1)
   assert.equal(result.unlocked[0].apiName, 'A')
   assert.equal(result.unlocked[0].earnedTime, 200)
+  assert.equal(result.unlocked[0].iconUrl, 'https://example.com/a.png')
+  assert.equal(result.unlocked[0].tier, 'gold')
 })
 
 test('diffAchievements ignores already earned achievements', () => {

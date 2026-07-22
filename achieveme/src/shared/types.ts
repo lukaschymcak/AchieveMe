@@ -7,6 +7,9 @@ export type SourceId =
 
 export type TrophyTier = 'bronze' | 'silver' | 'gold'
 
+/** Toast chrome tiers — achievement unlocks use TrophyTier; platinum is 100% game celebration. */
+export type ToastTier = TrophyTier | 'platinum'
+
 export const ALL_SOURCES: SourceId[] = [
   'goldberg',
   'gse',
@@ -38,6 +41,17 @@ export interface UnlockChange {
   apiName: string
   displayName: string
   earnedTime: number
+  iconUrl: string
+  tier: TrophyTier
+}
+
+/** Payload sent to the unlock toast overlay window. */
+export interface UnlockToastPayload {
+  appid: string
+  gameName: string
+  displayName: string
+  iconUrl: string
+  tier: ToastTier
 }
 
 // One row in the `games` SQLite table

@@ -64,6 +64,10 @@ export default function SettingsPage({ page, onNavigate }: Props): React.ReactEl
     setSettings((s) => s && { ...s, [key]: value })
   }
 
+  function testNotification(): void {
+    void window.api.previewUnlockToast()
+  }
+
   function browseSoundPath(): void {
     window.api.browseSoundPath().then((picked) => {
       if (!picked) return
@@ -282,6 +286,12 @@ export default function SettingsPage({ page, onNavigate }: Props): React.ReactEl
             <Chip onClick={browseSoundPath}>Browse</Chip>
           </div>
           <p className="settings-page__note">{SETTINGS_HINTS.customSound}</p>
+          <div className="settings-page__action-row">
+            <Chip variant="action" onClick={testNotification}>
+              Test notification
+            </Chip>
+          </div>
+          <p className="settings-page__note">{SETTINGS_HINTS.testNotification}</p>
         </section>
 
         <section className="settings-page__section" aria-labelledby="settings-folders">

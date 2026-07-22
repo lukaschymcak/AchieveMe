@@ -16,6 +16,7 @@ declare global {
       searchSteamGames(query: string): Promise<SteamSearchResult[]>
       browseDllPath(): Promise<SteamApiDllInfo | null>
       browseSoundPath(): Promise<string | null>
+      previewUnlockToast(): Promise<void>
       applyGoldberg(request: GoldbergApplyRequest): Promise<void>
       onGoldbergLog(cb: (line: string) => void): void
       offGoldbergLog(): void

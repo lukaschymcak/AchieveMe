@@ -5,7 +5,8 @@ import {
   upsertSaveLocation,
   deleteSaveLocationsForApp,
   deleteGame,
-  getAchievementsForGame
+  getAchievementsForGame,
+  getGame
 } from '../db/repository'
 import { scanAllSources } from './discoveryService'
 import { parseAchievementsBySource } from './parsers/parseBySource'
@@ -15,7 +16,8 @@ import { regenerateProfileStats } from './profileStatsService'
 import { encodePortablePath, GOLDBERG_JSON_SOURCES } from './savePathUtils'
 import { notifyLibraryUpdated } from './libraryNotifyService'
 import { diffAchievements } from './achievementDiff'
-import { notifyUnlocks } from './unlockNotifyService'
+import { notifyPlatinumUnlock, notifyUnlocks } from './unlockNotifyService'
+import { isNewPlatinum } from '../../shared/unlockToastUtils'
 import type { AppSettings } from '../../shared/types'
 
 export async function processAppId(
@@ -26,6 +28,7 @@ export async function processAppId(
 ): Promise<void> {
   const db = getDb()
   const previousAchievements = getAchievementsForGame(db, appid)
+  const previousGame = getGame(db, appid)
   const hadPriorRows = previousAchievements.length > 0
 
   // 1. Find all save files on disk for this appid
@@ -69,6 +72,11 @@ export async function processAppId(
   const enriched = await enrichApp(appid, settings.steamApiKey, mergedRaw, db, forceRefresh)
 
   const diff = diffAchievements(previousAchievements, enriched.achievements)
+  const newlyPlatinum = isNewPlatinum(
+    hadPriorRows,
+    previousGame?.has_platinum ?? 0,
+    enriched.game.has_platinum
+  )
 
   // 5. Write to SQLite
   upsertGame(db, enriched.game)
@@ -77,8 +85,13 @@ export async function processAppId(
   // 6. Rebuild profile_stats.json
   regenerateProfileStats(db)
 
-  if (!suppressNotifications && hadPriorRows && diff.unlocked.length > 0) {
-    notifyUnlocks(appid, enriched.game.name, diff.unlocked)
+  if (!suppressNotifications && hadPriorRows) {
+    if (diff.unlocked.length > 0) {
+      notifyUnlocks(appid, enriched.game.name, diff.unlocked)
+    }
+    if (newlyPlatinum) {
+      notifyPlatinumUnlock(appid, enriched.game.name, diff.unlocked.length === 0)
+    }
   }
 
   notifyLibraryUpdated(appid)

@@ -7,7 +7,15 @@ export default defineConfig({
     plugins: [externalizeDepsPlugin()]
   },
   preload: {
-    plugins: [externalizeDepsPlugin()]
+    plugins: [externalizeDepsPlugin()],
+    build: {
+      rollupOptions: {
+        input: {
+          index: resolve('src/preload/index.ts'),
+          toast: resolve('src/preload/toast.ts')
+        }
+      }
+    }
   },
   renderer: {
     resolve: {
@@ -15,6 +23,14 @@ export default defineConfig({
         '@': resolve('src/renderer/src')
       }
     },
-    plugins: [react()]
+    plugins: [react()],
+    build: {
+      rollupOptions: {
+        input: {
+          index: resolve('src/renderer/index.html'),
+          toast: resolve('src/renderer/toast.html')
+        }
+      }
+    }
   }
 })

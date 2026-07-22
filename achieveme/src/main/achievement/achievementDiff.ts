@@ -1,10 +1,6 @@
-import type { Achievement } from '../../shared/types'
+import type { Achievement, UnlockChange } from '../../shared/types'
 
-export interface UnlockChange {
-  apiName: string
-  displayName: string
-  earnedTime: number
-}
+export type { UnlockChange }
 
 export interface ProgressChange {
   apiName: string
@@ -34,7 +30,9 @@ export function diffAchievements(
       unlocked.push({
         apiName: ach.api_name,
         displayName: ach.display_name,
-        earnedTime: ach.earned_time
+        earnedTime: ach.earned_time,
+        iconUrl: ach.icon_url || ach.icon_gray_url || '',
+        tier: ach.trophy_tier
       })
     }
 

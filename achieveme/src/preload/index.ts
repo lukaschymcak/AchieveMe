@@ -60,6 +60,9 @@ contextBridge.exposeInMainWorld('api', {
   browseSoundPath: (): Promise<string | null> =>
     ipcRenderer.invoke('browse-sound-path'),
 
+  previewUnlockToast: (): Promise<void> =>
+    ipcRenderer.invoke('preview-unlock-toast'),
+
   applyGoldberg: (request: GoldbergApplyRequest): Promise<void> =>
     ipcRenderer.invoke('apply-goldberg', request),
 

@@ -1,0 +1,249 @@
+:root {
+  --surface-1: oklch(18% 0.014 275);
+  --surface-2: oklch(22% 0.016 275);
+  --border-subtle: oklch(34% 0.02 275);
+  --ink: oklch(93% 0.01 275);
+  --ink-muted: oklch(70% 0.014 275);
+  --tier-bronze: oklch(62% 0.13 58);
+  --tier-silver: oklch(76% 0.025 260);
+  --tier-gold: oklch(78% 0.15 88);
+  --tier-platinum: oklch(84% 0.07 285);
+  --toast-accent: var(--tier-bronze);
+  --toast-icon-phase: 64px;
+  --font-stats: 'Rajdhani', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-ui: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: transparent;
+  font-family: var(--font-ui);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+}
+
+#root {
+  display: flex;
+  align-items: flex-start;
+  /* Left-align so width changes move only the right edge (icon stays put). */
+  justify-content: flex-start;
+  width: 100%;
+  height: 100%;
+  padding: 10px 4px 2px;
+}
+
+.unlock-toast {
+  --toast-accent: var(--tier-bronze);
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  width: var(--toast-icon-phase);
+  max-width: var(--toast-icon-phase);
+  height: calc(100% - 4px);
+  margin: 0;
+  padding: 0;
+  background: color-mix(in oklch, var(--surface-1) 94%, black);
+  border: 1px solid var(--border-subtle);
+  border-radius: 3px;
+  overflow: hidden;
+  cursor: pointer;
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  appearance: none;
+  -webkit-appearance: none;
+  opacity: 0;
+  transform: scale(0.96);
+  transform-origin: left center;
+  transition:
+    opacity 100ms var(--ease-out),
+    transform 100ms var(--ease-out),
+    width 650ms cubic-bezier(0.33, 1, 0.32, 1),
+    max-width 650ms cubic-bezier(0.33, 1, 0.32, 1);
+}
+
+.unlock-toast[data-tier='bronze'] {
+  --toast-accent: var(--tier-bronze);
+}
+
+.unlock-toast[data-tier='silver'] {
+  --toast-accent: var(--tier-silver);
+}
+
+.unlock-toast[data-tier='gold'] {
+  --toast-accent: var(--tier-gold);
+}
+
+.unlock-toast[data-tier='platinum'] {
+  --toast-accent: var(--tier-platinum);
+}
+
+/* Icon phase: fully visible immediately — do not fade through “nothing”. */
+.unlock-toast--visible {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.unlock-toast--expanded {
+  width: 100%;
+  max-width: 100%;
+  overflow: visible;
+}
+
+.unlock-toast--exit {
+  /* Keep collapsed icon size while fading — width already shrunk before this class. */
+  width: var(--toast-icon-phase);
+  max-width: var(--toast-icon-phase);
+  overflow: hidden;
+  opacity: 0;
+  transform: scale(0.96);
+  transform-origin: left center;
+  transition:
+    opacity 240ms var(--ease-out),
+    transform 240ms var(--ease-out);
+}
+
+.unlock-toast__points {
+  position: absolute;
+  top: -8px;
+  right: 8px;
+  z-index: 2;
+  display: none;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: oklch(98% 0 0);
+  color: oklch(18% 0.02 275);
+  font-family: var(--font-stats);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1.15;
+  box-shadow: 0 2px 8px oklch(0% 0 0 / 0.35);
+  pointer-events: none;
+  opacity: 0;
+}
+
+.unlock-toast--expanded .unlock-toast__points {
+  display: inline-flex;
+  opacity: 1;
+  animation: toast-fade-in 280ms var(--ease-out) 80ms both;
+}
+
+.unlock-toast__icon-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--toast-icon-phase);
+  flex: 0 0 var(--toast-icon-phase);
+}
+
+.unlock-toast__icon {
+  width: 48px;
+  height: 48px;
+  object-fit: cover;
+  border-radius: 3px;
+  border: 2px solid var(--toast-accent);
+}
+
+.unlock-toast__icon-fallback {
+  width: 48px;
+  height: 48px;
+  border-radius: 3px;
+  background: color-mix(in oklch, var(--toast-accent) 16%, var(--surface-2));
+  border: 2px solid var(--toast-accent);
+}
+
+/* Collapsed: body must not affect layout or show through. */
+.unlock-toast__body {
+  display: none;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  padding: 6px 40px 6px 4px;
+  opacity: 0;
+}
+
+.unlock-toast--expanded .unlock-toast__body {
+  display: flex;
+  opacity: 1;
+  animation: toast-fade-in 300ms var(--ease-out) 100ms both;
+}
+
+.unlock-toast__eyebrow {
+  font-family: var(--font-stats);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: color-mix(in oklch, var(--toast-accent) 70%, var(--ink-muted));
+}
+
+.unlock-toast__name {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.unlock-toast__game {
+  font-size: 12px;
+  color: var(--ink-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@keyframes toast-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .unlock-toast {
+    transition: none;
+    transform: none;
+    width: 100%;
+    max-width: 100%;
+    justify-content: flex-start;
+    overflow: visible;
+    opacity: 1;
+  }
+
+  .unlock-toast__body {
+    display: flex;
+    opacity: 1;
+    animation: none;
+  }
+
+  .unlock-toast__points {
+    display: inline-flex;
+    opacity: 1;
+    animation: none;
+  }
+
+  .unlock-toast--exit {
+    transform: none;
+  }
+}

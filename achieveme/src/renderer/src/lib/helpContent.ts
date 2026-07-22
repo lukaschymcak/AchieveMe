@@ -77,7 +77,7 @@ export const TOOLTIPS = {
   settingsBackup:
     'Export includes Goldberg/GSE saves and library metadata. Import merges file-by-file without deleting other games.',
   settingsNotifications:
-    'Tray mode keeps AchieveMe watching save folders after you close the window. Unlock toasts fire on live save changes only — not on Refresh or first scan.',
+    'Tray mode keeps AchieveMe watching save folders after you close the window. Unlock toasts use a Steam-style layout with bronze/silver/gold accents by rarity, plus a platinum toast when a game first hits 100%. They fire on live save changes only.',
   settingsPlaytime:
     'Playtime is tracked when a known game executable from an Add Game install folder is running.'
 } as const
@@ -130,9 +130,11 @@ export const SETTINGS_HINTS = {
   importConfirm:
     'Import merges backup files into your emulator folders. Existing games not in the backup are left untouched. Continue?',
   notifications:
-    'AchieveMe can stay in the system tray and show Windows toasts when new achievements unlock from save file changes. Refresh and first library scan never trigger toasts.',
+    'AchieveMe can stay in the system tray and show a Steam-style unlock toast (rarity accents; platinum at 100%) with optional sound when new achievements appear in save files. Refresh and first library scan never trigger toasts.',
   customSound:
-    'Leave blank to use the Windows default unlock sound. Pick a .wav or .mp3 file for a custom chime.'
+    'Leave blank to use the Windows default unlock sound. Pick a .wav or .mp3 file for a custom chime.',
+  testNotification:
+    'Preview the Steam-style unlock toast anytime. Each click cycles bronze → silver → gold → platinum skins. Works even when unlock toasts are disabled; real unlocks still follow the checkbox above.'
 } as const
 
 export const ADD_GAME = {
@@ -213,12 +215,14 @@ export const HELP_SECTIONS: HelpSection[] = [
     title: 'Notifications & tray',
     paragraphs: [
       'Close the window to hide AchieveMe in the system tray — it keeps watching save folders. Use Show from the tray icon to reopen.',
-      'When a save file changes and a new achievement unlocks, Windows shows a toast (and optional sound). Library Refresh and first launch never spam toasts for existing unlocks.'
+      'When a save file changes and a new achievement unlocks, AchieveMe shows a Steam-style toast (UNLOCKED! with bronze/silver/gold chrome by rarity). When a game first reaches 100%, a platinum celebration toast follows. Library Refresh and first launch never spam toasts for existing unlocks. Use Settings → Test notification to cycle through all four skins.'
     ],
     bullets: [
-      'Notifications — unlock toasts on live save changes',
+      'Notifications — Steam-style unlock toasts on live save changes',
+      'Rarity chrome — bronze / silver / gold by achievement tier; platinum at 100%',
       'Close to tray — app stays running in the background',
       'Sound — default Windows chime or custom .wav/.mp3',
+      'Test notification — cycles rarity skins from Settings',
       'Playtime — tracks hours for games added via Add Game wizard'
     ]
   },
