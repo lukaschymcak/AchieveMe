@@ -19,7 +19,7 @@ import {
 const TOAST_WIDTH = 387
 const TOAST_HEIGHT = 97
 const MARGIN = 16
-const BUSY_TIMEOUT_MS = 15_000
+const BUSY_TIMEOUT_MS = 22_500
 
 let queueState: ToastQueueState<UnlockToastPayload> = createToastQueueState()
 let toastWindow: BrowserWindow | null = null

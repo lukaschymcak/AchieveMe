@@ -17,14 +17,14 @@ declare global {
   }
 }
 
-const ICON_HOLD_MS = 500
-const PULSE_AT_MS = 40
-const EXPAND_MS = 450
-const SHRINK_MS = 650
-const TEXT_OUT_MS = 300
-const VISIBLE_MS = 4000
-const EXIT_MS = 260
-const XP_COUNT_MS = 400
+const ICON_HOLD_MS = 750
+const PULSE_AT_MS = 60
+const EXPAND_MS = 700
+const SHRINK_MS = 700
+const TEXT_OUT_MS = 320
+const VISIBLE_MS = 4800
+const EXIT_MS = 280
+const XP_COUNT_MS = 600
 
 const TEXT_FADE_SELECTOR =
   '.unlock-toast__eyebrow, .unlock-toast__name, .unlock-toast__game, .unlock-toast__points'
@@ -140,6 +140,7 @@ function startExpandSequence(card: HTMLElement, pointsEl: HTMLElement, tier: Toa
 
     if (prefersReducedMotion()) {
       card.classList.add('unlock-toast--expanded')
+      card.classList.add('unlock-toast--xp')
       pointsEl.textContent = formatToastXp(tier)
       scheduleDismiss(card)
       return
@@ -155,9 +156,10 @@ function startExpandSequence(card: HTMLElement, pointsEl: HTMLElement, tier: Toa
         card.classList.remove('unlock-toast--pulse')
         card.classList.remove('unlock-toast--shimmer')
         card.classList.add('unlock-toast--expanded')
-        animateXpCount(pointsEl, toastXpForTier(tier), XP_COUNT_MS)
 
         expandTimer = setTimeout(() => {
+          card.classList.add('unlock-toast--xp')
+          animateXpCount(pointsEl, toastXpForTier(tier), XP_COUNT_MS)
           scheduleDismiss(card)
         }, EXPAND_MS)
       }, ICON_HOLD_MS)

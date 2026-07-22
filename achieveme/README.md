@@ -21,7 +21,7 @@ Help copy lives in `src/renderer/src/lib/helpContent.ts`.
 
 ## Play session features
 
-AchieveMe can run in the **system tray** after you close the window (Settings → Notifications & Tray). While watching save folders it shows a **Steam-style unlock toast** at the **top center** (icon hold with rarity pulse + border shimmer, expand with content wipe / staggered text / XP count-up; exit fades copy, shrinks, then icon settle) and optional **unlock sound** when a new achievement appears in a save file. Hitting **100%** on a game fires a one-time **platinum** toast. Live changes only; Library Refresh and first scan never toast existing unlocks. Use **Test notification** in Settings to cycle all four rarity skins.
+AchieveMe can run in the **system tray** after you close the window (Settings → Notifications & Tray). While watching save folders it shows a **Steam-style unlock toast** at the **top center** (icon hold with rarity pulse + border shimmer, expand with content wipe / staggered text, then XP drop-in + count-up after fully open; exit fades copy then shrinks) and optional **unlock sound** when a new achievement appears in a save file. Hitting **100%** on a game fires a one-time **platinum** toast. Live changes only; Library Refresh and first scan never toast existing unlocks. Use **Test notification** in Settings to cycle all four rarity skins.
 
 **Progress bars** on game detail show partial achievement progress from Goldberg/GSE `progress` / `max_progress` fields in `achievements.json`.
 
