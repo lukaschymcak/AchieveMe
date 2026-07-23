@@ -10,7 +10,8 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   closeToTray: true,
   soundEnabled: true,
   customSoundPath: '',
-  playtimeTrackingEnabled: true
+  playtimeTrackingEnabled: true,
+  sessionRecapEnabled: true
 }
 
 export function normalizeAppSettings(
@@ -30,6 +31,8 @@ export function normalizeAppSettings(
     soundEnabled: parsed?.soundEnabled ?? DEFAULT_APP_SETTINGS.soundEnabled,
     customSoundPath: parsed?.customSoundPath ?? DEFAULT_APP_SETTINGS.customSoundPath,
     playtimeTrackingEnabled:
-      parsed?.playtimeTrackingEnabled ?? DEFAULT_APP_SETTINGS.playtimeTrackingEnabled
+      parsed?.playtimeTrackingEnabled ?? DEFAULT_APP_SETTINGS.playtimeTrackingEnabled,
+    sessionRecapEnabled:
+      parsed?.sessionRecapEnabled ?? DEFAULT_APP_SETTINGS.sessionRecapEnabled
   }
 }

@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
-import type { ProfileStats, GameSummary, GameDetail, AppSettings, ImportResult, SteamSearchResult, GoldbergApplyRequest, SteamApiDllInfo, LibraryUpdatedPayload } from '../shared/types'
+import type { ProfileStats, GameSummary, GameDetail, AppSettings, ImportResult, SteamSearchResult, GoldbergApplyRequest, SteamApiDllInfo, LibraryUpdatedPayload, SessionRecapPayload } from '../shared/types'
 
 const libraryUpdatedCallbacks = new Set<(payload: LibraryUpdatedPayload) => void>()
 
@@ -17,6 +17,14 @@ const navigateToGameCallbacks = new Set<(appid: string) => void>()
 function dispatchNavigateToGame(_event: IpcRendererEvent, appid: string): void {
   for (const cb of navigateToGameCallbacks) {
     cb(appid)
+  }
+}
+
+const sessionRecapCallbacks = new Set<(payload: SessionRecapPayload) => void>()
+
+function dispatchSessionRecap(_event: IpcRendererEvent, payload: SessionRecapPayload): void {
+  for (const cb of sessionRecapCallbacks) {
+    cb(payload)
   }
 }
 
@@ -63,6 +71,13 @@ contextBridge.exposeInMainWorld('api', {
   previewUnlockToast: (): Promise<void> =>
     ipcRenderer.invoke('preview-unlock-toast'),
 
+  previewSessionRecap: (): Promise<void> =>
+    ipcRenderer.invoke('preview-session-recap'),
+
+  sessionRecapDone: (): void => {
+    ipcRenderer.send('session-recap-done')
+  },
+
   applyGoldberg: (request: GoldbergApplyRequest): Promise<void> =>
     ipcRenderer.invoke('apply-goldberg', request),
 
@@ -99,6 +114,20 @@ contextBridge.exposeInMainWorld('api', {
     navigateToGameCallbacks.delete(cb)
     if (navigateToGameCallbacks.size === 0) {
       ipcRenderer.removeListener('navigate-to-game', dispatchNavigateToGame)
+    }
+  },
+
+  onSessionRecap: (cb: (payload: SessionRecapPayload) => void): void => {
+    if (sessionRecapCallbacks.size === 0) {
+      ipcRenderer.on('session-recap', dispatchSessionRecap)
+    }
+    sessionRecapCallbacks.add(cb)
+  },
+
+  offSessionRecap: (cb: (payload: SessionRecapPayload) => void): void => {
+    sessionRecapCallbacks.delete(cb)
+    if (sessionRecapCallbacks.size === 0) {
+      ipcRenderer.removeListener('session-recap', dispatchSessionRecap)
     }
   }
 })

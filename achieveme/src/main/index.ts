@@ -6,6 +6,7 @@ import { loadSettings } from './settings'
 import { startWatcher } from './achievement/watcherService'
 import { startPlaytimeTracker, stopPlaytimeTracker } from './achievement/playtimeService'
 import { setUnlockNavigationHandler, cleanupUnlockNotifications } from './achievement/unlockNotifyService'
+import { setSessionRecapMainWindow } from './achievement/sessionRecapService'
 import { registerIpcHandlers } from './ipc/handlers'
 import { destroyTray, initTray, isQuitting, setQuitting } from './trayService'
 
@@ -72,6 +73,7 @@ app.whenReady().then(() => {
   createWindow()
   initTray(() => mainWindow)
   setUnlockNavigationHandler(showMainWindowAndNavigate)
+  setSessionRecapMainWindow(() => mainWindow)
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()

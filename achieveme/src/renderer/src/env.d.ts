@@ -1,4 +1,15 @@
-import type { ProfileStats, GameSummary, GameDetail, AppSettings, ImportResult, SteamSearchResult, GoldbergApplyRequest, SteamApiDllInfo, LibraryUpdatedPayload } from '../../shared/types'
+import type {
+  ProfileStats,
+  GameSummary,
+  GameDetail,
+  AppSettings,
+  ImportResult,
+  SteamSearchResult,
+  GoldbergApplyRequest,
+  SteamApiDllInfo,
+  LibraryUpdatedPayload,
+  SessionRecapPayload
+} from '../../shared/types'
 
 declare global {
   interface Window {
@@ -17,6 +28,8 @@ declare global {
       browseDllPath(): Promise<SteamApiDllInfo | null>
       browseSoundPath(): Promise<string | null>
       previewUnlockToast(): Promise<void>
+      previewSessionRecap(): Promise<void>
+      sessionRecapDone(): void
       applyGoldberg(request: GoldbergApplyRequest): Promise<void>
       onGoldbergLog(cb: (line: string) => void): void
       offGoldbergLog(): void
@@ -24,6 +37,8 @@ declare global {
       offLibraryUpdated(cb: (payload: LibraryUpdatedPayload) => void): void
       onNavigateToGame(cb: (appid: string) => void): void
       offNavigateToGame(cb: (appid: string) => void): void
+      onSessionRecap(cb: (payload: SessionRecapPayload) => void): void
+      offSessionRecap(cb: (payload: SessionRecapPayload) => void): void
     }
   }
 }

@@ -4,6 +4,7 @@ import { AppChrome, AppNav, AppShell, Chip } from '../components/app'
 import HelpTip from '../components/HelpTip'
 import type { AppPage } from '../lib/appNavigation'
 import { TOOLTIPS, EMPTY_STATES } from '../lib/helpContent'
+import { formatPlaytimeCompact } from '../../../shared/playtimeUtils'
 
 interface Props {
   page: AppPage
@@ -78,14 +79,6 @@ function unlocksPerGame(totalUnlocked: number, totalGames: number): string {
 
   const average = totalUnlocked / totalGames
   return average >= 10 ? average.toFixed(0) : average.toFixed(1)
-}
-
-function formatTotalPlaytime(seconds: number): string {
-  if (!seconds || seconds <= 0) return '—'
-  const hours = Math.floor(seconds / 3600)
-  const minutes = Math.floor((seconds % 3600) / 60)
-  if (hours > 0) return `${hours}h ${minutes}m`
-  return `${minutes}m`
 }
 
 export default function DashboardPage({
@@ -344,17 +337,15 @@ function DashboardContent({
                 {unlocksPerGame(stats.totalUnlocked, stats.totalGames)}
               </dd>
             </div>
-            {stats.totalPlaytimeSeconds > 0 && (
-              <div className="dashboard-snapshot__row">
-                <dt className="dashboard-snapshot__label dashboard-stat-label">
-                  Playtime
-                  <HelpTip content={TOOLTIPS.playtimeStat} label="Playtime help" />
-                </dt>
-                <dd className="dashboard-snapshot__value">
-                  {formatTotalPlaytime(stats.totalPlaytimeSeconds)}
-                </dd>
-              </div>
-            )}
+            <div className="dashboard-snapshot__row">
+              <dt className="dashboard-snapshot__label dashboard-stat-label">
+                Playtime
+                <HelpTip content={TOOLTIPS.playtimeStat} label="Playtime help" />
+              </dt>
+              <dd className="dashboard-snapshot__value">
+                {formatPlaytimeCompact(stats.totalPlaytimeSeconds)}
+              </dd>
+            </div>
           </dl>
           <Chip variant="action" onClick={() => onNavigate('library')}>
             Open Library

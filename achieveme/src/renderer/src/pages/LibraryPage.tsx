@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import type { GameSummary } from '../../../shared/types'
+import { formatPlaytimeCompact } from '../../../shared/playtimeUtils'
 import SteamApiKeyForm from '../components/SteamApiKeyForm'
 import AddGameModal from '../components/AddGameModal'
 import GameCardMenu, { type GameCardMenuMode } from '../components/GameCardMenu'
@@ -417,7 +418,7 @@ function GameCard({
       }}
       role="button"
       tabIndex={0}
-      aria-label={`${game.name}, ${game.unlocked_achievements} of ${game.total_achievements} achievements, ${completionPct} percent complete`}
+      aria-label={`${game.name}, ${game.unlocked_achievements} of ${game.total_achievements} achievements, ${formatPlaytimeCompact(game.playtime_seconds ?? 0)} playtime, ${completionPct} percent complete`}
     >
       <GameCardHoldOverlay
         classPrefix="library-card"
@@ -455,6 +456,9 @@ function GameCard({
             <div className="library-card__stats">
               <span className="library-card__fraction">
                 {game.unlocked_achievements}/{game.total_achievements}
+              </span>
+              <span className="library-card__playtime" aria-hidden>
+                · {formatPlaytimeCompact(game.playtime_seconds ?? 0)}
               </span>
               {hasPlatinum && <span className="library-card__platinum">✦ Platinum</span>}
             </div>
@@ -533,7 +537,7 @@ function GameListRow({
       }}
       role="button"
       tabIndex={0}
-      aria-label={`${game.name}, ${game.unlocked_achievements} of ${game.total_achievements} achievements, ${completionPct} percent complete`}
+      aria-label={`${game.name}, ${game.unlocked_achievements} of ${game.total_achievements} achievements, ${formatPlaytimeCompact(game.playtime_seconds ?? 0)} playtime, ${completionPct} percent complete`}
     >
       <GameCardHoldOverlay
         classPrefix="library-list-row"
@@ -571,6 +575,9 @@ function GameListRow({
         <div className="library-list-row__meta" aria-hidden>
           <span className="library-list-row__fraction">
             {game.unlocked_achievements}/{game.total_achievements}
+          </span>
+          <span className="library-list-row__playtime">
+            · {formatPlaytimeCompact(game.playtime_seconds ?? 0)}
           </span>
           {hasPlatinum && <span className="library-list-row__platinum">✦ Platinum</span>}
         </div>

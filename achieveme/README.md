@@ -25,7 +25,9 @@ AchieveMe can run in the **system tray** after you close the window (Settings �
 
 **Progress bars** on game detail show partial achievement progress from Goldberg/GSE `progress` / `max_progress` fields in `achievements.json`.
 
-**Playtime** is tracked for games set up via **Add Game** (install folder stored on disk). Dashboard shows total tracked playtime when available; game detail shows per-title hours.
+**Playtime** is tracked for games set up via **Add Game** (install folder stored on disk). Dashboard, game detail, and library cards/rows always show tracked playtime (or `—` when none yet).
+
+**Session recap** opens in the main window when a tracked play session ends (at least 1 minute): time played, unlocks during that window, and XP gained. Toggle in Settings; use **Test session recap** to preview with a random library game.
 
 ## Dashboard
 
@@ -112,6 +114,7 @@ Full Backup import **does not delete** emulator folders. It only overwrites file
 10. **Tray & unlock toast** — Close the window; confirm tray icon remains. Edit a save file to unlock an achievement; confirm the AchieveMe toast appears top-center (icon pulse → expand with staggered text/XP → text fades then shrink) with sound if enabled. Or use Settings → Test notification. Click opens the game; Tray → Show restores the window; Quit exits.
 11. **Progress bars** — Open a Goldberg/GSE game with `progress`/`max_progress` in its save; confirm unearned rows show a partial bar on game detail.
 12. **Playtime** — Add a game via Add Game, launch its `.exe`, play briefly, close it; confirm playtime appears on game detail and Dashboard snapshot after ~15s.
+13. **Session recap** — Settings → Test session recap with ≥1 library game; confirm modal shows random game, duration, unlocks/XP. For a real recap: play a tracked game ≥1 minute then quit; modal should appear (toggle off suppresses real recaps only).
 
 ### In-detail navigation
 

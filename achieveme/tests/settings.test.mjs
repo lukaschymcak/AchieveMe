@@ -21,4 +21,5 @@ test('normalizeAppSettings applies defaults for legacy settings files', () => {
   assert.equal(normalized.soundEnabled, DEFAULT_APP_SETTINGS.soundEnabled)
   assert.equal(normalized.customSoundPath, '')
   assert.equal(normalized.playtimeTrackingEnabled, DEFAULT_APP_SETTINGS.playtimeTrackingEnabled)
+  assert.equal(normalized.sessionRecapEnabled, DEFAULT_APP_SETTINGS.sessionRecapEnabled)
 })

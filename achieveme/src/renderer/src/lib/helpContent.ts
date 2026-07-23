@@ -79,7 +79,9 @@ export const TOOLTIPS = {
   settingsNotifications:
     'Tray mode keeps AchieveMe watching save folders after you close the window. Unlock toasts use a Steam-style layout with bronze/silver/gold accents by rarity, plus a platinum toast when a game first hits 100%. They fire on live save changes only.',
   settingsPlaytime:
-    'Playtime is tracked when a known game executable from an Add Game install folder is running.'
+    'Playtime is tracked when a known game executable from an Add Game install folder is running.',
+  settingsSessionRecap:
+    'After a tracked play session of at least one minute, AchieveMe shows time played, unlocks, and XP gained.'
 } as const
 
 export const EMPTY_STATES = {
@@ -134,7 +136,9 @@ export const SETTINGS_HINTS = {
   customSound:
     'Leave blank to use the Windows default unlock sound. Pick a .wav or .mp3 file for a custom chime.',
   testNotification:
-    'Preview the Steam-style unlock toast anytime. Each click cycles bronze → silver → gold → platinum skins. Works even when unlock toasts are disabled; real unlocks still follow the checkbox above.'
+    'Preview the Steam-style unlock toast anytime. Each click cycles bronze → silver → gold → platinum skins. Works even when unlock toasts are disabled; real unlocks still follow the checkbox above.',
+  testSessionRecap:
+    'Opens a demo session recap for a random library game (fake duration and recent unlocks). Works even when session recap is disabled.'
 } as const
 
 export const ADD_GAME = {
@@ -215,7 +219,8 @@ export const HELP_SECTIONS: HelpSection[] = [
     title: 'Notifications & tray',
     paragraphs: [
       'Close the window to hide AchieveMe in the system tray — it keeps watching save folders. Use Show from the tray icon to reopen.',
-      'When a save file changes and a new achievement unlocks, AchieveMe shows a Steam-style toast (UNLOCKED! with bronze/silver/gold chrome by rarity). When a game first reaches 100%, a platinum celebration toast follows. Library Refresh and first launch never spam toasts for existing unlocks. Use Settings → Test notification to cycle through all four skins.'
+      'When a save file changes and a new achievement unlocks, AchieveMe shows a Steam-style toast (UNLOCKED! with bronze/silver/gold chrome by rarity). When a game first reaches 100%, a platinum celebration toast follows. Library Refresh and first launch never spam toasts for existing unlocks. Use Settings → Test notification to cycle through all four skins.',
+      'After a tracked Add Game play session of at least one minute, a session recap modal summarizes time played, unlocks, and XP. Use Settings → Test session recap to preview with a random library game.'
     ],
     bullets: [
       'Notifications — Steam-style unlock toasts on live save changes',
@@ -223,7 +228,9 @@ export const HELP_SECTIONS: HelpSection[] = [
       'Close to tray — app stays running in the background',
       'Sound — default Windows chime or custom .wav/.mp3',
       'Test notification — cycles rarity skins from Settings',
-      'Playtime — tracks hours for games added via Add Game wizard'
+      'Playtime — tracks hours for games added via Add Game wizard',
+      'Session recap — modal after play with time, unlocks, and XP',
+      'Test session recap — demo modal for a random library game'
     ]
   },
   {

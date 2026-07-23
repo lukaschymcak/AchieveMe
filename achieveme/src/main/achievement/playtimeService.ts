@@ -6,6 +6,7 @@ import { getAllGames, updateGamePlaytime } from '../db/repository'
 import { loadSettings } from '../settings'
 import { notifyLibraryUpdated } from './libraryNotifyService'
 import { regenerateProfileStats } from './profileStatsService'
+import { offerSessionRecapIfNeeded } from './sessionRecapService'
 
 const POLL_INTERVAL_MS = 15_000
 const exeCache = new Map<string, string[]>()
@@ -80,8 +81,10 @@ function tick(): void {
     if (sessionStart === undefined) continue
 
     const elapsedSeconds = Math.max(1, Math.floor((Date.now() - sessionStart) / 1000))
+    const sessionEnd = Date.now()
     activeSessions.delete(game.appid)
     updateGamePlaytime(db, game.appid, game.playtime_seconds + elapsedSeconds)
+    offerSessionRecapIfNeeded(game.appid, sessionStart, sessionEnd)
     changed = true
   }
 

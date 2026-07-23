@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import type { Achievement, GameDetail, TrophyTier } from '../../../shared/types'
+import { formatPlaytimePlayed } from '../../../shared/playtimeUtils'
 import { getSteamLibraryHeroUrl } from '../../../shared/steamUrls'
 import HelpTip from '../components/HelpTip'
 import { EMPTY_STATES, TOOLTIPS } from '../lib/helpContent'
@@ -51,14 +52,6 @@ function formatUnlockDate(unixSeconds: number): string | null {
     day: 'numeric',
     year: 'numeric'
   })
-}
-
-function formatPlaytime(seconds: number): string | null {
-  if (!seconds || seconds <= 0) return null
-  const hours = Math.floor(seconds / 3600)
-  const minutes = Math.floor((seconds % 3600) / 60)
-  if (hours > 0) return `${hours}h ${minutes}m played`
-  return `${minutes}m played`
 }
 
 function CompletionRing({
@@ -485,7 +478,7 @@ export default function GameDetailPage({
   const achievements = detail?.achievements ?? []
   const completionPct = game ? Math.round(game.completion_pct) : 0
   const hasPlatinum = game?.has_platinum === 1
-  const playtimeLabel = game ? formatPlaytime(game.playtime_seconds ?? 0) : null
+  const playtimeLabel = game ? formatPlaytimePlayed(game.playtime_seconds ?? 0) : null
   const hasHiddenUnearned = achievements.some(
     (a) => isHiddenAchievement(a.hidden) && !a.earned
   )
@@ -557,7 +550,7 @@ export default function GameDetailPage({
                       </span>
                       <span className="game-detail__meta-label">achievements</span>
                     </p>
-                    {playtimeLabel && (
+                    {playtimeLabel != null && (
                       <p className="game-detail__meta game-detail__meta--playtime">{playtimeLabel}</p>
                     )}
                     <div

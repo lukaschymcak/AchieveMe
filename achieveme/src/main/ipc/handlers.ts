@@ -23,6 +23,10 @@ import { importFullBackupZip } from '../achievement/importZipService'
 import { normalizeProfileStats, regenerateProfileStats } from '../achievement/profileStatsService'
 import { applyGoldberg } from '../achievement/goldbergSetupService'
 import { previewUnlockToast } from '../achievement/unlockNotifyService'
+import {
+  acknowledgeSessionRecap,
+  previewSessionRecap
+} from '../achievement/sessionRecapService'
 import { updateGameInstallPath } from '../db/repository'
 import type { ProfileStats, GameSummary, GameDetail, AppSettings, ImportResult, SteamSearchResult, GoldbergApplyRequest, SteamApiDllInfo } from '../../shared/types'
 
@@ -165,6 +169,14 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle('preview-unlock-toast', (): void => {
     previewUnlockToast()
+  })
+
+  ipcMain.handle('preview-session-recap', (): void => {
+    previewSessionRecap()
+  })
+
+  ipcMain.on('session-recap-done', () => {
+    acknowledgeSessionRecap()
   })
 
   ipcMain.handle('search-steam-games', (_event, query: string): Promise<SteamSearchResult[]> => {

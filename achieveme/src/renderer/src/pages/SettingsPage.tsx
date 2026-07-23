@@ -68,6 +68,10 @@ export default function SettingsPage({ page, onNavigate }: Props): React.ReactEl
     void window.api.previewUnlockToast()
   }
 
+  function testSessionRecap(): void {
+    void window.api.previewSessionRecap()
+  }
+
   function browseSoundPath(): void {
     window.api.browseSoundPath().then((picked) => {
       if (!picked) return
@@ -273,6 +277,15 @@ export default function SettingsPage({ page, onNavigate }: Props): React.ReactEl
               />
               <span className="settings-page__source-name">Track playtime for games added via Add Game</span>
             </label>
+            <label className="settings-page__source-label">
+              <input
+                type="checkbox"
+                checked={settings.sessionRecapEnabled}
+                onChange={(e) => toggleSetting('sessionRecapEnabled', e.target.checked)}
+                className="settings-page__checkbox"
+              />
+              <span className="settings-page__source-name">Show session recap after play</span>
+            </label>
           </div>
           <div className="settings-page__folder-add settings-page__folder-add--sound">
             <AppSearchInput
@@ -290,8 +303,12 @@ export default function SettingsPage({ page, onNavigate }: Props): React.ReactEl
             <Chip variant="action" onClick={testNotification}>
               Test notification
             </Chip>
+            <Chip variant="action" onClick={testSessionRecap}>
+              Test session recap
+            </Chip>
           </div>
           <p className="settings-page__note">{SETTINGS_HINTS.testNotification}</p>
+          <p className="settings-page__note">{SETTINGS_HINTS.testSessionRecap}</p>
         </section>
 
         <section className="settings-page__section" aria-labelledby="settings-folders">

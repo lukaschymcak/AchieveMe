@@ -35,6 +35,7 @@ export interface AppSettings {
   soundEnabled: boolean
   customSoundPath: string
   playtimeTrackingEnabled: boolean
+  sessionRecapEnabled: boolean
 }
 
 export interface UnlockChange {
@@ -52,6 +53,23 @@ export interface UnlockToastPayload {
   displayName: string
   iconUrl: string
   tier: ToastTier
+}
+
+/** One unlock listed on a session recap. */
+export interface SessionRecapUnlock {
+  apiName: string
+  displayName: string
+  iconUrl: string
+  tier: TrophyTier
+}
+
+/** Payload for the post-session recap modal. */
+export interface SessionRecapPayload {
+  appid: string
+  gameName: string
+  durationSeconds: number
+  xpGained: number
+  unlocks: SessionRecapUnlock[]
 }
 
 // One row in the `games` SQLite table

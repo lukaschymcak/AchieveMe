@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react'
-import type { GameSummary } from '../../shared/types'
+import type { GameSummary, SessionRecapPayload } from '../../shared/types'
 import DashboardPage from './pages/DashboardPage'
 import LibraryPage from './pages/LibraryPage'
 import GameDetailPage from './pages/GameDetailPage'
 import SettingsPage from './pages/SettingsPage'
 import HelpPage from './pages/HelpPage'
 import FirstRunWelcome from './components/FirstRunWelcome'
+import SessionRecapModal from './components/SessionRecapModal'
 import { shouldShowFirstRun } from './lib/helpStorage'
 
 type Page = 'dashboard' | 'library' | 'settings' | 'help'
@@ -18,10 +19,16 @@ export default function App(): React.ReactElement {
   const [libraryGames, setLibraryGames] = useState<GameSummary[]>([])
   const [transitionDir, setTransitionDir] = useState<TransitionDir>(null)
   const [showFirstRun, setShowFirstRun] = useState(() => shouldShowFirstRun())
+  const [sessionRecap, setSessionRecap] = useState<SessionRecapPayload | null>(null)
 
   function handleRefresh(): void {
     setRefreshing(true)
     window.api.refresh().finally(() => setRefreshing(false))
+  }
+
+  function dismissSessionRecap(): void {
+    setSessionRecap(null)
+    window.api.sessionRecapDone()
   }
 
   useEffect(() => {
@@ -49,6 +56,21 @@ export default function App(): React.ReactElement {
     }
   }, [])
 
+  useEffect(() => {
+    function handleSessionRecap(payload: SessionRecapPayload): void {
+      setSessionRecap(payload)
+    }
+
+    window.api.onSessionRecap(handleSessionRecap)
+    return () => {
+      window.api.offSessionRecap(handleSessionRecap)
+    }
+  }, [])
+
+  const recapOverlay = sessionRecap ? (
+    <SessionRecapModal payload={sessionRecap} onDismiss={dismissSessionRecap} />
+  ) : null
+
   if (selectedAppid) {
     const currentIdx = libraryGames.findIndex((g) => g.appid === selectedAppid)
     const prevAppid = currentIdx > 0 ? libraryGames[currentIdx - 1].appid : null
@@ -58,42 +80,46 @@ export default function App(): React.ReactElement {
         : null
 
     return (
-      <div className="app-shell app-shell--game-detail">
-        <main className="app-main">
-          <GameDetailPage
-            appid={selectedAppid}
-            transitionDir={transitionDir}
-            onBack={() => {
-              setTransitionDir(null)
-              setSelectedAppid(null)
-            }}
-            onRefresh={handleRefresh}
-            refreshing={refreshing}
-            onPrev={
-              prevAppid
-                ? () => {
-                    setTransitionDir('prev')
-                    setSelectedAppid(prevAppid)
-                  }
-                : null
-            }
-            onNext={
-              nextAppid
-                ? () => {
-                    setTransitionDir('next')
-                    setSelectedAppid(nextAppid)
-                  }
-                : null
-            }
-          />
-        </main>
-      </div>
+      <>
+        {recapOverlay}
+        <div className="app-shell app-shell--game-detail">
+          <main className="app-main">
+            <GameDetailPage
+              appid={selectedAppid}
+              transitionDir={transitionDir}
+              onBack={() => {
+                setTransitionDir(null)
+                setSelectedAppid(null)
+              }}
+              onRefresh={handleRefresh}
+              refreshing={refreshing}
+              onPrev={
+                prevAppid
+                  ? () => {
+                      setTransitionDir('prev')
+                      setSelectedAppid(prevAppid)
+                    }
+                  : null
+              }
+              onNext={
+                nextAppid
+                  ? () => {
+                      setTransitionDir('next')
+                      setSelectedAppid(nextAppid)
+                    }
+                  : null
+              }
+            />
+          </main>
+        </div>
+      </>
     )
   }
 
   if (page === 'library') {
     return (
       <>
+        {recapOverlay}
         {showFirstRun && <FirstRunWelcome onDismiss={() => setShowFirstRun(false)} />}
         <div className="app-shell">
           <main className="app-main">
@@ -115,17 +141,21 @@ export default function App(): React.ReactElement {
 
   if (page === 'settings') {
     return (
-      <div className="app-shell">
-        <main className="app-main">
-          <SettingsPage page={page} onNavigate={setPage} />
-        </main>
-      </div>
+      <>
+        {recapOverlay}
+        <div className="app-shell">
+          <main className="app-main">
+            <SettingsPage page={page} onNavigate={setPage} />
+          </main>
+        </div>
+      </>
     )
   }
 
   if (page === 'dashboard') {
     return (
       <>
+        {recapOverlay}
         {showFirstRun && <FirstRunWelcome onDismiss={() => setShowFirstRun(false)} />}
         <div className="app-shell">
           <main className="app-main">
@@ -142,13 +172,16 @@ export default function App(): React.ReactElement {
 
   if (page === 'help') {
     return (
-      <div className="app-shell">
-        <main className="app-main">
-          <HelpPage page={page} onNavigate={setPage} />
-        </main>
-      </div>
+      <>
+        {recapOverlay}
+        <div className="app-shell">
+          <main className="app-main">
+            <HelpPage page={page} onNavigate={setPage} />
+          </main>
+        </div>
+      </>
     )
   }
 
-  return <></>
+  return <>{recapOverlay}</>
 }
