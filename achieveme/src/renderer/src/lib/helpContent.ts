@@ -47,7 +47,7 @@ export const TOOLTIPS = {
   sortMost: 'Sort by most unlocked achievements first.',
   sortRecent: 'Sort by most recently unlocked achievement first.',
   addGame:
-    'Set up Goldberg emulator files for a new game (search, pick steam_api.dll, apply config).',
+    'Set up Goldberg files for a new game (search, pick steam_api.dll, optionally apply the emulator DLL).',
   gridList: 'Switch between grid and list layout. Your choice is remembered.',
   search: 'Filter games by name. Sort order is preserved.',
   level: 'Level = floor(XP ÷ 1000). Earn XP from unlocked achievements.',
@@ -145,9 +145,12 @@ export const ADD_GAME = {
   searchHelp:
     'Search by game name, paste a Steam store URL, or enter an App ID. This wizard sets up Goldberg emulator files — it does not add CODEX or other save types manually.',
   dllHelp:
-    'Pick steam_api.dll or steam_api64.dll from the game install folder. Goldberg installs steam_settings beside it, replacing any existing folder. The game is not launched or patched.',
+    'Pick steam_api.dll or steam_api64.dll from the game install folder. Goldberg installs steam_settings beside it, replacing any existing folder.',
+  emuHelp:
+    'Replaces the game’s Steam API DLL with Goldberg so the game runs through the emulator. Your original DLL is saved as a .bak backup first. Leave this off if the game is already emulated or you only want achievement tracking files.',
+  emuQuestion: 'Also apply the Goldberg emulator?',
   applyHelp:
-    'Runs generate_emu_config, copies steam_settings, and seeds a 0% Goldberg save. After you play, progress appears automatically or via Refresh. Click Done, then Refresh the library.'
+    'Runs generate_emu_config, copies steam_settings, and seeds a 0% Goldberg save. If you opted in, it also installs the emulator DLL. After you play, progress appears automatically or via Refresh. Click Done, then Refresh the library.'
 } as const
 
 export interface HelpSection {
@@ -259,8 +262,8 @@ export const HELP_SECTIONS: HelpSection[] = [
     id: 'add-game',
     title: 'Add Game wizard',
     paragraphs: [
-      'For games not yet discovered: search → pick steam_api.dll → apply Goldberg config → Done → Refresh library.',
-      'Replaces existing steam_settings if present. Does not launch the game.'
+      'For games not yet discovered: search → pick steam_api.dll → choose whether to also apply the Goldberg emulator → apply → Done → Refresh library.',
+      'Always installs steam_settings and seeds achievements. Optionally backs up and replaces the Steam API DLL with the Goldberg regular build. Does not launch the game.'
     ]
   },
   {

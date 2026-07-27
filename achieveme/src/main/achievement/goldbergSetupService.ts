@@ -10,6 +10,7 @@ import type { GoldbergApplyRequest } from '../../shared/types'
 import { expandEnv } from './savePathUtils'
 import {
   buildProgressFromSchema,
+  installGoldbergEmuDll,
   readAchievementSchema,
   validateDllPath
 } from './goldbergFolderUtils'
@@ -19,6 +20,14 @@ function resolveGeneratorDir(): string {
     return path.join(process.resourcesPath, 'generate_emu_config')
   }
   return path.join(app.getAppPath(), '..', 'goldberg-files', 'generate_emu_config')
+}
+
+/** Goldberg release root containing `regular/{x64|x86}/`. */
+function resolveReleaseDir(): string {
+  if (app.isPackaged) {
+    return path.join(process.resourcesPath, 'goldberg_release')
+  }
+  return path.join(app.getAppPath(), '..', 'goldberg-files', 'release')
 }
 
 function copyDirectoryMerge(source: string, target: string): void {
@@ -142,13 +151,23 @@ export async function applyGoldberg(
   settings: ReturnType<typeof loadSettings>,
   log: (line: string) => void
 ): Promise<void> {
-  const { appid, dllPath } = request
+  const { appid, dllPath, installEmuDll } = request
   if (!/^\d+$/.test(appid)) {
     throw new Error(`Invalid AppID: ${appid}`)
   }
 
-  const { gameDir } = validateDllPath(dllPath)
+  const { gameDir, fileName } = validateDllPath(dllPath)
   log(`Game folder: ${gameDir}`)
+
+  if (installEmuDll) {
+    const architecture = fileName.toLowerCase() === 'steam_api64.dll' ? 'x64' : 'x86'
+    installGoldbergEmuDll({
+      dllPath,
+      architecture,
+      releaseRoot: resolveReleaseDir(),
+      log
+    })
+  }
 
   const generatorDir = resolveGeneratorDir()
   const settingsSource = await runGenerator(appid, generatorDir, log)

@@ -3,7 +3,7 @@ import type { SteamApiDllInfo, SteamSearchResult } from '../../../shared/types'
 import { Chip, AppSearchInput } from './app'
 import { ADD_GAME } from '../lib/helpContent'
 
-type Step = 'search' | 'dll' | 'apply'
+type Step = 'search' | 'dll' | 'emu' | 'apply'
 type ApplyState = 'idle' | 'running' | 'done' | 'error'
 
 interface Props {
@@ -14,6 +14,7 @@ interface Props {
 const STEP_TITLES: Record<Step, string> = {
   search: 'Add Game — Find Game',
   dll: 'Add Game — Game Location',
+  emu: 'Add Game — Emulator',
   apply: 'Add Game — Apply'
 }
 
@@ -24,6 +25,7 @@ export default function AddGameModal({ onClose, onGameAdded }: Props): React.Rea
   const [results, setResults] = useState<SteamSearchResult[]>([])
   const [selected, setSelected] = useState<SteamSearchResult | null>(null)
   const [dllInfo, setDllInfo] = useState<SteamApiDllInfo | null>(null)
+  const [installEmuDll, setInstallEmuDll] = useState(false)
   const [applyState, setApplyState] = useState<ApplyState>('idle')
   const [logLines, setLogLines] = useState<string[]>([])
   const [errorMsg, setErrorMsg] = useState('')
@@ -87,6 +89,12 @@ export default function AddGameModal({ onClose, onGameAdded }: Props): React.Rea
     setErrorMsg('')
   }
 
+  function goToEmuStep(): void {
+    if (!dllInfo) return
+    setStep('emu')
+    setErrorMsg('')
+  }
+
   function goToApplyStep(): void {
     if (!dllInfo) return
     setStep('apply')
@@ -107,7 +115,8 @@ export default function AddGameModal({ onClose, onGameAdded }: Props): React.Rea
     try {
       await window.api.applyGoldberg({
         appid: selected.appid,
-        dllPath: dllInfo.path
+        dllPath: dllInfo.path,
+        installEmuDll
       })
       setApplyState('done')
     } catch (err) {
@@ -207,6 +216,14 @@ export default function AddGameModal({ onClose, onGameAdded }: Props): React.Rea
               errorMsg={errorMsg}
             />
           )}
+          {step === 'emu' && selected && dllInfo && (
+            <EmuStep
+              game={selected}
+              dllInfo={dllInfo}
+              installEmuDll={installEmuDll}
+              onInstallEmuDllChange={setInstallEmuDll}
+            />
+          )}
           {step === 'apply' && selected && dllInfo && (
             <ApplyStep
               game={selected}
@@ -239,14 +256,22 @@ export default function AddGameModal({ onClose, onGameAdded }: Props): React.Rea
           {step === 'dll' && (
             <>
               <Chip onClick={() => setStep('search')}>Back</Chip>
-              <Chip active onClick={goToApplyStep} disabled={!dllInfo}>
+              <Chip active onClick={goToEmuStep} disabled={!dllInfo}>
+                Next
+              </Chip>
+            </>
+          )}
+          {step === 'emu' && (
+            <>
+              <Chip onClick={() => setStep('dll')}>Back</Chip>
+              <Chip active onClick={goToApplyStep}>
                 Next
               </Chip>
             </>
           )}
           {step === 'apply' && applyState === 'idle' && (
             <>
-              <Chip onClick={() => setStep('dll')}>Back</Chip>
+              <Chip onClick={() => setStep('emu')}>Back</Chip>
               <Chip active onClick={handleApply}>
                 Add to Library
               </Chip>
@@ -262,7 +287,7 @@ export default function AddGameModal({ onClose, onGameAdded }: Props): React.Rea
           )}
           {step === 'apply' && applyState === 'error' && (
             <>
-              <Chip onClick={() => setStep('dll')}>Back</Chip>
+              <Chip onClick={() => setStep('emu')}>Back</Chip>
               <Chip active onClick={handleApply}>
                 Retry
               </Chip>
@@ -493,6 +518,78 @@ function DllStep({
       {errorMsg && (
         <p style={{ fontSize: 13, color: '#f87171', margin: 0 }}>{errorMsg}</p>
       )}
+    </div>
+  )
+}
+
+function EmuStep({
+  game,
+  dllInfo,
+  installEmuDll,
+  onInstallEmuDllChange
+}: {
+  game: SteamSearchResult
+  dllInfo: SteamApiDllInfo
+  installEmuDll: boolean
+  onInstallEmuDllChange: (value: boolean) => void
+}): React.ReactElement {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', flex: 1, padding: '16px 20px', gap: 16 }}>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 10,
+          padding: '10px 12px',
+          background: 'oklch(14% 0.014 275)',
+          border: '1px solid oklch(20% 0.016 275)',
+          borderRadius: 8
+        }}
+      >
+        {game.imageUrl ? (
+          <img
+            src={game.imageUrl}
+            alt=""
+            style={{ width: 48, height: 36, objectFit: 'cover', borderRadius: 3, flexShrink: 0 }}
+          />
+        ) : (
+          <div style={{ width: 48, height: 36, background: 'oklch(18% 0.012 275)', borderRadius: 3, flexShrink: 0 }} />
+        )}
+        <div>
+          <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--ink)' }}>{game.name}</div>
+          <div style={{ fontSize: 11, color: 'oklch(52% 0.01 275)' }}>
+            AppID {game.appid} · {dllInfo.fileName} ({dllInfo.architecture})
+          </div>
+        </div>
+      </div>
+
+      <p style={{ fontSize: 13, color: 'oklch(60% 0.01 275)', margin: 0, lineHeight: 1.5 }}>
+        {ADD_GAME.emuHelp}
+      </p>
+
+      <label
+        style={{
+          display: 'flex',
+          alignItems: 'flex-start',
+          gap: 10,
+          padding: '12px 14px',
+          background: 'oklch(14% 0.014 275)',
+          border: '1px solid oklch(20% 0.016 275)',
+          borderRadius: 8,
+          cursor: 'pointer'
+        }}
+      >
+        <input
+          type="checkbox"
+          checked={installEmuDll}
+          onChange={(e) => onInstallEmuDllChange(e.target.checked)}
+          aria-label={ADD_GAME.emuQuestion}
+          style={{ marginTop: 2, flexShrink: 0 }}
+        />
+        <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--ink)', lineHeight: 1.4 }}>
+          {ADD_GAME.emuQuestion}
+        </span>
+      </label>
     </div>
   )
 }

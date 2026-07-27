@@ -9,8 +9,19 @@ import { setUnlockNavigationHandler, cleanupUnlockNotifications } from './achiev
 import { setSessionRecapMainWindow } from './achievement/sessionRecapService'
 import { registerIpcHandlers } from './ipc/handlers'
 import { destroyTray, initTray, isQuitting, setQuitting } from './trayService'
+import { shouldQuitForMissingInstanceLock } from './singleInstance'
 
 let mainWindow: BrowserWindow | null = null
+
+/**
+ * Shows and focuses the main window when a second instance is launched.
+ */
+function showMainWindow(): void {
+  if (!mainWindow || mainWindow.isDestroyed()) return
+  if (!mainWindow.isVisible()) mainWindow.show()
+  if (mainWindow.isMinimized()) mainWindow.restore()
+  mainWindow.focus()
+}
 
 function createWindow(): void {
   mainWindow = new BrowserWindow({
@@ -50,44 +61,59 @@ function createWindow(): void {
 }
 
 function showMainWindowAndNavigate(appid: string): void {
+  showMainWindow()
   if (!mainWindow || mainWindow.isDestroyed()) return
-  if (!mainWindow.isVisible()) mainWindow.show()
-  if (mainWindow.isMinimized()) mainWindow.restore()
-  mainWindow.focus()
   mainWindow.webContents.send('navigate-to-game', appid)
 }
 
-app.whenReady().then(() => {
-  electronApp.setAppUserModelId('com.achieveme')
-
-  app.on('browser-window-created', (_, window) => {
-    optimizer.watchWindowShortcuts(window)
+/**
+ * Registers app lifecycle handlers and creates the main window.
+ * Only called when this process holds the single-instance lock.
+ */
+function bootApp(): void {
+  app.on('second-instance', () => {
+    showMainWindow()
   })
 
-  initDb()
-  registerIpcHandlers()
-  const settings = loadSettings()
-  startWatcher(settings).catch(() => {})
-  startPlaytimeTracker()
+  app.whenReady().then(() => {
+    electronApp.setAppUserModelId('com.achieveme')
 
-  createWindow()
-  initTray(() => mainWindow)
-  setUnlockNavigationHandler(showMainWindowAndNavigate)
-  setSessionRecapMainWindow(() => mainWindow)
+    app.on('browser-window-created', (_, window) => {
+      optimizer.watchWindowShortcuts(window)
+    })
 
-  app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow()
+    initDb()
+    registerIpcHandlers()
+    const settings = loadSettings()
+    startWatcher(settings).catch(() => {})
+    startPlaytimeTracker()
+
+    createWindow()
+    initTray(() => mainWindow)
+    setUnlockNavigationHandler(showMainWindowAndNavigate)
+    setSessionRecapMainWindow(() => mainWindow)
+
+    app.on('activate', () => {
+      if (BrowserWindow.getAllWindows().length === 0) createWindow()
+    })
   })
-})
 
-app.on('before-quit', () => {
-  setQuitting(true)
-  stopPlaytimeTracker()
-  cleanupUnlockNotifications()
-  destroyTray()
-})
+  app.on('before-quit', () => {
+    setQuitting(true)
+    stopPlaytimeTracker()
+    cleanupUnlockNotifications()
+    destroyTray()
+  })
 
-app.on('window-all-closed', () => {
-  if (loadSettings().closeToTray) return
-  if (process.platform !== 'darwin') app.quit()
-})
+  app.on('window-all-closed', () => {
+    if (loadSettings().closeToTray) return
+    if (process.platform !== 'darwin') app.quit()
+  })
+}
+
+const gotLock = app.requestSingleInstanceLock()
+if (shouldQuitForMissingInstanceLock(gotLock)) {
+  app.quit()
+} else {
+  bootApp()
+}

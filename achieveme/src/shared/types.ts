@@ -233,6 +233,8 @@ export interface SteamSearchResult {
 export interface GoldbergApplyRequest {
   appid: string
   dllPath: string
+  /** When true, backup and replace the game steam_api DLL with Goldberg regular emu. */
+  installEmuDll: boolean
 }
 
 export interface LibraryUpdatedPayload {

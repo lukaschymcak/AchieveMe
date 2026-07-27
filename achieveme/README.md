@@ -41,6 +41,8 @@ npm install
 npm run dev
 ```
 
+Only one AchieveMe process may own `%APPDATA%\achieveme` at a time. The app uses Electron’s single-instance lock; a second launch focuses the existing window and exits. If you see Chromium logs like `Unable to move the cache: Access is denied` / `Gpu Cache Creation failed`, Quit from the tray (not just close the window), end leftover `AchieveMe.exe` / `electron.exe` processes, then restart `npm run dev`. With the app fully closed you can also delete `%APPDATA%\achieveme\GPUCache` and `Code Cache` (SQLite and settings are left alone).
+
 ### Scripts
 
 | Command | Purpose |
@@ -59,7 +61,8 @@ AchieveMe ships as a Windows NSIS installer built with `electron-builder`.
 
 1. Place the Goldberg generator beside the repo (gitignored): `goldberg-files/generate_emu_config/`
 2. That folder must include `generate_emu_config.exe` and `_internal/` (Add Game depends on it)
-3. Do **not** ship `my_login.txt` (Steam credentials). The build excludes `_OUTPUT/`, `appid_finder/`, `bat/`, and `my_login.txt` even if they exist locally.
+3. Place the Goldberg **regular** release beside the repo: `goldberg-files/release/regular/` with `x64/steam_api64.dll` and `x86/steam_api.dll` (optional emulator DLL install in Add Game)
+4. Do **not** ship `my_login.txt` (Steam credentials). The build excludes `_OUTPUT/`, `appid_finder/`, `bat/`, and `my_login.txt` even if they exist locally.
 
 ### Build
 
@@ -73,7 +76,7 @@ The installer is written to:
 
 `achieveme/release/0.1.0/AchieveMe-Windows-0.1.0-Setup.exe`
 
-After install, the generator lives at `resources/generate_emu_config/generate_emu_config.exe` next to the app binary.
+After install, the generator lives at `resources/generate_emu_config/generate_emu_config.exe` next to the app binary. The regular emu DLLs live at `resources/goldberg_release/regular/`.
 
 ## Backup & restore
 
@@ -105,7 +108,7 @@ Full Backup import **does not delete** emulator folders. It only overwrites file
 1. **Export** — With at least one GSE game that has an extra file in its appid folder, export a ZIP and confirm `manifest.json` has `formatVersion: 3` and the zip contains both `achievements.json` and the extra file.
 2. **Import merge** — Keep a second appid folder on disk that is *not* in the backup. Import the ZIP and confirm the backed-up game is restored while the other appid folder is unchanged.
 3. **Refresh prune** — Delete `achievements.json` for a game, click Refresh; the game should disappear from the library.
-4. **Add game** — Open Add Game, pick a title, browse for `steam_api.dll` or `steam_api64.dll` in the game folder; apply runs the generator and installs `steam_settings` beside the DLL (replacing any existing folder).
+4. **Add game** — Open Add Game, pick a title, browse for `steam_api.dll` or `steam_api64.dll`, then on the Emulator step leave “Also apply the Goldberg emulator?” unchecked and apply. Confirm `steam_settings` is installed and the game DLL is unchanged. Repeat with the option checked and confirm `steam_api(64).dll.bak` plus the regular emu DLL.
 5. **Long-press card menu** — Quick-click a library card to open game detail with no hold blur or progress flash. Hold ~0.5s to show a dark overlay with horizontal Open / Refresh / Delete chips; releasing or moving off the card before the menu opens dismisses the overlay instantly (no left-to-right blur sweep). Delete confirms inline and removes the game; Refresh updates that game only.
 6. **Library search/sort** — Search by name and switch sort modes (least complete, most unlocked, recently unlocked). Hover game cards for a blue glow.
 7. **Live library update** — With the library open, edit a game's `achievements.json` on disk and save; the card fraction, %, and progress bar should update within ~1s without opening the game. Dashboard stats and open game detail should also refresh automatically.

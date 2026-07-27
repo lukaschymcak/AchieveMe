@@ -21,6 +21,13 @@
         "!appid_finder/**",
         "!bat/**"
       ]
+    },
+    {
+      "from": "../goldberg-files/release/regular",
+      "to": "goldberg_release/regular",
+      "filter": [
+        "**/*"
+      ]
     }
   ],
   "mac": {
