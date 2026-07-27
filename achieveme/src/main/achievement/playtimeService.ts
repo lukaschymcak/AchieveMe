@@ -13,12 +13,12 @@ const activeSessions = new Map<string, number>()
 
 let timer: NodeJS.Timeout | null = null
 
-function listExeNames(installPath: string): string[] {
-  const key = installPath.toLowerCase()
+function listExeNames(installPath: string, gameName: string): string[] {
+  const key = `${installPath.toLowerCase()}::${gameName.toLowerCase()}`
   const cached = exeCache.get(key)
   if (cached) return cached
 
-  const names = listExeBaseNamesForPlaytime(installPath)
+  const names = listExeBaseNamesForPlaytime(installPath, gameName)
   exeCache.set(key, names)
   return names
 }
@@ -53,7 +53,7 @@ function tick(): void {
     const installPath = game.install_path?.trim()
     if (!installPath) continue
 
-    const exeNames = listExeNames(installPath)
+    const exeNames = listExeNames(installPath, game.name)
     if (exeNames.length === 0) continue
 
     const isRunning = exeNames.some((name) => running.has(name))

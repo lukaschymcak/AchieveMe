@@ -404,8 +404,12 @@ export default function GameDetailPage({
   const [exePickerOpen, setExePickerOpen] = useState(false)
   const [exeOptions, setExeOptions] = useState<GameExecutable[]>([])
   const [exePickerError, setExePickerError] = useState('')
+  const [exeRootLabel, setExeRootLabel] = useState('')
   const [playBusy, setPlayBusy] = useState(false)
+  const [isLaunching, setIsLaunching] = useState(false)
   const [playMenuOpen, setPlayMenuOpen] = useState(false)
+  const [rootConfirmPath, setRootConfirmPath] = useState<string | null>(null)
+  const [playGamesFromLauncher, setPlayGamesFromLauncher] = useState(true)
 
   async function reloadDetail(): Promise<GameDetail | null> {
     const next = await window.api.getGameDetail(appid)
@@ -413,30 +417,52 @@ export default function GameDetailPage({
     return next
   }
 
-  async function openExePicker(installPath: string): Promise<void> {
-    setExePickerError('')
-    const list = await window.api.listGameExecutables(installPath)
+  function showExePicker(root: string, list: GameExecutable[]): void {
+    setRootConfirmPath(null)
+    setExeRootLabel(root)
     setExeOptions(list)
+    setExePickerError(list.length === 0 ? 'No executables found in this folder.' : '')
     setExePickerOpen(true)
-    if (list.length === 0) {
-      setExePickerError('No executables found in this folder.')
-    }
   }
 
-  async function ensureInstallPathAndOpenPicker(): Promise<void> {
-    let installPath = detail?.game.install_path?.trim() ?? ''
-    if (!installPath) {
-      const folder = await window.api.browseGameInstallFolder()
-      if (!folder) return
-      installPath = folder
-      await window.api.setGameLaunchConfig({
-        appid,
-        installPath,
-        launchExe: detail?.game.launch_exe ?? ''
-      })
-      await reloadDetail()
+  async function browseAndListExecutables(): Promise<void> {
+    const folder = await window.api.browseGameInstallFolder()
+    if (!folder) return
+    await window.api.setGameLaunchConfig({
+      appid,
+      installPath: folder,
+      launchExe: detail?.game.launch_exe ?? ''
+    })
+    await reloadDetail()
+    const list = await window.api.listGameExecutables(folder)
+    showExePicker(folder, list)
+  }
+
+  async function openExeResolveFlow(acceptedRoot?: string): Promise<void> {
+    setExePickerError('')
+    setPlayMenuOpen(false)
+
+    const result = await window.api.resolveGameExecutables(appid, acceptedRoot)
+    if (result.status === 'ready') {
+      showExePicker(result.root, result.executables)
+      return
     }
-    await openExePicker(installPath)
+    if (result.status === 'confirm_root') {
+      setExePickerOpen(false)
+      setRootConfirmPath(result.candidatePath)
+      return
+    }
+
+    await browseAndListExecutables()
+  }
+
+  async function ensureInstallThenResolve(): Promise<void> {
+    const installPath = detail?.game.install_path?.trim() ?? ''
+    if (!installPath) {
+      await browseAndListExecutables()
+      return
+    }
+    await openExeResolveFlow()
   }
 
   async function handlePlay(): Promise<void> {
@@ -444,23 +470,45 @@ export default function GameDetailPage({
     setPlayBusy(true)
     setPlayMenuOpen(false)
     try {
+      const hasExe = Boolean(detail?.game.launch_exe?.trim())
+      if (!hasExe) {
+        await ensureInstallThenResolve()
+        return
+      }
+      setIsLaunching(true)
       await window.api.launchGame(appid)
     } catch (err) {
       const code = (err as Error & { code?: string }).code
       const message = err instanceof Error ? err.message : String(err)
-      if (code === LAUNCH_NEEDS_EXE || message.includes(LAUNCH_NEEDS_EXE) || /Select a game executable/i.test(message)) {
-        await ensureInstallPathAndOpenPicker()
+      if (
+        code === LAUNCH_NEEDS_EXE ||
+        message.includes(LAUNCH_NEEDS_EXE) ||
+        /Select a game executable/i.test(message)
+      ) {
+        await ensureInstallThenResolve()
       } else {
         setError(message)
       }
     } finally {
+      setIsLaunching(false)
       setPlayBusy(false)
     }
   }
 
   async function handleChangeExecutable(): Promise<void> {
     setPlayMenuOpen(false)
-    await ensureInstallPathAndOpenPicker()
+    await ensureInstallThenResolve()
+  }
+
+  async function handleConfirmRoot(yes: boolean): Promise<void> {
+    const candidate = rootConfirmPath
+    setRootConfirmPath(null)
+    if (!candidate) return
+    if (yes) {
+      await openExeResolveFlow(candidate)
+      return
+    }
+    await browseAndListExecutables()
   }
 
   async function handlePickExecutable(exe: GameExecutable): Promise<void> {
@@ -473,7 +521,6 @@ export default function GameDetailPage({
       })
       setExePickerOpen(false)
       await reloadDetail()
-      await window.api.launchGame(appid)
     } catch (err) {
       setExePickerError(err instanceof Error ? err.message : String(err))
     } finally {
@@ -487,6 +534,12 @@ export default function GameDetailPage({
     setActiveFilter('all')
     setExePickerOpen(false)
     setPlayMenuOpen(false)
+    setRootConfirmPath(null)
+    setIsLaunching(false)
+    window.api
+      .getSettings()
+      .then((settings) => setPlayGamesFromLauncher(settings.playGamesFromLauncher))
+      .catch(() => setPlayGamesFromLauncher(true))
     window.api
       .getGameDetail(appid)
       .then(setDetail)
@@ -561,6 +614,22 @@ export default function GameDetailPage({
   const completionPct = game ? Math.round(game.completion_pct) : 0
   const hasPlatinum = game?.has_platinum === 1
   const playtimeLabel = game ? formatPlaytimePlayed(game.playtime_seconds ?? 0) : null
+  const hasInstallPath = Boolean(game?.install_path?.trim())
+  const hasLaunchExe = Boolean(game?.launch_exe?.trim())
+  const playLabel = isLaunching
+    ? 'Starting…'
+    : hasLaunchExe
+      ? 'Play'
+      : hasInstallPath
+        ? 'Select exe'
+        : 'Set install folder'
+  const playAriaLabel = !game
+    ? 'Play'
+    : hasLaunchExe
+      ? `Play ${game.name}`
+      : hasInstallPath
+        ? `Select executable for ${game.name}`
+        : `Set install folder for ${game.name}`
   const hasHiddenUnearned = achievements.some(
     (a) => isHiddenAchievement(a.hidden) && !a.earned
   )
@@ -624,15 +693,16 @@ export default function GameDetailPage({
                   <div className="game-detail__hero-left">
                     <div className="game-detail__title-row">
                       <h2 className="game-detail__title">{game!.name}</h2>
+                      {playGamesFromLauncher && (
                       <div className="game-detail__play-group">
                         <button
                           type="button"
                           className="game-detail__pill game-detail__play"
                           onClick={() => void handlePlay()}
                           disabled={playBusy}
-                          aria-label={`Play ${game!.name}`}
+                          aria-label={playAriaLabel}
                         >
-                          {playBusy ? 'Starting…' : 'Play'}
+                          {playLabel}
                         </button>
                         <div className="game-detail__play-menu-wrap">
                           <button
@@ -660,6 +730,7 @@ export default function GameDetailPage({
                           )}
                         </div>
                       </div>
+                      )}
                     </div>
                   </div>
                   <div className="game-detail__hero-right">
@@ -798,7 +869,60 @@ export default function GameDetailPage({
         </div>
       </div>
 
-      {exePickerOpen && (
+      {playGamesFromLauncher && rootConfirmPath && (
+        <div
+          className="game-detail__exe-modal-backdrop"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setRootConfirmPath(null)
+          }}
+        >
+          <div
+            className="game-detail__exe-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Confirm game folder"
+          >
+            <div className="game-detail__exe-modal-header">
+              <h3 className="game-detail__exe-modal-title">Is this the game&apos;s folder?</h3>
+              <button
+                type="button"
+                className="game-detail__pill"
+                onClick={() => setRootConfirmPath(null)}
+                aria-label="Close"
+              >
+                ×
+              </button>
+            </div>
+            <p className="game-detail__exe-modal-help">
+              The folder name is only a possible match for this game. Confirm to search it for
+              executables, or pick another folder.
+            </p>
+            <p className="game-detail__exe-modal-path" title={rootConfirmPath}>
+              {rootConfirmPath}
+            </p>
+            <div className="game-detail__exe-confirm-actions">
+              <button
+                type="button"
+                className="game-detail__pill game-detail__play"
+                disabled={playBusy}
+                onClick={() => void handleConfirmRoot(true)}
+              >
+                Yes, use this folder
+              </button>
+              <button
+                type="button"
+                className="game-detail__pill"
+                disabled={playBusy}
+                onClick={() => void handleConfirmRoot(false)}
+              >
+                No, browse…
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {playGamesFromLauncher && exePickerOpen && (
         <div
           className="game-detail__exe-modal-backdrop"
           onClick={(e) => {
@@ -823,8 +947,13 @@ export default function GameDetailPage({
               </button>
             </div>
             <p className="game-detail__exe-modal-help">
-              Choose the game&apos;s main .exe from the install folder.
+              Choose the game&apos;s main .exe anywhere under the game folder.
             </p>
+            {exeRootLabel && (
+              <p className="game-detail__exe-modal-path" title={exeRootLabel}>
+                {exeRootLabel}
+              </p>
+            )}
             {exePickerError && (
               <p className="game-detail__exe-modal-error">{exePickerError}</p>
             )}
@@ -837,7 +966,10 @@ export default function GameDetailPage({
                     disabled={playBusy}
                     onClick={() => void handlePickExecutable(exe)}
                   >
-                    {exe.name}
+                    <span className="game-detail__exe-option-name">{exe.name}</span>
+                    {exe.relativePath !== exe.name && (
+                      <span className="game-detail__exe-option-path">{exe.relativePath}</span>
+                    )}
                   </button>
                 </li>
               ))}

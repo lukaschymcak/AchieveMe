@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import type { GameSummary } from '../../../shared/types'
+import type { AppSettings, GameSummary } from '../../../shared/types'
 import { formatPlaytimeCompact } from '../../../shared/playtimeUtils'
 import SteamApiKeyForm from '../components/SteamApiKeyForm'
 import AddGameModal from '../components/AddGameModal'
@@ -69,14 +69,16 @@ export default function LibraryPage({
   const [viewMode, setViewMode] = useState<ViewMode>(readStoredViewMode)
   const [showAddModal, setShowAddModal] = useState(false)
   const [showLongPressHint, setShowLongPressHint] = useState(() => shouldShowLongPressHint())
+  const [settings, setSettings] = useState<AppSettings | null>(null)
 
   useEffect(() => {
     localStorage.setItem(LIBRARY_VIEW_MODE_KEY, viewMode)
   }, [viewMode])
 
   useEffect(() => {
-    window.api.getSettings().then((settings) => {
-      const keySet = settings.steamApiKey.trim().length > 0
+    window.api.getSettings().then((next) => {
+      setSettings(next)
+      const keySet = next.steamApiKey.trim().length > 0
       setHasApiKey(keySet)
       if (keySet) {
         setLoading(true)
@@ -87,6 +89,13 @@ export default function LibraryPage({
       }
     })
   }, [])
+
+  async function handlePlayGamesFromLauncherChange(enabled: boolean): Promise<void> {
+    if (!settings) return
+    const next = { ...settings, playGamesFromLauncher: enabled }
+    setSettings(next)
+    await window.api.saveSettings(next)
+  }
 
   useEffect(() => {
     if (hasApiKey !== true) return
@@ -260,20 +269,32 @@ export default function LibraryPage({
         }
         toolbar={
           <>
-            <AppToolbarButton
-              onClick={() => setShowAddModal(true)}
-              aria-label="Set up Goldberg emulator for a new game"
-              title={TOOLTIPS.addGame}
-            >
-              <PlusIcon />
-            </AppToolbarButton>
-            <AppToolbarButton
-              onClick={() => setViewMode((mode) => (mode === 'grid' ? 'list' : 'grid'))}
-              aria-label={viewMode === 'grid' ? 'Switch to list view' : 'Switch to grid view'}
-              title={TOOLTIPS.gridList}
-            >
-              {viewMode === 'grid' ? <ViewListIcon /> : <ViewGridIcon />}
-            </AppToolbarButton>
+            <label className="library-launcher-toggle" title={TOOLTIPS.playGamesFromLauncher}>
+              <input
+                type="checkbox"
+                className="library-launcher-toggle__checkbox"
+                checked={settings?.playGamesFromLauncher ?? true}
+                disabled={settings == null}
+                onChange={(e) => void handlePlayGamesFromLauncherChange(e.target.checked)}
+              />
+              <span className="library-launcher-toggle__label">Play games from launcher</span>
+            </label>
+            <div className="library-chrome__toolbar-actions">
+              <AppToolbarButton
+                onClick={() => setShowAddModal(true)}
+                aria-label="Set up Goldberg emulator for a new game"
+                title={TOOLTIPS.addGame}
+              >
+                <PlusIcon />
+              </AppToolbarButton>
+              <AppToolbarButton
+                onClick={() => setViewMode((mode) => (mode === 'grid' ? 'list' : 'grid'))}
+                aria-label={viewMode === 'grid' ? 'Switch to list view' : 'Switch to grid view'}
+                title={TOOLTIPS.gridList}
+              >
+                {viewMode === 'grid' ? <ViewListIcon /> : <ViewGridIcon />}
+              </AppToolbarButton>
+            </div>
           </>
         }
       />

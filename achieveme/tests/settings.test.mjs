@@ -22,4 +22,14 @@ test('normalizeAppSettings applies defaults for legacy settings files', () => {
   assert.equal(normalized.customSoundPath, '')
   assert.equal(normalized.playtimeTrackingEnabled, DEFAULT_APP_SETTINGS.playtimeTrackingEnabled)
   assert.equal(normalized.sessionRecapEnabled, DEFAULT_APP_SETTINGS.sessionRecapEnabled)
+  assert.equal(normalized.playGamesFromLauncher, DEFAULT_APP_SETTINGS.playGamesFromLauncher)
+})
+
+test('normalizeAppSettings preserves playGamesFromLauncher when set', () => {
+  const normalized = normalizeAppSettings({
+    steamApiKey: 'abc',
+    enabledSources: ['goldberg'],
+    playGamesFromLauncher: false
+  })
+  assert.equal(normalized.playGamesFromLauncher, false)
 })

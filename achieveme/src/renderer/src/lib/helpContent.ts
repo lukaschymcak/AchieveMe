@@ -49,6 +49,8 @@ export const TOOLTIPS = {
   addGame:
     'Set up Goldberg files for a new game (search, pick steam_api.dll, optionally apply the emulator DLL).',
   gridList: 'Switch between grid and list layout. Your choice is remembered.',
+  playGamesFromLauncher:
+    'When checked, game detail shows Set install folder / Select exe / Play so you can launch games from AchieveMe.',
   search: 'Filter games by name. Sort order is preserved.',
   level: 'Level = floor(XP ÷ 1000). Earn XP from unlocked achievements.',
   xp: 'Bronze 50 · Silver 100 · Gold 200 · Platinum (100% game) 500 XP per trophy.',
@@ -79,7 +81,7 @@ export const TOOLTIPS = {
   settingsNotifications:
     'Tray mode keeps AchieveMe watching save folders after you close the window. Unlock toasts use a Steam-style layout with bronze/silver/gold accents by rarity, plus a platinum toast when a game first hits 100%. They fire on live save changes only.',
   settingsPlaytime:
-    'Playtime is tracked when a known game executable from an Add Game install folder is running.',
+    'Playtime is tracked when a known game executable under the resolved game folder (climbed from the Add Game DLL path) is running.',
   settingsSessionRecap:
     'After a tracked play session of at least one minute, AchieveMe shows time played, unlocks, and XP gained.'
 } as const
@@ -264,7 +266,7 @@ export const HELP_SECTIONS: HelpSection[] = [
     paragraphs: [
       'For games not yet discovered: search → pick steam_api.dll → choose whether to also apply the Goldberg emulator → apply → Done → Refresh library.',
       'Always installs steam_settings and seeds achievements. Optionally backs up and replaces the Steam API DLL with the Goldberg regular build. Does not launch the game.',
-      'On game detail, use Play next to the title to launch a remembered .exe. If none is set, pick the install folder (when needed) then choose a top-level executable. Use the chevron for Change executable.'
+      'Enable Play games from launcher on the Library toolbar to show Set install folder / Select exe / Play on game detail. The button is Set install folder (no path yet), Select exe (path but no exe), or Play (exe saved). Picking an executable only saves it — Play launches later. With a path, AchieveMe walks up from the steam DLL folder until a parent name matches the game title, then lists executables under that tree. Ambiguous folder names ask you to confirm. Use the chevron for Change executable.'
     ]
   },
   {

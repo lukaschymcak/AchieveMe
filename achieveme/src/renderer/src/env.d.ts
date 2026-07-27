@@ -10,6 +10,7 @@ import type {
   LibraryUpdatedPayload,
   SessionRecapPayload,
   GameExecutable,
+  ResolveGameExecutablesResult,
   SetGameLaunchConfigRequest
 } from '../../shared/types'
 
@@ -35,6 +36,10 @@ declare global {
       applyGoldberg(request: GoldbergApplyRequest): Promise<void>
       browseGameInstallFolder(): Promise<string | null>
       listGameExecutables(installPath: string): Promise<GameExecutable[]>
+      resolveGameExecutables(
+        appid: string,
+        acceptedRoot?: string
+      ): Promise<ResolveGameExecutablesResult>
       setGameLaunchConfig(request: SetGameLaunchConfigRequest): Promise<void>
       launchGame(appid: string): Promise<void>
       onGoldbergLog(cb: (line: string) => void): void

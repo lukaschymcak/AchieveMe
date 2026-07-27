@@ -11,7 +11,8 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   soundEnabled: true,
   customSoundPath: '',
   playtimeTrackingEnabled: true,
-  sessionRecapEnabled: true
+  sessionRecapEnabled: true,
+  playGamesFromLauncher: true
 }
 
 export function normalizeAppSettings(
@@ -33,6 +34,8 @@ export function normalizeAppSettings(
     playtimeTrackingEnabled:
       parsed?.playtimeTrackingEnabled ?? DEFAULT_APP_SETTINGS.playtimeTrackingEnabled,
     sessionRecapEnabled:
-      parsed?.sessionRecapEnabled ?? DEFAULT_APP_SETTINGS.sessionRecapEnabled
+      parsed?.sessionRecapEnabled ?? DEFAULT_APP_SETTINGS.sessionRecapEnabled,
+    playGamesFromLauncher:
+      parsed?.playGamesFromLauncher ?? DEFAULT_APP_SETTINGS.playGamesFromLauncher
   }
 }

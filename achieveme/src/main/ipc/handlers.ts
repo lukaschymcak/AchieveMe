@@ -29,11 +29,12 @@ import {
 } from '../achievement/sessionRecapService'
 import { updateGameInstallPath } from '../db/repository'
 import type { ProfileStats, GameSummary, GameDetail, AppSettings, ImportResult, SteamSearchResult, GoldbergApplyRequest, SteamApiDllInfo } from '../../shared/types'
-import type { GameExecutable, SetGameLaunchConfigRequest } from '../../shared/types'
+import type { GameExecutable, ResolveGameExecutablesResult, SetGameLaunchConfigRequest } from '../../shared/types'
 import {
   LAUNCH_NEEDS_EXE,
   launchGame,
   listInstallExecutables,
+  resolveGameExecutables,
   setGameLaunchConfig
 } from '../achievement/gameLaunchService'
 
@@ -271,6 +272,12 @@ export function registerIpcHandlers(): void {
   ipcMain.handle(
     'list-game-executables',
     (_event, installPath: string): GameExecutable[] => listInstallExecutables(installPath)
+  )
+
+  ipcMain.handle(
+    'resolve-game-executables',
+    (_event, appid: string, acceptedRoot?: string): ResolveGameExecutablesResult =>
+      resolveGameExecutables(getDb(), appid, acceptedRoot)
   )
 
   ipcMain.handle(

@@ -36,6 +36,8 @@ export interface AppSettings {
   customSoundPath: string
   playtimeTrackingEnabled: boolean
   sessionRecapEnabled: boolean
+  /** When true, game detail shows Play / Select exe / Set install folder controls. */
+  playGamesFromLauncher: boolean
 }
 
 export interface UnlockChange {
@@ -250,7 +252,7 @@ export interface SteamApiDllInfo {
   architecture: 'x86' | 'x64'
 }
 
-/** One top-level executable under a game install folder. */
+/** One executable found under a game install / game-root folder. */
 export interface GameExecutable {
   name: string
   relativePath: string
@@ -263,6 +265,17 @@ export interface SetGameLaunchConfigRequest {
   installPath?: string
   launchExe: string
 }
+
+/**
+ * Result of resolving the game root and listing executables for Play.
+ * - `ready` — root known; `executables` may be empty.
+ * - `confirm_root` — folder name is only a possible match; ask the user.
+ * - `need_browse` — no candidate; user must pick a folder.
+ */
+export type ResolveGameExecutablesResult =
+  | { status: 'ready'; root: string; executables: GameExecutable[] }
+  | { status: 'confirm_root'; candidatePath: string }
+  | { status: 'need_browse' }
 
 /** Error code from launchGame when the UI should open the exe picker. */
 export const LAUNCH_NEEDS_EXE = 'LAUNCH_NEEDS_EXE' as const

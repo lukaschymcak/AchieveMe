@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
-import type { ProfileStats, GameSummary, GameDetail, AppSettings, ImportResult, SteamSearchResult, GoldbergApplyRequest, SteamApiDllInfo, LibraryUpdatedPayload, SessionRecapPayload, GameExecutable, SetGameLaunchConfigRequest } from '../shared/types'
+import type { ProfileStats, GameSummary, GameDetail, AppSettings, ImportResult, SteamSearchResult, GoldbergApplyRequest, SteamApiDllInfo, LibraryUpdatedPayload, SessionRecapPayload, GameExecutable, ResolveGameExecutablesResult, SetGameLaunchConfigRequest } from '../shared/types'
 
 const libraryUpdatedCallbacks = new Set<(payload: LibraryUpdatedPayload) => void>()
 
@@ -86,6 +86,12 @@ contextBridge.exposeInMainWorld('api', {
 
   listGameExecutables: (installPath: string): Promise<GameExecutable[]> =>
     ipcRenderer.invoke('list-game-executables', installPath),
+
+  resolveGameExecutables: (
+    appid: string,
+    acceptedRoot?: string
+  ): Promise<ResolveGameExecutablesResult> =>
+    ipcRenderer.invoke('resolve-game-executables', appid, acceptedRoot),
 
   setGameLaunchConfig: (request: SetGameLaunchConfigRequest): Promise<void> =>
     ipcRenderer.invoke('set-game-launch-config', request),
