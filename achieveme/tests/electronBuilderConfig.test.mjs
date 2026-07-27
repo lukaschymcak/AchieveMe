@@ -69,12 +69,16 @@ test('electron-builder config uses AchieveMe identity', () => {
   assert.equal(config.productName, 'AchieveMe')
 })
 
-test('electron-builder config targets Windows NSIS x64', () => {
+test('electron-builder config targets Windows NSIS and portable x64', () => {
   const config = loadElectronBuilderConfig()
-  const winTarget = config.win?.target?.[0]
+  const targets = config.win?.target ?? []
 
-  assert.equal(winTarget?.target, 'nsis')
-  assert.deepEqual(winTarget?.arch, ['x64'])
+  assert.deepEqual(targets, [
+    { target: 'nsis', arch: ['x64'] },
+    { target: 'portable', arch: ['x64'] }
+  ])
+  assert.equal(config.nsis?.artifactName, '${productName}-Windows-${version}-Setup.${ext}')
+  assert.equal(config.portable?.artifactName, '${productName}-Windows-${version}-Portable.${ext}')
 })
 
 test('electron-builder extraResources bundles generate_emu_config with safe filters', () => {

@@ -72,11 +72,14 @@ npm install
 npm run build
 ```
 
-The installer is written to:
+Build outputs:
 
-`achieveme/release/0.1.0/AchieveMe-Windows-0.1.0-Setup.exe`
+| Artifact | Path |
+|----------|------|
+| Installer (NSIS) | `achieveme/release/0.1.0/AchieveMe-Windows-0.1.0-Setup.exe` |
+| Portable (no install/uninstall) | `achieveme/release/0.1.0/AchieveMe-Windows-0.1.0-Portable.exe` |
 
-After install, the generator lives at `resources/generate_emu_config/generate_emu_config.exe` next to the app binary. The regular emu DLLs live at `resources/goldberg_release/regular/`.
+Run the portable exe directly; no installer or uninstaller. After install (or from portable unpack), the generator lives at `resources/generate_emu_config/generate_emu_config.exe` next to the app binary. The regular emu DLLs live at `resources/goldberg_release/regular/`.
 
 ## Backup & restore
 
