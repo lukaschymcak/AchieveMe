@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
-import type { ProfileStats, GameSummary, GameDetail, AppSettings, ImportResult, SteamSearchResult, GoldbergApplyRequest, SteamApiDllInfo, LibraryUpdatedPayload, SessionRecapPayload } from '../shared/types'
+import type { ProfileStats, GameSummary, GameDetail, AppSettings, ImportResult, SteamSearchResult, GoldbergApplyRequest, SteamApiDllInfo, LibraryUpdatedPayload, SessionRecapPayload, GameExecutable, SetGameLaunchConfigRequest } from '../shared/types'
 
 const libraryUpdatedCallbacks = new Set<(payload: LibraryUpdatedPayload) => void>()
 
@@ -80,6 +80,18 @@ contextBridge.exposeInMainWorld('api', {
 
   applyGoldberg: (request: GoldbergApplyRequest): Promise<void> =>
     ipcRenderer.invoke('apply-goldberg', request),
+
+  browseGameInstallFolder: (): Promise<string | null> =>
+    ipcRenderer.invoke('browse-game-install-folder'),
+
+  listGameExecutables: (installPath: string): Promise<GameExecutable[]> =>
+    ipcRenderer.invoke('list-game-executables', installPath),
+
+  setGameLaunchConfig: (request: SetGameLaunchConfigRequest): Promise<void> =>
+    ipcRenderer.invoke('set-game-launch-config', request),
+
+  launchGame: (appid: string): Promise<void> =>
+    ipcRenderer.invoke('launch-game', appid),
 
   onGoldbergLog: (cb: (line: string) => void): void => {
     ipcRenderer.on('goldberg-log', (_event, line: string) => cb(line))

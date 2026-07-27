@@ -2,7 +2,7 @@ import type Database from 'better-sqlite3'
 import type { Game, Achievement, SaveLocation } from '../../shared/types'
 
 const GAME_COLUMNS =
-  'appid, name, total_achievements, unlocked_achievements, completion_pct, has_platinum, last_unlocked_at, schema_fetched_at, playtime_seconds, install_path'
+  'appid, name, total_achievements, unlocked_achievements, completion_pct, has_platinum, last_unlocked_at, schema_fetched_at, playtime_seconds, install_path, launch_exe'
 
 // ─── Games ───────────────────────────────────────────────────────────────────
 
@@ -10,17 +10,18 @@ export function upsertGame(db: Database.Database, game: Game): void {
   const existing = getGame(db, game.appid)
   const playtimeSeconds = game.playtime_seconds ?? existing?.playtime_seconds ?? 0
   const installPath = game.install_path ?? existing?.install_path ?? ''
+  const launchExe = game.launch_exe ?? existing?.launch_exe ?? ''
 
   db.prepare(`
     INSERT INTO games (
       appid, name, total_achievements, unlocked_achievements,
       completion_pct, has_platinum, last_unlocked_at, schema_fetched_at,
-      playtime_seconds, install_path
+      playtime_seconds, install_path, launch_exe
     )
     VALUES (
       @appid, @name, @total_achievements, @unlocked_achievements,
       @completion_pct, @has_platinum, @last_unlocked_at, @schema_fetched_at,
-      @playtime_seconds, @install_path
+      @playtime_seconds, @install_path, @launch_exe
     )
     ON CONFLICT(appid) DO UPDATE SET
       name                  = excluded.name,
@@ -38,11 +39,16 @@ export function upsertGame(db: Database.Database, game: Game): void {
       install_path          = CASE
         WHEN excluded.install_path != '' THEN excluded.install_path
         ELSE games.install_path
+      END,
+      launch_exe            = CASE
+        WHEN excluded.launch_exe != '' THEN excluded.launch_exe
+        ELSE games.launch_exe
       END
   `).run({
     ...game,
     playtime_seconds: playtimeSeconds,
-    install_path: installPath
+    install_path: installPath,
+    launch_exe: launchExe
   })
 }
 
@@ -64,6 +70,17 @@ export function updateGamePlaytime(db: Database.Database, appid: string, seconds
 
 export function updateGameInstallPath(db: Database.Database, appid: string, installPath: string): void {
   db.prepare('UPDATE games SET install_path = ? WHERE appid = ?').run(installPath, appid)
+}
+
+/**
+ * Persists the absolute path of the executable used by Play.
+ *
+ * @param db - Open SQLite database.
+ * @param appid - Steam AppID.
+ * @param launchExe - Absolute path to the game `.exe`, or empty to clear.
+ */
+export function updateGameLaunchExe(db: Database.Database, appid: string, launchExe: string): void {
+  db.prepare('UPDATE games SET launch_exe = ? WHERE appid = ?').run(launchExe, appid)
 }
 
 export function deleteGame(db: Database.Database, appid: string): void {

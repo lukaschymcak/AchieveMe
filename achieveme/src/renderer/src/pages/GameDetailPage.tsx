@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import type { Achievement, GameDetail, TrophyTier } from '../../../shared/types'
+import type { Achievement, GameDetail, GameExecutable, TrophyTier } from '../../../shared/types'
+import { LAUNCH_NEEDS_EXE } from '../../../shared/types'
 import { formatPlaytimePlayed } from '../../../shared/playtimeUtils'
 import { getSteamLibraryHeroUrl } from '../../../shared/steamUrls'
 import HelpTip from '../components/HelpTip'
@@ -400,11 +401,92 @@ export default function GameDetailPage({
   const [showDescriptions, setShowDescriptions] = useState(false)
   const [activeFilter, setActiveFilter] = useState<ActiveFilter>('all')
   const [resolvedBackdrop, setResolvedBackdrop] = useState('')
+  const [exePickerOpen, setExePickerOpen] = useState(false)
+  const [exeOptions, setExeOptions] = useState<GameExecutable[]>([])
+  const [exePickerError, setExePickerError] = useState('')
+  const [playBusy, setPlayBusy] = useState(false)
+  const [playMenuOpen, setPlayMenuOpen] = useState(false)
+
+  async function reloadDetail(): Promise<GameDetail | null> {
+    const next = await window.api.getGameDetail(appid)
+    setDetail(next)
+    return next
+  }
+
+  async function openExePicker(installPath: string): Promise<void> {
+    setExePickerError('')
+    const list = await window.api.listGameExecutables(installPath)
+    setExeOptions(list)
+    setExePickerOpen(true)
+    if (list.length === 0) {
+      setExePickerError('No executables found in this folder.')
+    }
+  }
+
+  async function ensureInstallPathAndOpenPicker(): Promise<void> {
+    let installPath = detail?.game.install_path?.trim() ?? ''
+    if (!installPath) {
+      const folder = await window.api.browseGameInstallFolder()
+      if (!folder) return
+      installPath = folder
+      await window.api.setGameLaunchConfig({
+        appid,
+        installPath,
+        launchExe: detail?.game.launch_exe ?? ''
+      })
+      await reloadDetail()
+    }
+    await openExePicker(installPath)
+  }
+
+  async function handlePlay(): Promise<void> {
+    if (playBusy) return
+    setPlayBusy(true)
+    setPlayMenuOpen(false)
+    try {
+      await window.api.launchGame(appid)
+    } catch (err) {
+      const code = (err as Error & { code?: string }).code
+      const message = err instanceof Error ? err.message : String(err)
+      if (code === LAUNCH_NEEDS_EXE || message.includes(LAUNCH_NEEDS_EXE) || /Select a game executable/i.test(message)) {
+        await ensureInstallPathAndOpenPicker()
+      } else {
+        setError(message)
+      }
+    } finally {
+      setPlayBusy(false)
+    }
+  }
+
+  async function handleChangeExecutable(): Promise<void> {
+    setPlayMenuOpen(false)
+    await ensureInstallPathAndOpenPicker()
+  }
+
+  async function handlePickExecutable(exe: GameExecutable): Promise<void> {
+    setPlayBusy(true)
+    try {
+      await window.api.setGameLaunchConfig({
+        appid,
+        installPath: detail?.game.install_path || undefined,
+        launchExe: exe.absolutePath
+      })
+      setExePickerOpen(false)
+      await reloadDetail()
+      await window.api.launchGame(appid)
+    } catch (err) {
+      setExePickerError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setPlayBusy(false)
+    }
+  }
 
   useEffect(() => {
     setError(null)
     setDetail(null)
     setActiveFilter('all')
+    setExePickerOpen(false)
+    setPlayMenuOpen(false)
     window.api
       .getGameDetail(appid)
       .then(setDetail)
@@ -540,7 +622,45 @@ export default function GameDetailPage({
                 <GameDetailHeroBar onBack={onBack} onRefresh={onRefresh} refreshing={refreshing} />
                 <div className="game-detail__hero-content">
                   <div className="game-detail__hero-left">
-                    <h2 className="game-detail__title">{game!.name}</h2>
+                    <div className="game-detail__title-row">
+                      <h2 className="game-detail__title">{game!.name}</h2>
+                      <div className="game-detail__play-group">
+                        <button
+                          type="button"
+                          className="game-detail__pill game-detail__play"
+                          onClick={() => void handlePlay()}
+                          disabled={playBusy}
+                          aria-label={`Play ${game!.name}`}
+                        >
+                          {playBusy ? 'Starting…' : 'Play'}
+                        </button>
+                        <div className="game-detail__play-menu-wrap">
+                          <button
+                            type="button"
+                            className="game-detail__pill game-detail__play-chevron"
+                            onClick={() => setPlayMenuOpen((open) => !open)}
+                            aria-label="Play options"
+                            aria-expanded={playMenuOpen}
+                            aria-haspopup="menu"
+                            disabled={playBusy}
+                          >
+                            ▾
+                          </button>
+                          {playMenuOpen && (
+                            <div className="game-detail__play-menu" role="menu">
+                              <button
+                                type="button"
+                                role="menuitem"
+                                className="game-detail__play-menu-item"
+                                onClick={() => void handleChangeExecutable()}
+                              >
+                                Change executable…
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
                   </div>
                   <div className="game-detail__hero-right">
                     <CompletionRing pct={completionPct} platinum={hasPlatinum} size={96} large />
@@ -677,6 +797,54 @@ export default function GameDetailPage({
           )}
         </div>
       </div>
+
+      {exePickerOpen && (
+        <div
+          className="game-detail__exe-modal-backdrop"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setExePickerOpen(false)
+          }}
+        >
+          <div
+            className="game-detail__exe-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Select game executable"
+          >
+            <div className="game-detail__exe-modal-header">
+              <h3 className="game-detail__exe-modal-title">Select executable</h3>
+              <button
+                type="button"
+                className="game-detail__pill"
+                onClick={() => setExePickerOpen(false)}
+                aria-label="Close"
+              >
+                ×
+              </button>
+            </div>
+            <p className="game-detail__exe-modal-help">
+              Choose the game&apos;s main .exe from the install folder.
+            </p>
+            {exePickerError && (
+              <p className="game-detail__exe-modal-error">{exePickerError}</p>
+            )}
+            <ul className="game-detail__exe-list">
+              {exeOptions.map((exe) => (
+                <li key={exe.absolutePath}>
+                  <button
+                    type="button"
+                    className="game-detail__exe-option"
+                    disabled={playBusy}
+                    onClick={() => void handlePickExecutable(exe)}
+                  >
+                    {exe.name}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

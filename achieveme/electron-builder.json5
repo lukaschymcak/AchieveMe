@@ -17,7 +17,6 @@
       "filter": [
         "**/*",
         "!_OUTPUT/**",
-        "!my_login.txt",
         "!appid_finder/**",
         "!bat/**"
       ]

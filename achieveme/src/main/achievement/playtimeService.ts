@@ -1,9 +1,8 @@
 import { execSync } from 'node:child_process'
-import fs from 'node:fs'
-import path from 'node:path'
 import { getDb } from '../db/database'
 import { getAllGames, updateGamePlaytime } from '../db/repository'
 import { loadSettings } from '../settings'
+import { listExeBaseNamesForPlaytime } from './gameLaunchUtils'
 import { notifyLibraryUpdated } from './libraryNotifyService'
 import { regenerateProfileStats } from './profileStatsService'
 import { offerSessionRecapIfNeeded } from './sessionRecapService'
@@ -19,18 +18,7 @@ function listExeNames(installPath: string): string[] {
   const cached = exeCache.get(key)
   if (cached) return cached
 
-  const names: string[] = []
-  try {
-    for (const entry of fs.readdirSync(installPath, { withFileTypes: true })) {
-      if (entry.isFile() && entry.name.toLowerCase().endsWith('.exe')) {
-        names.push(path.parse(entry.name).name.toLowerCase())
-      }
-    }
-  } catch {
-    exeCache.set(key, [])
-    return []
-  }
-
+  const names = listExeBaseNamesForPlaytime(installPath)
   exeCache.set(key, names)
   return names
 }

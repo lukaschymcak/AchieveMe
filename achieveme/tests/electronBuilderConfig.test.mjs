@@ -94,7 +94,7 @@ test('electron-builder extraResources bundles generate_emu_config with safe filt
 
   assert.match(filterText, /\*\*\/\*/)
   assert.match(filterText, /!_OUTPUT\/\*\*/)
-  assert.match(filterText, /!my_login\.txt/)
+  assert.doesNotMatch(filterText, /!my_login\.txt/)
   assert.match(filterText, /!appid_finder\/\*\*/)
   assert.match(filterText, /!bat\/\*\*/)
 })

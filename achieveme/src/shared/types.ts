@@ -84,6 +84,8 @@ export interface Game {
   schema_fetched_at: number // unix seconds
   playtime_seconds: number
   install_path: string
+  /** Absolute path to the chosen game .exe for Play, or empty. */
+  launch_exe: string
 }
 
 // One row in the `achievements` SQLite table
@@ -247,6 +249,23 @@ export interface SteamApiDllInfo {
   directory: string
   architecture: 'x86' | 'x64'
 }
+
+/** One top-level executable under a game install folder. */
+export interface GameExecutable {
+  name: string
+  relativePath: string
+  absolutePath: string
+}
+
+/** Config payload when saving Play install/exe paths. */
+export interface SetGameLaunchConfigRequest {
+  appid: string
+  installPath?: string
+  launchExe: string
+}
+
+/** Error code from launchGame when the UI should open the exe picker. */
+export const LAUNCH_NEEDS_EXE = 'LAUNCH_NEEDS_EXE' as const
 
 export interface GameFolderInfo {
   gameDir: string

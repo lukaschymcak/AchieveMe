@@ -8,7 +8,9 @@ import type {
   GoldbergApplyRequest,
   SteamApiDllInfo,
   LibraryUpdatedPayload,
-  SessionRecapPayload
+  SessionRecapPayload,
+  GameExecutable,
+  SetGameLaunchConfigRequest
 } from '../../shared/types'
 
 declare global {
@@ -31,6 +33,10 @@ declare global {
       previewSessionRecap(): Promise<void>
       sessionRecapDone(): void
       applyGoldberg(request: GoldbergApplyRequest): Promise<void>
+      browseGameInstallFolder(): Promise<string | null>
+      listGameExecutables(installPath: string): Promise<GameExecutable[]>
+      setGameLaunchConfig(request: SetGameLaunchConfigRequest): Promise<void>
+      launchGame(appid: string): Promise<void>
       onGoldbergLog(cb: (line: string) => void): void
       offGoldbergLog(): void
       onLibraryUpdated(cb: (payload: LibraryUpdatedPayload) => void): void

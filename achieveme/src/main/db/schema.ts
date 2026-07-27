@@ -18,6 +18,9 @@ export function migrateSchema(db: Database.Database): void {
   if (!columnExists(db, 'games', 'install_path')) {
     db.exec("ALTER TABLE games ADD COLUMN install_path TEXT NOT NULL DEFAULT ''")
   }
+  if (!columnExists(db, 'games', 'launch_exe')) {
+    db.exec("ALTER TABLE games ADD COLUMN launch_exe TEXT NOT NULL DEFAULT ''")
+  }
 }
 
 export function createTables(db: Database.Database): void {
@@ -32,7 +35,8 @@ export function createTables(db: Database.Database): void {
       last_unlocked_at      INTEGER NOT NULL DEFAULT 0,
       schema_fetched_at     INTEGER NOT NULL DEFAULT 0,
       playtime_seconds      INTEGER NOT NULL DEFAULT 0,
-      install_path          TEXT    NOT NULL DEFAULT ''
+      install_path          TEXT    NOT NULL DEFAULT '',
+      launch_exe            TEXT    NOT NULL DEFAULT ''
     );
 
     CREATE TABLE IF NOT EXISTS achievements (

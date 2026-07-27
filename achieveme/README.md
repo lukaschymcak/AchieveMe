@@ -25,7 +25,11 @@ AchieveMe can run in the **system tray** after you close the window (Settings �
 
 **Progress bars** on game detail show partial achievement progress from Goldberg/GSE `progress` / `max_progress` fields in `achievements.json`.
 
+**Achievement icons** are live Steam CDN URLs from `GetSchemaForGame` (not downloaded to disk). Display normalizes hashes and legacy `steamcdn-a.akamaihd.net` schema URLs to `shared.akamai.steamstatic.com/community_assets/...`.
+
 **Playtime** is tracked for games set up via **Add Game** (install folder stored on disk). Dashboard, game detail, and library cards/rows always show tracked playtime (or `—` when none yet).
+
+**Play** on game detail launches a remembered install-folder `.exe` (top-level only). First run or **Change executable** lists exes under `install_path`; if that path is empty, you pick the install folder first.
 
 **Session recap** opens in the main window when a tracked play session ends (at least 1 minute): time played, unlocks during that window, and XP gained. Toggle in Settings; use **Test session recap** to preview with a random library game.
 
@@ -60,9 +64,9 @@ AchieveMe ships as a Windows NSIS installer built with `electron-builder`.
 ### Prerequisites
 
 1. Place the Goldberg generator beside the repo (gitignored): `goldberg-files/generate_emu_config/`
-2. That folder must include `generate_emu_config.exe` and `_internal/` (Add Game depends on it)
+2. That folder must include `generate_emu_config.exe`, `_internal/`, and `my_login.txt` (username on line 1, password on line 2 — required so packaged Add Game does not prompt for Steam login)
 3. Place the Goldberg **regular** release beside the repo: `goldberg-files/release/regular/` with `x64/steam_api64.dll` and `x86/steam_api.dll` (optional emulator DLL install in Add Game)
-4. Do **not** ship `my_login.txt` (Steam credentials). The build excludes `_OUTPUT/`, `appid_finder/`, `bat/`, and `my_login.txt` even if they exist locally.
+4. The build still excludes `_OUTPUT/`, `appid_finder/`, and `bat/` even if they exist locally. `my_login.txt` **is** bundled into both Setup and Portable.
 
 ### Build
 
@@ -115,7 +119,7 @@ Full Backup import **does not delete** emulator folders. It only overwrites file
 5. **Long-press card menu** — Quick-click a library card to open game detail with no hold blur or progress flash. Hold ~0.5s to show a dark overlay with horizontal Open / Refresh / Delete chips; releasing or moving off the card before the menu opens dismisses the overlay instantly (no left-to-right blur sweep). Delete confirms inline and removes the game; Refresh updates that game only.
 6. **Library search/sort** — Search by name and switch sort modes (least complete, most unlocked, recently unlocked). Hover game cards for a blue glow.
 7. **Live library update** — With the library open, edit a game's `achievements.json` on disk and save; the card fraction, %, and progress bar should update within ~1s without opening the game. Dashboard stats and open game detail should also refresh automatically.
-8. **Game detail nav & hidden descriptions** — Open a game from the library; confirm **← Library** and **Refresh all** appear as frosted pills on the hero (no separate top nav). Use the left/right arrow buttons on the screen edges to move through games in the library's current sort order without returning to the list; each transition should slide in from the direction of travel. For games with unearned hidden achievements, use the **Hidden** filter pill (with count) to toggle description text; achievement rows always stay visible.
+8. **Game detail nav & hidden descriptions** — Open a game from the library; confirm **← Library** and **Refresh all** appear as frosted pills on the hero (no separate top nav). Use the left/right arrow buttons on the screen edges to move through games in the library's current sort order without returning to the list; each transition should slide in from the direction of travel. For games with unearned hidden achievements, use the **Hidden** filter pill (with count) to toggle description text; achievement rows always stay visible. Use **Play** next to the title (and the chevron → Change executable) to pick/launch a top-level `.exe`.
 9. **Help & tooltips** — Open **Help** from the nav; confirm sections load. Click **?** on Dashboard stats and Library Refresh; dismiss first-run welcome and long-press coach mark on Library.
 10. **Tray & unlock toast** — Close the window; confirm tray icon remains. Edit a save file to unlock an achievement; confirm the AchieveMe toast appears top-center (icon pulse → expand with staggered text/XP → text fades then shrink) with sound if enabled. Or use Settings → Test notification. Click opens the game; Tray → Show restores the window; Quit exits.
 11. **Progress bars** — Open a Goldberg/GSE game with `progress`/`max_progress` in its save; confirm unearned rows show a partial bar on game detail.

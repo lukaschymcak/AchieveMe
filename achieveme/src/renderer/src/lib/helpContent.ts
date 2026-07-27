@@ -263,7 +263,8 @@ export const HELP_SECTIONS: HelpSection[] = [
     title: 'Add Game wizard',
     paragraphs: [
       'For games not yet discovered: search → pick steam_api.dll → choose whether to also apply the Goldberg emulator → apply → Done → Refresh library.',
-      'Always installs steam_settings and seeds achievements. Optionally backs up and replaces the Steam API DLL with the Goldberg regular build. Does not launch the game.'
+      'Always installs steam_settings and seeds achievements. Optionally backs up and replaces the Steam API DLL with the Goldberg regular build. Does not launch the game.',
+      'On game detail, use Play next to the title to launch a remembered .exe. If none is set, pick the install folder (when needed) then choose a top-level executable. Use the chevron for Change executable.'
     ]
   },
   {

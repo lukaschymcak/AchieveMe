@@ -29,6 +29,13 @@ import {
 } from '../achievement/sessionRecapService'
 import { updateGameInstallPath } from '../db/repository'
 import type { ProfileStats, GameSummary, GameDetail, AppSettings, ImportResult, SteamSearchResult, GoldbergApplyRequest, SteamApiDllInfo } from '../../shared/types'
+import type { GameExecutable, SetGameLaunchConfigRequest } from '../../shared/types'
+import {
+  LAUNCH_NEEDS_EXE,
+  launchGame,
+  listInstallExecutables,
+  setGameLaunchConfig
+} from '../achievement/gameLaunchService'
 
 export function registerIpcHandlers(): void {
   ipcMain.handle('get-profile-stats', (): ProfileStats | null => {
@@ -250,5 +257,38 @@ export function registerIpcHandlers(): void {
     await applyGoldberg(request, settings, (line) => {
       event.sender.send('goldberg-log', line)
     })
+  })
+
+  ipcMain.handle('browse-game-install-folder', async (): Promise<string | null> => {
+    const { canceled, filePaths } = await dialog.showOpenDialog({
+      title: 'Select game install folder',
+      properties: ['openDirectory']
+    })
+    if (canceled || filePaths.length === 0) return null
+    return path.resolve(filePaths[0])
+  })
+
+  ipcMain.handle(
+    'list-game-executables',
+    (_event, installPath: string): GameExecutable[] => listInstallExecutables(installPath)
+  )
+
+  ipcMain.handle(
+    'set-game-launch-config',
+    (_event, request: SetGameLaunchConfigRequest): void => {
+      setGameLaunchConfig(getDb(), request)
+    }
+  )
+
+  ipcMain.handle('launch-game', async (_event, appid: string): Promise<void> => {
+    try {
+      launchGame(getDb(), appid)
+    } catch (err) {
+      const code = (err as Error & { code?: string }).code
+      if (code === LAUNCH_NEEDS_EXE) {
+        throw new Error(`${LAUNCH_NEEDS_EXE}: Select a game executable to play.`)
+      }
+      throw err
+    }
   })
 }
