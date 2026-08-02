@@ -38,6 +38,8 @@ export interface AppSettings {
   sessionRecapEnabled: boolean
   /** When true, game detail shows Play / Select exe / Set install folder controls. */
   playGamesFromLauncher: boolean
+  /** Absolute path to a user-linked Steamless install folder, or empty. */
+  steamlessFolder: string
 }
 
 export interface UnlockChange {
@@ -150,6 +152,8 @@ export interface GameSummary {
   has_platinum: boolean
   last_unlocked_at: number
   playtime_seconds: number
+  install_path: string
+  launch_exe: string
 }
 
 // Sent over IPC to renderer for the game detail page
@@ -279,6 +283,14 @@ export type ResolveGameExecutablesResult =
 
 /** Error code from launchGame when the UI should open the exe picker. */
 export const LAUNCH_NEEDS_EXE = 'LAUNCH_NEEDS_EXE' as const
+
+/** Result of running the linked Steamless.CLI on an executable. */
+export interface SteamlessRunResult {
+  ok: boolean
+  exitCode: number
+  log: string
+  unpackedPath: string | null
+}
 
 export interface GameFolderInfo {
   gameDir: string

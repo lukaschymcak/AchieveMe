@@ -12,7 +12,8 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   customSoundPath: '',
   playtimeTrackingEnabled: true,
   sessionRecapEnabled: true,
-  playGamesFromLauncher: true
+  playGamesFromLauncher: true,
+  steamlessFolder: ''
 }
 
 export function normalizeAppSettings(
@@ -36,6 +37,7 @@ export function normalizeAppSettings(
     sessionRecapEnabled:
       parsed?.sessionRecapEnabled ?? DEFAULT_APP_SETTINGS.sessionRecapEnabled,
     playGamesFromLauncher:
-      parsed?.playGamesFromLauncher ?? DEFAULT_APP_SETTINGS.playGamesFromLauncher
+      parsed?.playGamesFromLauncher ?? DEFAULT_APP_SETTINGS.playGamesFromLauncher,
+    steamlessFolder: parsed?.steamlessFolder ?? DEFAULT_APP_SETTINGS.steamlessFolder
   }
 }

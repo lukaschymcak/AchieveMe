@@ -3,7 +3,7 @@ import path from 'node:path'
 import AdmZip from 'adm-zip'
 import type Database from 'better-sqlite3'
 import type { AppSettings, FullBackupManifest, ImportResult } from '../../shared/types'
-import { upsertAchievements, upsertGame } from '../db/repository'
+import { replaceAchievementsForGame, upsertGame } from '../db/repository'
 import { processAppId } from './processAppId'
 import { regenerateProfileStats } from './profileStatsService'
 import { resolvePortablePath } from './savePathUtils'
@@ -37,10 +37,17 @@ export async function importFullBackupZip(
     throw new Error('Invalid backup: expected formatVersion 3')
   }
 
+  const achievementsByAppid = new Map<string, typeof manifest.achievements>()
+  for (const row of manifest.achievements) {
+    const list = achievementsByAppid.get(row.appid) ?? []
+    list.push(row)
+    achievementsByAppid.set(row.appid, list)
+  }
+
   for (const game of manifest.games) {
     upsertGame(db, game)
+    replaceAchievementsForGame(db, game.appid, achievementsByAppid.get(game.appid) ?? [])
   }
-  upsertAchievements(db, manifest.achievements)
 
   const appidsToRefresh = new Set<string>()
 

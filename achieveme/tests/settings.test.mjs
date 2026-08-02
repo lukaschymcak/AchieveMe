@@ -23,6 +23,7 @@ test('normalizeAppSettings applies defaults for legacy settings files', () => {
   assert.equal(normalized.playtimeTrackingEnabled, DEFAULT_APP_SETTINGS.playtimeTrackingEnabled)
   assert.equal(normalized.sessionRecapEnabled, DEFAULT_APP_SETTINGS.sessionRecapEnabled)
   assert.equal(normalized.playGamesFromLauncher, DEFAULT_APP_SETTINGS.playGamesFromLauncher)
+  assert.equal(normalized.steamlessFolder, DEFAULT_APP_SETTINGS.steamlessFolder)
 })
 
 test('normalizeAppSettings preserves playGamesFromLauncher when set', () => {
@@ -32,4 +33,13 @@ test('normalizeAppSettings preserves playGamesFromLauncher when set', () => {
     playGamesFromLauncher: false
   })
   assert.equal(normalized.playGamesFromLauncher, false)
+})
+
+test('normalizeAppSettings preserves steamlessFolder when set', () => {
+  const normalized = normalizeAppSettings({
+    steamApiKey: 'abc',
+    enabledSources: ['goldberg'],
+    steamlessFolder: 'C:\\Tools\\Steamless'
+  })
+  assert.equal(normalized.steamlessFolder, 'C:\\Tools\\Steamless')
 })

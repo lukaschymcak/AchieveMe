@@ -1301,7 +1301,8 @@ button:focus-visible {
 
 .app-page--doc-column > .dashboard-page,
 .app-page--doc-column > .help-page,
-.app-page--doc-column > .settings-page {
+.app-page--doc-column > .settings-page,
+.app-page--doc-column > .tools-page {
   width: var(--app-doc-width);
   max-width: 100%;
   align-self: center;
@@ -3833,3 +3834,246 @@ button.dashboard-near__row:focus-visible {
 .game-detail__filter-bar .help-tip__popover--floating {
   /* position set inline via HelpTip */
 }
+
+/* —— Tools / Steamless —— */
+.tools-page {
+  padding-top: var(--space-2);
+  padding-bottom: calc(var(--space-6) + var(--space-5));
+}
+
+.tools-page__header {
+  margin-bottom: var(--space-5);
+}
+
+.tools-page__title {
+  margin: 0 0 var(--space-2);
+  font-family: var(--font-display);
+  font-size: clamp(1.75rem, 3vw, 2.25rem);
+  font-weight: 400;
+  color: var(--ink);
+}
+
+.tools-page__lead {
+  margin: 0;
+  max-width: 42rem;
+  color: var(--ink-muted);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.tools-page__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--space-4);
+}
+
+.tools-card {
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  border: 1px solid oklch(28% 0.02 275 / 0.55);
+  background: oklch(16% 0.014 275 / 0.88);
+}
+
+.tools-card__title {
+  margin: 0 0 var(--space-2);
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.tools-card__body {
+  margin: 0 0 var(--space-3);
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--ink-muted);
+}
+
+.tools-card__path,
+.tools-card__hint {
+  margin: 0 0 var(--space-3);
+  font-size: 12px;
+  line-height: 1.4;
+  color: oklch(70% 0.01 275);
+  word-break: break-all;
+}
+
+.tools-card__hint {
+  color: oklch(62% 0.04 70);
+}
+
+.tools-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.steamless-wizard-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+  background: oklch(8% 0.02 275 / 0.72);
+}
+
+.steamless-wizard {
+  width: min(560px, 100%);
+  max-height: min(80vh, 720px);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  border-radius: 12px;
+  border: 1px solid oklch(28% 0.02 275 / 0.55);
+  background: oklch(14% 0.014 275);
+  box-shadow: 0 24px 64px oklch(4% 0.02 275 / 0.55);
+}
+
+.steamless-wizard__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: 14px 16px;
+  border-bottom: 1px solid oklch(24% 0.016 275 / 0.7);
+}
+
+.steamless-wizard__title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.steamless-wizard__close {
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink-muted);
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.steamless-wizard__close:hover:not(:disabled) {
+  color: var(--ink);
+  background: oklch(20% 0.014 275);
+}
+
+.steamless-wizard__help,
+.steamless-wizard__muted {
+  margin: 0;
+  padding: 12px 16px 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: oklch(60% 0.01 275);
+}
+
+.steamless-wizard > .app-chrome__search,
+.steamless-wizard > .library-chrome__search {
+  margin: 12px 16px 0;
+}
+
+.steamless-wizard__game-list {
+  list-style: none;
+  margin: 0;
+  padding: 12px 16px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+  min-height: 0;
+}
+
+.steamless-wizard__game-option {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid oklch(20% 0.016 275);
+  border-radius: 8px;
+  background: oklch(12% 0.012 275);
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.steamless-wizard__game-option:hover {
+  border-color: oklch(35% 0.04 230);
+}
+
+.steamless-wizard__game-name {
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.steamless-wizard__game-meta {
+  font-size: 11px;
+  color: oklch(62% 0.01 275);
+  word-break: break-all;
+}
+
+.steamless-wizard__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 12px 16px 16px;
+}
+
+.steamless-wizard__path {
+  margin: 8px 16px 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: oklch(12% 0.012 275);
+  font-size: 11px;
+  line-height: 1.4;
+  color: oklch(72% 0.01 275);
+  word-break: break-all;
+}
+
+.steamless-wizard__error {
+  margin: 8px 16px 0;
+  font-size: 13px;
+  color: #f87171;
+}
+
+.steamless-wizard__ok {
+  margin: 8px 16px 0;
+  font-size: 13px;
+  color: oklch(72% 0.12 145);
+}
+
+.steamless-wizard__log {
+  margin: 12px 16px 0;
+  padding: 10px 12px;
+  min-height: 120px;
+  max-height: 240px;
+  overflow: auto;
+  border-radius: 8px;
+  background: oklch(10% 0.01 275);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 11px;
+  line-height: 1.45;
+  color: oklch(78% 0.01 275);
+}
+
+.steamless-wizard__log-pre {
+  margin: 0;
+  white-space: pre-wrap;
+  font: inherit;
+}
+
+.steamless-wizard__confirm {
+  padding-bottom: 8px;
+}
+
+.steamless-wizard__result {
+  padding-bottom: 4px;
+}
+

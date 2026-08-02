@@ -92,8 +92,8 @@ export function deleteGame(db: Database.Database, appid: string): void {
 
 // ─── Achievements ─────────────────────────────────────────────────────────────
 
-export function upsertAchievements(db: Database.Database, achievements: Achievement[]): void {
-  const stmt = db.prepare(`
+function prepareAchievementUpsert(db: Database.Database): Database.Statement {
+  return db.prepare(`
     INSERT INTO achievements (
       appid, api_name, display_name, description, icon_url,
       icon_gray_url, global_percent, earned, earned_time, trophy_tier, hidden,
@@ -117,18 +117,54 @@ export function upsertAchievements(db: Database.Database, achievements: Achievem
       progress       = excluded.progress,
       max_progress   = excluded.max_progress
   `)
+}
 
+function runAchievementUpserts(
+  stmt: Database.Statement,
+  achievements: Achievement[]
+): void {
+  for (const row of achievements) {
+    stmt.run({
+      ...row,
+      progress: row.progress ?? 0,
+      max_progress: row.max_progress ?? 0
+    })
+  }
+}
+
+/**
+ * Inserts or updates achievement rows without removing orphans.
+ *
+ * @param db - Open SQLite database.
+ * @param achievements - Rows to upsert.
+ */
+export function upsertAchievements(db: Database.Database, achievements: Achievement[]): void {
+  const stmt = prepareAchievementUpsert(db)
   const insertMany = db.transaction((rows: Achievement[]) => {
-    for (const row of rows) {
-      stmt.run({
-        ...row,
-        progress: row.progress ?? 0,
-        max_progress: row.max_progress ?? 0
-      })
-    }
+    runAchievementUpserts(stmt, rows)
   })
-
   insertMany(achievements)
+}
+
+/**
+ * Replaces all achievement rows for one game so the table matches the catalog exactly.
+ * Deletes existing rows for `appid`, then inserts `achievements` in one transaction.
+ *
+ * @param db - Open SQLite database.
+ * @param appid - Steam AppID.
+ * @param achievements - Full replacement set (may be empty).
+ */
+export function replaceAchievementsForGame(
+  db: Database.Database,
+  appid: string,
+  achievements: Achievement[]
+): void {
+  const stmt = prepareAchievementUpsert(db)
+  const replace = db.transaction((rows: Achievement[]) => {
+    db.prepare('DELETE FROM achievements WHERE appid = ?').run(appid)
+    runAchievementUpserts(stmt, rows)
+  })
+  replace(achievements)
 }
 
 export function getAchievementsForGame(db: Database.Database, appid: string): Achievement[] {

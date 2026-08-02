@@ -1,5 +1,11 @@
 import https from 'node:https'
 import type { Achievement, Game, RawAchievement } from '../../shared/types'
+import {
+  buildAchievementRecords,
+  resolveAchievementSchema,
+  schemaListFromSteamResponse,
+  type SteamSchemaAchievement
+} from '../../shared/achievementSchemaUtils'
 import { normalizeSteamIconUrl } from '../../shared/steamUrls'
 import {
   getCacheEntry,
@@ -9,6 +15,9 @@ import {
 import { isFresh } from './cacheUtils'
 import { ensureSteamDbHiddenDescriptions } from './steamDbScraper'
 import type Database from 'better-sqlite3'
+
+export type { SteamSchemaAchievement }
+export { buildAchievementRecords, resolveAchievementSchema }
 
 const SCHEMA_TTL = 604800
 const PERCENTAGES_TTL = 86400
@@ -44,20 +53,32 @@ function writeCache(db: Database.Database, appid: string, type: string, data: un
   setCacheEntry(db, appid, type, JSON.stringify(data))
 }
 
-interface SteamSchemaAchievement {
-  name: string
-  displayName: string
-  description?: string
-  icon: string
-  icongray: string
-  hidden?: number
-}
-
 interface SteamSchemaResponse {
   game?: {
     availableGameStats?: {
       achievements?: SteamSchemaAchievement[]
     }
+  }
+}
+
+/**
+ * Reads a schema cache row ignoring TTL. Returns null when missing or invalid.
+ * An empty array is a valid cached schema (game has no achievements).
+ *
+ * @param db - Open SQLite database.
+ * @param appid - Steam AppID.
+ */
+export function readAnySchemaCache(
+  db: Database.Database,
+  appid: string
+): SteamSchemaAchievement[] | null {
+  const row = getCacheEntry(db, appid, 'schema')
+  if (!row) return null
+  try {
+    const parsed = JSON.parse(row.data_json) as unknown
+    return Array.isArray(parsed) ? (parsed as SteamSchemaAchievement[]) : null
+  } catch {
+    return null
   }
 }
 
@@ -67,25 +88,46 @@ async function fetchSchema(
   apiKey: string,
   forceRefresh: boolean
 ): Promise<SteamSchemaAchievement[] | null> {
-  if (!forceRefresh) {
-    const cached = readCache(db, appid, 'schema', SCHEMA_TTL)
-    if (cached) return cached as SteamSchemaAchievement[]
+  const freshCache = !forceRefresh
+    ? (readCache(db, appid, 'schema', SCHEMA_TTL) as SteamSchemaAchievement[] | null)
+    : null
+  const staleCache = readAnySchemaCache(db, appid)
+
+  if (!forceRefresh && freshCache !== null) {
+    return resolveAchievementSchema({
+      forceRefresh,
+      freshCache,
+      live: undefined,
+      staleCache
+    })
   }
 
-  if (!apiKey) return null
+  let live: SteamSchemaAchievement[] | null | undefined = undefined
 
-  try {
-    const url =
-      `https://api.steampowered.com/ISteamUserStats/GetSchemaForGame/v2/` +
-      `?key=${apiKey}&appid=${appid}&format=json`
-    const body = await httpGet(url)
-    const parsed = JSON.parse(body) as SteamSchemaResponse
-    const achievements = parsed?.game?.availableGameStats?.achievements ?? null
-    if (achievements) writeCache(db, appid, 'schema', achievements)
-    return achievements
-  } catch {
-    return null
+  if (apiKey) {
+    live = null
+    try {
+      const url =
+        `https://api.steampowered.com/ISteamUserStats/GetSchemaForGame/v2/` +
+        `?key=${apiKey}&appid=${appid}&format=json`
+      const body = await httpGet(url)
+      const parsed = JSON.parse(body) as SteamSchemaResponse
+      const liveResult = schemaListFromSteamResponse(parsed)
+      if (liveResult !== null) {
+        writeCache(db, appid, 'schema', liveResult)
+        live = liveResult
+      }
+    } catch {
+      live = null
+    }
   }
+
+  return resolveAchievementSchema({
+    forceRefresh,
+    freshCache,
+    live,
+    staleCache
+  })
 }
 
 interface SteamPercentResponse {
@@ -177,61 +219,6 @@ export async function getStoreCoverUrl(
   return details?.header_image ?? ''
 }
 
-function getTrophyTier(globalPercent: number): 'gold' | 'silver' | 'bronze' {
-  if (globalPercent < 20) return 'gold'
-  if (globalPercent < 40) return 'silver'
-  return 'bronze'
-}
-
-function buildAchievementRecords(
-  appid: string,
-  mergedRaw: Record<string, RawAchievement>,
-  schema: SteamSchemaAchievement[] | null,
-  percentages: Record<string, number> | null
-): Achievement[] {
-  const achievements: Achievement[] = []
-  const schemaMap = new Map<string, SteamSchemaAchievement>()
-  if (schema) {
-    for (const entry of schema) schemaMap.set(entry.name, entry)
-  }
-
-  const apiNames = schema ? schema.map((entry) => entry.name) : Object.keys(mergedRaw)
-
-  for (const apiName of apiNames) {
-    const raw = mergedRaw[apiName]
-    const earned = raw?.achieved ? 1 : 0
-    const earnedTime = raw?.unlockTime ?? 0
-    const maxProgress = raw?.maxProgress ?? 0
-    const progress = maxProgress > 0 ? (raw?.progress ?? 0) : 0
-
-    const schemaEntry = schemaMap.get(apiName)
-    const globalPercent = percentages?.[apiName] ?? 0
-    const tier = getTrophyTier(globalPercent)
-
-    const colorIconUrl = normalizeSteamIconUrl(appid, schemaEntry?.icon ?? '')
-    const grayIconUrl =
-      normalizeSteamIconUrl(appid, schemaEntry?.icongray ?? '') || colorIconUrl
-
-    achievements.push({
-      appid,
-      api_name: apiName,
-      display_name: schemaEntry?.displayName ?? apiName,
-      description: schemaEntry?.description ?? '',
-      icon_url: earned ? colorIconUrl : '',
-      icon_gray_url: grayIconUrl,
-      global_percent: globalPercent,
-      earned,
-      earned_time: earnedTime,
-      trophy_tier: tier,
-      hidden: schemaEntry?.hidden === 1 ? 1 : 0,
-      progress,
-      max_progress: maxProgress
-    })
-  }
-
-  return achievements
-}
-
 function buildGameRecord(
   appid: string,
   gameName: string,
@@ -283,7 +270,13 @@ export async function enrichApp(
   const appDetails = await fetchAppDetails(db, appid, forceRefresh || isNewGame)
   if (appDetails?.name) gameName = appDetails.name
 
-  const achievements = buildAchievementRecords(appid, mergedRaw, schema, percentages)
+  const achievements = buildAchievementRecords(
+    appid,
+    mergedRaw,
+    schema,
+    percentages,
+    normalizeSteamIconUrl
+  )
   await ensureSteamDbHiddenDescriptions(db, appid, achievements, forceRefresh)
 
   const game = buildGameRecord(appid, gameName, achievements, schema, existingGame)

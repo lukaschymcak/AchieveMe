@@ -8,7 +8,8 @@ const helpContent = await import(
   pathToFileURL(path.join(rootDir, '../src/renderer/src/lib/helpContent.ts')).href
 )
 
-const { EMULATOR_SOURCES, HELP_SECTIONS, getSourceHelp, TOOLTIPS } = helpContent
+const { EMULATOR_SOURCES, HELP_SECTIONS, getSourceHelp, TOOLTIPS, EMPTY_STATES, getEmptyAchievementsMessage } =
+  helpContent
 
 describe('helpContent', () => {
   it('lists every emulator source with path and file', () => {
@@ -39,5 +40,21 @@ describe('helpContent', () => {
     assert.ok(ids.includes('backup'))
     assert.ok(ids.includes('notifications'))
     assert.ok(ids.includes('faq'))
+  })
+
+  it('getEmptyAchievementsMessage distinguishes key / steam-empty / fetch-failed', () => {
+    assert.equal(
+      getEmptyAchievementsMessage(false, 0),
+      EMPTY_STATES.noAchievementsNeedApiKey
+    )
+    assert.equal(
+      getEmptyAchievementsMessage(true, 1710000000),
+      EMPTY_STATES.noAchievementsFromSteam
+    )
+    assert.equal(
+      getEmptyAchievementsMessage(true, 0),
+      EMPTY_STATES.noAchievementsFetchFailed
+    )
+    assert.match(EMPTY_STATES.noAchievementsFromSteam, /not published|unreleased|later/i)
   })
 })

@@ -4,16 +4,17 @@ import DashboardPage from './pages/DashboardPage'
 import LibraryPage from './pages/LibraryPage'
 import GameDetailPage from './pages/GameDetailPage'
 import SettingsPage from './pages/SettingsPage'
+import ToolsPage from './pages/ToolsPage'
 import HelpPage from './pages/HelpPage'
 import FirstRunWelcome from './components/FirstRunWelcome'
 import SessionRecapModal from './components/SessionRecapModal'
 import { shouldShowFirstRun } from './lib/helpStorage'
+import type { AppPage } from './lib/appNavigation'
 
-type Page = 'dashboard' | 'library' | 'settings' | 'help'
 type TransitionDir = 'next' | 'prev' | null
 
 export default function App(): React.ReactElement {
-  const [page, setPage] = useState<Page>('dashboard')
+  const [page, setPage] = useState<AppPage>('dashboard')
   const [selectedAppid, setSelectedAppid] = useState<string | null>(null)
   const [refreshing, setRefreshing] = useState(false)
   const [libraryGames, setLibraryGames] = useState<GameSummary[]>([])
@@ -133,6 +134,19 @@ export default function App(): React.ReactElement {
               refreshing={refreshing}
               onDisplayedGamesChange={setLibraryGames}
             />
+          </main>
+        </div>
+      </>
+    )
+  }
+
+  if (page === 'tools') {
+    return (
+      <>
+        {recapOverlay}
+        <div className="app-shell">
+          <main className="app-main">
+            <ToolsPage page={page} onNavigate={setPage} />
           </main>
         </div>
       </>

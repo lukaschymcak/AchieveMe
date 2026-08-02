@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
-import type { ProfileStats, GameSummary, GameDetail, AppSettings, ImportResult, SteamSearchResult, GoldbergApplyRequest, SteamApiDllInfo, LibraryUpdatedPayload, SessionRecapPayload, GameExecutable, ResolveGameExecutablesResult, SetGameLaunchConfigRequest } from '../shared/types'
+import type { ProfileStats, GameSummary, GameDetail, AppSettings, ImportResult, SteamSearchResult, GoldbergApplyRequest, SteamApiDllInfo, LibraryUpdatedPayload, SessionRecapPayload, GameExecutable, ResolveGameExecutablesResult, SetGameLaunchConfigRequest, SteamlessRunResult } from '../shared/types'
 
 const libraryUpdatedCallbacks = new Set<(payload: LibraryUpdatedPayload) => void>()
 
@@ -98,6 +98,23 @@ contextBridge.exposeInMainWorld('api', {
 
   launchGame: (appid: string): Promise<void> =>
     ipcRenderer.invoke('launch-game', appid),
+
+  browseSteamlessFolder: (): Promise<string | null> =>
+    ipcRenderer.invoke('browse-steamless-folder'),
+
+  browseSteamlessExe: (): Promise<string | null> =>
+    ipcRenderer.invoke('browse-steamless-exe'),
+
+  runSteamless: (exePath: string): Promise<SteamlessRunResult> =>
+    ipcRenderer.invoke('run-steamless', exePath),
+
+  onSteamlessLog: (cb: (line: string) => void): void => {
+    ipcRenderer.on('steamless-log', (_event, line: string) => cb(line))
+  },
+
+  offSteamlessLog: (): void => {
+    ipcRenderer.removeAllListeners('steamless-log')
+  },
 
   onGoldbergLog: (cb: (line: string) => void): void => {
     ipcRenderer.on('goldberg-log', (_event, line: string) => cb(line))

@@ -11,7 +11,8 @@ import type {
   SessionRecapPayload,
   GameExecutable,
   ResolveGameExecutablesResult,
-  SetGameLaunchConfigRequest
+  SetGameLaunchConfigRequest,
+  SteamlessRunResult
 } from '../../shared/types'
 
 declare global {
@@ -42,6 +43,11 @@ declare global {
       ): Promise<ResolveGameExecutablesResult>
       setGameLaunchConfig(request: SetGameLaunchConfigRequest): Promise<void>
       launchGame(appid: string): Promise<void>
+      browseSteamlessFolder(): Promise<string | null>
+      browseSteamlessExe(): Promise<string | null>
+      runSteamless(exePath: string): Promise<SteamlessRunResult>
+      onSteamlessLog(cb: (line: string) => void): void
+      offSteamlessLog(): void
       onGoldbergLog(cb: (line: string) => void): void
       offGoldbergLog(): void
       onLibraryUpdated(cb: (payload: LibraryUpdatedPayload) => void): void

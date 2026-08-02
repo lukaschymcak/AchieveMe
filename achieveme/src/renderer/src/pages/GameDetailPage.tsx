@@ -4,7 +4,7 @@ import { LAUNCH_NEEDS_EXE } from '../../../shared/types'
 import { formatPlaytimePlayed } from '../../../shared/playtimeUtils'
 import { getSteamLibraryHeroUrl } from '../../../shared/steamUrls'
 import HelpTip from '../components/HelpTip'
-import { EMPTY_STATES, TOOLTIPS } from '../lib/helpContent'
+import { TOOLTIPS, getEmptyAchievementsMessage } from '../lib/helpContent'
 import {
   type ActiveFilter,
   type DisplayTier,
@@ -410,6 +410,7 @@ export default function GameDetailPage({
   const [playMenuOpen, setPlayMenuOpen] = useState(false)
   const [rootConfirmPath, setRootConfirmPath] = useState<string | null>(null)
   const [playGamesFromLauncher, setPlayGamesFromLauncher] = useState(true)
+  const [hasApiKey, setHasApiKey] = useState(false)
 
   async function reloadDetail(): Promise<GameDetail | null> {
     const next = await window.api.getGameDetail(appid)
@@ -538,8 +539,14 @@ export default function GameDetailPage({
     setIsLaunching(false)
     window.api
       .getSettings()
-      .then((settings) => setPlayGamesFromLauncher(settings.playGamesFromLauncher))
-      .catch(() => setPlayGamesFromLauncher(true))
+      .then((settings) => {
+        setPlayGamesFromLauncher(settings.playGamesFromLauncher)
+        setHasApiKey(settings.steamApiKey.trim().length > 0)
+      })
+      .catch(() => {
+        setPlayGamesFromLauncher(true)
+        setHasApiKey(false)
+      })
     window.api
       .getGameDetail(appid)
       .then(setDetail)
@@ -827,7 +834,9 @@ export default function GameDetailPage({
                 )}
 
                 {achievements.length === 0 ? (
-                  <p className="game-detail__empty">{EMPTY_STATES.noAchievements}</p>
+                  <p className="game-detail__empty">
+                    {getEmptyAchievementsMessage(hasApiKey, game?.schema_fetched_at ?? 0)}
+                  </p>
                 ) : (
                   <ul className="game-detail__list">
                     {activeFilter === 'all'

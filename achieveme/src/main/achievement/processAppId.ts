@@ -1,7 +1,7 @@
 import { getDb } from '../db/database'
 import {
   upsertGame,
-  upsertAchievements,
+  replaceAchievementsForGame,
   upsertSaveLocation,
   deleteSaveLocationsForApp,
   deleteGame,
@@ -78,9 +78,9 @@ export async function processAppId(
     enriched.game.has_platinum
   )
 
-  // 5. Write to SQLite
+  // 5. Write to SQLite (replace drops orphan rows like invented INI meta names)
   upsertGame(db, enriched.game)
-  upsertAchievements(db, enriched.achievements)
+  replaceAchievementsForGame(db, appid, enriched.achievements)
 
   // 6. Rebuild profile_stats.json
   regenerateProfileStats(db)

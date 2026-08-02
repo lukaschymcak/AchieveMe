@@ -1,22 +1,19 @@
 import type { RawAchievement } from '../../../shared/types'
-import { iniKeyGet, parseIniFile } from './iniHelper'
+import { rawAchievementsFromIniSections } from '../../../shared/achievementSchemaUtils'
+import { parseIniFile } from './iniHelper'
 
+/**
+ * Parses CODEX/RUNE `achievements.ini` unlock progress.
+ * Only sections with an `UnlockTime` key count as achievements (meta blocks like
+ * `[SteamAchievements] Count=0` are ignored).
+ *
+ * @param filePath - Absolute path to `achievements.ini`.
+ */
 export function parseCodexAchievements(filePath: string): Record<string, RawAchievement> {
-  const result: Record<string, RawAchievement> = {}
-
   try {
     const ini = parseIniFile(filePath)
-    for (const [apiName, keys] of ini) {
-      const unlockRaw = iniKeyGet(keys, 'UnlockTime')
-      const unlockTime = unlockRaw !== undefined ? parseInt(unlockRaw, 10) || 0 : 0
-      result[apiName] = {
-        achieved: unlockTime > 0,
-        unlockTime
-      }
-    }
+    return rawAchievementsFromIniSections(ini)
   } catch {
-    return result
+    return {}
   }
-
-  return result
 }

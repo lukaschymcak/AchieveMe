@@ -29,7 +29,7 @@ import {
 } from '../achievement/sessionRecapService'
 import { updateGameInstallPath } from '../db/repository'
 import type { ProfileStats, GameSummary, GameDetail, AppSettings, ImportResult, SteamSearchResult, GoldbergApplyRequest, SteamApiDllInfo } from '../../shared/types'
-import type { GameExecutable, ResolveGameExecutablesResult, SetGameLaunchConfigRequest } from '../../shared/types'
+import type { GameExecutable, ResolveGameExecutablesResult, SetGameLaunchConfigRequest, SteamlessRunResult } from '../../shared/types'
 import {
   LAUNCH_NEEDS_EXE,
   launchGame,
@@ -37,6 +37,10 @@ import {
   resolveGameExecutables,
   setGameLaunchConfig
 } from '../achievement/gameLaunchService'
+import {
+  runSteamlessUnpack,
+  validateSteamlessFolder
+} from '../achievement/steamlessService'
 
 export function registerIpcHandlers(): void {
   ipcMain.handle('get-profile-stats', (): ProfileStats | null => {
@@ -65,7 +69,9 @@ export function registerIpcHandlers(): void {
         completion_pct: g.completion_pct,
         has_platinum: g.has_platinum === 1,
         last_unlocked_at: g.last_unlocked_at,
-        playtime_seconds: g.playtime_seconds ?? 0
+        playtime_seconds: g.playtime_seconds ?? 0,
+        install_path: g.install_path ?? '',
+        launch_exe: g.launch_exe ?? ''
       })
     }
     return summaries
@@ -87,6 +93,11 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle('save-settings', async (_event, settings: AppSettings): Promise<void> => {
     const normalized = normalizeSettings(settings)
+    if (normalized.steamlessFolder.trim()) {
+      normalized.steamlessFolder = validateSteamlessFolder(normalized.steamlessFolder)
+    } else {
+      normalized.steamlessFolder = ''
+    }
     saveSettings(normalized)
     if (normalized.playtimeTrackingEnabled) {
       startPlaytimeTracker()
@@ -298,4 +309,37 @@ export function registerIpcHandlers(): void {
       throw err
     }
   })
+
+  ipcMain.handle('browse-steamless-folder', async (): Promise<string | null> => {
+    const { canceled, filePaths } = await dialog.showOpenDialog({
+      title: 'Select Steamless folder',
+      properties: ['openDirectory']
+    })
+    if (canceled || filePaths.length === 0) return null
+    return validateSteamlessFolder(filePaths[0])
+  })
+
+  ipcMain.handle('browse-steamless-exe', async (): Promise<string | null> => {
+    const { canceled, filePaths } = await dialog.showOpenDialog({
+      title: 'Select executable to unpack with Steamless',
+      filters: [{ name: 'Executable', extensions: ['exe'] }],
+      properties: ['openFile']
+    })
+    if (canceled || filePaths.length === 0) return null
+    return path.resolve(filePaths[0])
+  })
+
+  ipcMain.handle(
+    'run-steamless',
+    async (event, exePath: string): Promise<SteamlessRunResult> => {
+      const settings = loadSettings()
+      const folder = settings.steamlessFolder?.trim() ?? ''
+      if (!folder) {
+        throw new Error('Set the Steamless folder in Settings first.')
+      }
+      return runSteamlessUnpack(folder, exePath, (line) => {
+        event.sender.send('steamless-log', line)
+      })
+    }
+  )
 }

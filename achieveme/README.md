@@ -13,6 +13,8 @@ AchieveMe is a desktop app (Electron) that tracks Steam achievements across emul
 
 Goldberg and GSE saves can be written back on import. CODEX and RUNE are read-only.
 
+**Achievement catalog:** Steam Web API `GetSchemaForGame` owns the achievement list (names, icons, descriptions). Emulator save files only supply unlock progress. Successful schema downloads are cached in SQLite; Library / per-game **Refresh** force-redownloads and overwrites the cache, then **replaces** that game’s achievement rows so obsolete names (for example invented INI meta sections) are dropped. If a live fetch fails, AchieveMe reuses the last cached schema. Without a Steam API key and with no cache, the achievement list stays empty until you add a key and Refresh. When Steam responds successfully but publishes no achievement list yet (common for unreleased titles), game detail explains that instead of asking for an API key.
+
 ## In-app help
 
 The app includes a **Help** page (top nav and Library header) with guides for discovery, sync, scoring, backup, and FAQ. Contextual **?** tooltips appear on Dashboard stats, Library Refresh, Settings sections, and game detail controls. First launch shows a welcome dialog; the Library shows a one-time long-press tip.
@@ -30,6 +32,10 @@ AchieveMe can run in the **system tray** after you close the window (Settings �
 **Playtime** is tracked for games set up via **Add Game** (install folder stored on disk). Dashboard, game detail, and library cards/rows always show tracked playtime (or `—` when none yet).
 
 **Play** on game detail launches a remembered `.exe` when **Play games from launcher** is enabled on the Library toolbar (default on). Button labels: **Set install folder** when there is no install path (browse, then pick an exe in the modal), **Select exe** when a path exists but no exe is chosen, **Play** once an exe is saved. Picking an executable only saves it — it does not launch; use **Play** afterward. When an install path exists, AchieveMe climbs from the steam DLL / `install_path` folder until a parent folder name matches (or is similar to) the game name, then lists `.exe` files under that game root. Ambiguous matches (e.g. folder `P5X` vs a long title) ask “Is this the game’s folder?” before listing.
+
+## Tools (Steamless)
+
+**Tools** (nav between Library and Settings) hosts external utilities. Link a Steamless release folder in **Settings → External tools** (`Steamless.CLI.exe` + `Plugins` required; not shipped with AchieveMe). The Steamless wizard lists library games, prefers `launch_exe`, otherwise resolves executables from `install_path`, or **Search for executable…** on disk, then runs `Steamless.CLI.exe --recalcchecksum`. Typical output is `Game.exe.unpacked.exe` next to the input; AchieveMe does not auto-change Play.
 
 **Session recap** opens in the main window when a tracked play session ends (at least 1 minute): time played, unlocks during that window, and XP gained. Toggle in Settings; use **Test session recap** to preview with a random library game.
 

@@ -354,6 +354,46 @@ export default function SettingsPage({ page, onNavigate }: Props): React.ReactEl
           </div>
         </section>
 
+        <section className="settings-page__section" aria-labelledby="settings-external-tools">
+          <h2 id="settings-external-tools" className="settings-page__section-title">
+            External tools
+            <HelpTip content={TOOLTIPS.settingsSteamless} label="External tools help" />
+          </h2>
+          <p className="settings-page__lead">{SETTINGS_HINTS.steamlessFolder}</p>
+          <div className="settings-page__folder-add settings-page__folder-add--sound">
+            <AppSearchInput
+              type="text"
+              value={settings.steamlessFolder}
+              onChange={(e) => toggleSetting('steamlessFolder', e.target.value)}
+              placeholder="Path to Steamless folder"
+              className="settings-page__input--nested"
+              spellCheck={false}
+            />
+            <Chip
+              onClick={() => {
+                void window.api
+                  .browseSteamlessFolder()
+                  .then((picked) => {
+                    if (!picked) return
+                    setSettings((s) => s && { ...s, steamlessFolder: picked })
+                  })
+                  .catch((err: unknown) => {
+                    window.alert(err instanceof Error ? err.message : String(err))
+                  })
+              }}
+            >
+              Browse
+            </Chip>
+            {settings.steamlessFolder.trim() !== '' && (
+              <Chip
+                onClick={() => toggleSetting('steamlessFolder', '')}
+              >
+                Clear
+              </Chip>
+            )}
+          </div>
+        </section>
+
         <section className="settings-page__section" aria-labelledby="settings-backup">
           <h2 id="settings-backup" className="settings-page__section-title">
             Backup &amp; Restore

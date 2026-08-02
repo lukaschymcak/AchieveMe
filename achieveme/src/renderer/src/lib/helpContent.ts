@@ -78,6 +78,8 @@ export const TOOLTIPS = {
     'Extra roots scanned for every enabled source. Use for non-standard install paths.',
   settingsBackup:
     'Export includes Goldberg/GSE saves and library metadata. Import merges file-by-file without deleting other games.',
+  settingsSteamless:
+    'Link a Steamless release folder that contains Steamless.CLI.exe and Plugins. Used from Tools → Steamless. Not bundled with AchieveMe.',
   settingsNotifications:
     'Tray mode keeps AchieveMe watching save folders after you close the window. Unlock toasts use a Steam-style layout with bronze/silver/gold accents by rarity, plus a platinum toast when a game first hits 100%. They fire on live save changes only.',
   settingsPlaytime:
@@ -94,11 +96,30 @@ export const EMPTY_STATES = {
   noSearchMatch: 'No games match your search.',
   noMonthlyActivity:
     'Unlock achievements in your games — monthly totals come from save file timestamps. Open Library and click Refresh to resync.',
+  /** @deprecated Prefer getEmptyAchievementsMessage — kept for callers that only need a generic fallback. */
   noAchievements:
-    'No achievements loaded for this game. Add a Steam API key in Settings if missing, then Refresh the library. If the game has no Steam achievements, the list will stay empty.',
+    'No achievements loaded for this game. Add a Steam API key in Settings if missing, then Refresh the library. The list comes from Steam schema (cached after the first successful fetch), not from emulator save files. If the game has no Steam achievements, the list will stay empty.',
+  noAchievementsNeedApiKey:
+    'No achievements loaded. Add a Steam Web API key in Settings, then Refresh the library. The list comes from Steam schema, not from emulator save files.',
+  noAchievementsFromSteam:
+    'Steam has no published achievement schema for this game yet. The store may list Achievements before stats go live (common for unreleased or newly launched titles). Try Refresh again later.',
+  noAchievementsFetchFailed:
+    'Could not load Steam achievement schema for this game. Check your API key and network connection, then Refresh.',
   noApiKeyExtra:
     'Cover art and global unlock percentages still load without a key. You can also set the key in Settings — remember to click Refresh in Library after saving there.'
 } as const
+
+/**
+ * Picks the empty achievement-list message for game detail.
+ *
+ * @param hasApiKey - Whether Settings has a non-empty Steam Web API key.
+ * @param schemaFetchedAt - Unix seconds when schema was last successfully applied (0 = never).
+ */
+export function getEmptyAchievementsMessage(hasApiKey: boolean, schemaFetchedAt: number): string {
+  if (!hasApiKey) return EMPTY_STATES.noAchievementsNeedApiKey
+  if (schemaFetchedAt > 0) return EMPTY_STATES.noAchievementsFromSteam
+  return EMPTY_STATES.noAchievementsFetchFailed
+}
 
 export const FIRST_RUN = {
   title: 'Welcome to AchieveMe',
@@ -140,7 +161,9 @@ export const SETTINGS_HINTS = {
   testNotification:
     'Preview the Steam-style unlock toast anytime. Each click cycles bronze → silver → gold → platinum skins. Works even when unlock toasts are disabled; real unlocks still follow the checkbox above.',
   testSessionRecap:
-    'Opens a demo session recap for a random library game (fake duration and recent unlocks). Works even when session recap is disabled.'
+    'Opens a demo session recap for a random library game (fake duration and recent unlocks). Works even when session recap is disabled.',
+  steamlessFolder:
+    'Point to an extracted Steamless release (must include Steamless.CLI.exe and a Plugins folder). Configure here, then unpack games from Tools.'
 } as const
 
 export const ADD_GAME = {
@@ -203,8 +226,8 @@ export const HELP_SECTIONS: HelpSection[] = [
     id: 'api-key',
     title: 'Steam Web API key',
     paragraphs: [
-      'The key loads achievement schema: display names, descriptions, icons, and hidden flags.',
-      'Without a key, games still appear from save files. Cover art and global unlock percentages still load from public Steam endpoints.',
+      'The key loads achievement schema: display names, descriptions, icons, and hidden flags. That Steam schema is the achievement catalog; emulator saves only mark which ones you unlocked.',
+      'Without a key (and with no prior cached schema), games still appear from save files but the achievement list stays empty. Cover art and global unlock percentages still load from public Steam endpoints. After a successful fetch, Refresh redownloads schema; if the network fails, the last cache is kept.',
       'Get a free key at steamcommunity.com/dev/apikey. Saving in Settings does not rescan — click Refresh in Library afterward.'
     ]
   },
@@ -270,6 +293,14 @@ export const HELP_SECTIONS: HelpSection[] = [
     ]
   },
   {
+    id: 'tools',
+    title: 'Tools (Steamless)',
+    paragraphs: [
+      'Tools sits between Library and Settings. Link a Steamless release folder in Settings → External tools (must include Steamless.CLI.exe and Plugins).',
+      'Open the Steamless wizard to pick a library game (uses launch_exe when set, otherwise resolves executables from install_path) or Search for executable on disk, then run Steamless.CLI. Output is typically Game.exe.unpacked.exe beside the original; Play is not changed automatically.'
+    ]
+  },
+  {
     id: 'backup',
     title: 'Backup & restore',
     paragraphs: [
@@ -301,7 +332,7 @@ export const HELP_SECTIONS: HelpSection[] = [
     paragraphs: [],
     bullets: [
       'Missing icons/names? Add API key and Refresh.',
-      'Empty achievement list? Game may have no Steam achievements, or metadata fetch failed — try Refresh.',
+      'Empty achievement list? Need a Steam API key; or Steam has not published schema yet (try Refresh later); or the game has no achievements.',
       'Live updates? Save file edits propagate in ~1s via the file watcher.',
       'Keyboard: Enter/Space on a focused card opens it; Escape closes the long-press menu.',
       'Privacy: data stays local (SQLite + userData). API key in settings.json. Hidden descriptions may fetch from SteamDB.'
