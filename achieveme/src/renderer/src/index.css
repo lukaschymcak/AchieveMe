@@ -2972,6 +2972,15 @@ button:focus-visible {
   transition: background 150ms var(--ease-out);
 }
 
+.settings-page__source-label--disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.settings-page__source-label--disabled:hover {
+  background: transparent;
+}
+
 .settings-page__source-label:hover {
   background: color-mix(in oklch, var(--surface-2) 65%, transparent);
 }
@@ -2986,6 +2995,24 @@ button:focus-visible {
   font-size: 13px;
   line-height: 1.4;
   color: var(--ink);
+}
+
+.settings-page__volume-label {
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-2);
+  grid-column: 1 / -1;
+}
+
+.settings-page__volume-slider {
+  width: 100%;
+  accent-color: var(--color-progress);
+  cursor: pointer;
+}
+
+.settings-page__volume-slider:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
 }
 
 .settings-page__disclosure-link {

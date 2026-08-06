@@ -2,13 +2,29 @@ import type { AppSettings, SourceId } from './types'
 
 const ALL_SOURCES: SourceId[] = ['goldberg', 'gse', 'codex', 'rune']
 
+/**
+ * Clamps unlock sound volume to an integer in 0–100.
+ * Kept local so settings tests can load this module without ESM extension issues.
+ *
+ * @param value - Raw volume from settings JSON
+ */
+const clampSoundVolumeLocal = (value: unknown): number => {
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    return 100
+  }
+  return Math.min(100, Math.max(0, Math.round(value)))
+}
+
 export const DEFAULT_APP_SETTINGS: AppSettings = {
   steamApiKey: '',
   enabledSources: [...ALL_SOURCES],
   customWatchFolders: [],
   notificationsEnabled: true,
   closeToTray: true,
+  openAtLogin: false,
+  startMinimizedToTray: false,
   soundEnabled: true,
+  soundVolume: 100,
   customSoundPath: '',
   playtimeTrackingEnabled: true,
   sessionRecapEnabled: true,
@@ -30,7 +46,13 @@ export function normalizeAppSettings(
     notificationsEnabled:
       parsed?.notificationsEnabled ?? DEFAULT_APP_SETTINGS.notificationsEnabled,
     closeToTray: parsed?.closeToTray ?? DEFAULT_APP_SETTINGS.closeToTray,
+    openAtLogin: parsed?.openAtLogin ?? DEFAULT_APP_SETTINGS.openAtLogin,
+    startMinimizedToTray:
+      parsed?.startMinimizedToTray ?? DEFAULT_APP_SETTINGS.startMinimizedToTray,
     soundEnabled: parsed?.soundEnabled ?? DEFAULT_APP_SETTINGS.soundEnabled,
+    soundVolume: clampSoundVolumeLocal(
+      parsed?.soundVolume ?? DEFAULT_APP_SETTINGS.soundVolume
+    ),
     customSoundPath: parsed?.customSoundPath ?? DEFAULT_APP_SETTINGS.customSoundPath,
     playtimeTrackingEnabled:
       parsed?.playtimeTrackingEnabled ?? DEFAULT_APP_SETTINGS.playtimeTrackingEnabled,

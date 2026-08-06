@@ -236,8 +236,8 @@ export default function SettingsPage({ page, onNavigate }: Props): React.ReactEl
 
         <section className="settings-page__section" aria-labelledby="settings-notifications">
           <h2 id="settings-notifications" className="settings-page__section-title">
-            Notifications &amp; Tray
-            <HelpTip content={TOOLTIPS.settingsNotifications} label="Notifications and tray help" />
+            Notifications
+            <HelpTip content={TOOLTIPS.settingsNotifications} label="Notifications help" />
           </h2>
           <p className="settings-page__lead">{SETTINGS_HINTS.notifications}</p>
           <div className="settings-page__panel settings-page__sources-grid">
@@ -253,29 +253,29 @@ export default function SettingsPage({ page, onNavigate }: Props): React.ReactEl
             <label className="settings-page__source-label">
               <input
                 type="checkbox"
-                checked={settings.closeToTray}
-                onChange={(e) => toggleSetting('closeToTray', e.target.checked)}
-                className="settings-page__checkbox"
-              />
-              <span className="settings-page__source-name">Close to system tray (keep watching saves)</span>
-            </label>
-            <label className="settings-page__source-label">
-              <input
-                type="checkbox"
                 checked={settings.soundEnabled}
                 onChange={(e) => toggleSetting('soundEnabled', e.target.checked)}
                 className="settings-page__checkbox"
               />
               <span className="settings-page__source-name">Play sound on unlock</span>
             </label>
-            <label className="settings-page__source-label">
+            <label
+              className={`settings-page__source-label settings-page__volume-label${settings.soundEnabled ? '' : ' settings-page__source-label--disabled'}`}
+            >
+              <span className="settings-page__source-name">
+                Unlock sound volume ({settings.soundVolume}%)
+              </span>
               <input
-                type="checkbox"
-                checked={settings.playtimeTrackingEnabled}
-                onChange={(e) => toggleSetting('playtimeTrackingEnabled', e.target.checked)}
-                className="settings-page__checkbox"
+                type="range"
+                min={0}
+                max={100}
+                step={1}
+                value={settings.soundVolume}
+                disabled={!settings.soundEnabled}
+                onChange={(e) => toggleSetting('soundVolume', Number(e.target.value))}
+                className="settings-page__volume-slider"
+                aria-label="Unlock sound volume"
               />
-              <span className="settings-page__source-name">Track playtime for games added via Add Game</span>
             </label>
             <label className="settings-page__source-label">
               <input
@@ -295,10 +295,14 @@ export default function SettingsPage({ page, onNavigate }: Props): React.ReactEl
               placeholder="Custom unlock sound (.wav or .mp3)"
               className="settings-page__input--nested"
               spellCheck={false}
+              disabled={!settings.soundEnabled}
             />
-            <Chip onClick={browseSoundPath}>Browse</Chip>
+            <Chip onClick={browseSoundPath} disabled={!settings.soundEnabled}>
+              Browse
+            </Chip>
           </div>
           <p className="settings-page__note">{SETTINGS_HINTS.customSound}</p>
+          <p className="settings-page__note">{SETTINGS_HINTS.soundVolume}</p>
           <div className="settings-page__action-row">
             <Chip variant="action" onClick={testNotification}>
               Test notification
@@ -309,6 +313,65 @@ export default function SettingsPage({ page, onNavigate }: Props): React.ReactEl
           </div>
           <p className="settings-page__note">{SETTINGS_HINTS.testNotification}</p>
           <p className="settings-page__note">{SETTINGS_HINTS.testSessionRecap}</p>
+        </section>
+
+        <section className="settings-page__section" aria-labelledby="settings-tray">
+          <h2 id="settings-tray" className="settings-page__section-title">
+            Tray &amp; startup
+            <HelpTip content={TOOLTIPS.settingsTray} label="Tray and startup help" />
+          </h2>
+          <p className="settings-page__lead">{SETTINGS_HINTS.tray}</p>
+          <div className="settings-page__panel settings-page__sources-grid">
+            <label className="settings-page__source-label">
+              <input
+                type="checkbox"
+                checked={settings.closeToTray}
+                onChange={(e) => toggleSetting('closeToTray', e.target.checked)}
+                className="settings-page__checkbox"
+              />
+              <span className="settings-page__source-name">Close to system tray (keep watching saves)</span>
+            </label>
+            <label className="settings-page__source-label">
+              <input
+                type="checkbox"
+                checked={settings.openAtLogin}
+                onChange={(e) => toggleSetting('openAtLogin', e.target.checked)}
+                className="settings-page__checkbox"
+              />
+              <span className="settings-page__source-name">Launch AchieveMe when Windows starts</span>
+            </label>
+            <label
+              className={`settings-page__source-label${settings.openAtLogin ? '' : ' settings-page__source-label--disabled'}`}
+            >
+              <input
+                type="checkbox"
+                checked={settings.startMinimizedToTray}
+                disabled={!settings.openAtLogin}
+                onChange={(e) => toggleSetting('startMinimizedToTray', e.target.checked)}
+                className="settings-page__checkbox"
+              />
+              <span className="settings-page__source-name">Start minimized to tray on login</span>
+            </label>
+          </div>
+        </section>
+
+        <section className="settings-page__section" aria-labelledby="settings-play-sessions">
+          <h2 id="settings-play-sessions" className="settings-page__section-title">
+            Play sessions
+            <HelpTip content={TOOLTIPS.settingsPlaySessions} label="Play sessions help" />
+          </h2>
+          <p className="settings-page__lead">{SETTINGS_HINTS.playSessions}</p>
+          <div className="settings-page__panel settings-page__sources-grid">
+            <label className="settings-page__source-label">
+              <input
+                type="checkbox"
+                checked={settings.playtimeTrackingEnabled}
+                onChange={(e) => toggleSetting('playtimeTrackingEnabled', e.target.checked)}
+                className="settings-page__checkbox"
+              />
+              <span className="settings-page__source-name">Track playtime for games added via Add Game</span>
+            </label>
+          </div>
         </section>
 
         <section className="settings-page__section" aria-labelledby="settings-folders">

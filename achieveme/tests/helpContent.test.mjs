@@ -39,6 +39,8 @@ describe('helpContent', () => {
     assert.ok(ids.includes('sync'))
     assert.ok(ids.includes('backup'))
     assert.ok(ids.includes('notifications'))
+    assert.ok(ids.includes('tray'))
+    assert.ok(ids.includes('play-sessions'))
     assert.ok(ids.includes('faq'))
   })
 

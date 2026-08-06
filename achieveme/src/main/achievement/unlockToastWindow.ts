@@ -28,6 +28,10 @@ let ipcRegistered = false
 let toastReady = false
 let pendingShow: UnlockToastPayload | null = null
 let busyWatchdog: ReturnType<typeof setTimeout> | null = null
+/** Bumped on deliver/reset/destroy so stale toast-done events are ignored. */
+let toastEpoch = 0
+/** Epoch of the toast currently showing; 0 when none. */
+let deliveredEpoch = 0
 
 export function setToastNavigateHandler(handler: (appid: string) => void): void {
   navigateHandler = handler
@@ -45,12 +49,19 @@ function armBusyWatchdog(): void {
   busyWatchdog = setTimeout(() => {
     busyWatchdog = null
     pendingShow = null
+    deliveredEpoch = 0
+    toastEpoch += 1
     queueState = markToastIdle(queueState)
     if (toastWindow && !toastWindow.isDestroyed()) {
       toastWindow.hide()
     }
     pumpQueue()
   }, BUSY_TIMEOUT_MS)
+}
+
+function invalidateToastEpoch(): void {
+  toastEpoch += 1
+  deliveredEpoch = 0
 }
 
 function ensureIpc(): void {
@@ -134,6 +145,7 @@ function createToastWindow(): BrowserWindow {
     console.error('[unlock-toast] failed to load', { code, desc, url })
     toastReady = false
     pendingShow = null
+    invalidateToastEpoch()
     queueState = markToastIdle(queueState)
   })
 
@@ -162,6 +174,8 @@ function ensureToastWindow(): BrowserWindow {
 
 function deliverShow(win: BrowserWindow, payload: UnlockToastPayload): void {
   pendingShow = null
+  toastEpoch += 1
+  deliveredEpoch = toastEpoch
   positionToast(win)
   win.webContents.send('toast-show', payload)
   if (!win.isVisible()) {
@@ -183,6 +197,8 @@ function tryShowPayload(payload: UnlockToastPayload): void {
 
   if (!toastReady) {
     pendingShow = payload
+    // Busy without deliverShow previously left the queue stuck forever if toast-ready never fired.
+    armBusyWatchdog()
     return
   }
 
@@ -197,6 +213,10 @@ function pumpQueue(): void {
 }
 
 function handleToastDone(): void {
+  if (deliveredEpoch === 0 || deliveredEpoch !== toastEpoch) {
+    return
+  }
+  deliveredEpoch = 0
   clearBusyWatchdog()
   pendingShow = null
   queueState = markToastIdle(queueState)
@@ -212,20 +232,27 @@ export function enqueueUnlockToast(payload: UnlockToastPayload): void {
   pumpQueue()
 }
 
-/** Unblock a stuck toast queue so the next enqueue can show. */
+/**
+ * Unblock a stuck toast queue and destroy the toast window so the next enqueue
+ * reloads and re-handshakes toast-ready.
+ */
 export function resetUnlockToastQueue(): void {
   clearBusyWatchdog()
   pendingShow = null
   queueState = createToastQueueState()
+  invalidateToastEpoch()
+  toastReady = false
   if (toastWindow && !toastWindow.isDestroyed()) {
-    toastWindow.hide()
+    toastWindow.destroy()
   }
+  toastWindow = null
 }
 
 export function destroyUnlockToastWindow(): void {
   clearBusyWatchdog()
   pendingShow = null
   queueState = createToastQueueState()
+  invalidateToastEpoch()
   toastReady = false
   if (toastWindow && !toastWindow.isDestroyed()) {
     toastWindow.destroy()

@@ -10,6 +10,10 @@ import { setSessionRecapMainWindow } from './achievement/sessionRecapService'
 import { registerIpcHandlers } from './ipc/handlers'
 import { destroyTray, initTray, isQuitting, setQuitting } from './trayService'
 import { shouldQuitForMissingInstanceLock } from './singleInstance'
+import { shouldStartHidden, syncLoginItemSettings } from './loginItemService'
+
+// Allow unlock-sound Audio.play() from the hidden sound window without a user gesture.
+app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required')
 
 let mainWindow: BrowserWindow | null = null
 
@@ -38,6 +42,7 @@ function createWindow(): void {
   })
 
   mainWindow.on('ready-to-show', () => {
+    if (shouldStartHidden(process.argv)) return
     mainWindow?.show()
   })
 
@@ -85,6 +90,7 @@ function bootApp(): void {
     initDb()
     registerIpcHandlers()
     const settings = loadSettings()
+    syncLoginItemSettings(settings)
     startWatcher(settings).catch(() => {})
     startPlaytimeTracker()
 

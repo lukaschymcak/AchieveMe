@@ -81,7 +81,11 @@ export const TOOLTIPS = {
   settingsSteamless:
     'Link a Steamless release folder that contains Steamless.CLI.exe and Plugins. Used from Tools → Steamless. Not bundled with AchieveMe.',
   settingsNotifications:
-    'Tray mode keeps AchieveMe watching save folders after you close the window. Unlock toasts use a Steam-style layout with bronze/silver/gold accents by rarity, plus a platinum toast when a game first hits 100%. They fire on live save changes only.',
+    'Unlock toasts use a Steam-style layout with bronze/silver/gold accents by rarity, plus a platinum toast when a game first hits 100%. They fire on live save changes only. Optional sound uses the Windows default chime or a custom .wav/.mp3 with adjustable volume.',
+  settingsTray:
+    'Close the window to keep AchieveMe in the system tray while it watches save folders. Optionally launch when Windows starts, and start minimized to the tray on login only.',
+  settingsPlaySessions:
+    'Playtime is tracked when a known game executable under the resolved game folder is running. Session recap appears under Notifications.',
   settingsPlaytime:
     'Playtime is tracked when a known game executable under the resolved game folder (climbed from the Add Game DLL path) is running.',
   settingsSessionRecap:
@@ -155,11 +159,16 @@ export const SETTINGS_HINTS = {
   importConfirm:
     'Import merges backup files into your emulator folders. Existing games not in the backup are left untouched. Continue?',
   notifications:
-    'AchieveMe can stay in the system tray and show a Steam-style unlock toast (rarity accents; platinum at 100%) with optional sound when new achievements appear in save files. Refresh and first library scan never trigger toasts.',
+    'Steam-style unlock toasts (rarity accents; platinum at 100%) with optional sound and volume when new achievements appear in save files. Refresh and first library scan never trigger toasts.',
+  tray:
+    'Keep AchieveMe in the system tray after closing the window. Optionally launch on Windows startup and start minimized to the tray on login only.',
+  playSessions:
+    'Track playtime for games added via the Add Game wizard when their executable is running.',
   customSound:
-    'Leave blank to use the Windows default unlock sound. Pick a .wav or .mp3 file for a custom chime.',
+    'Leave blank to use the Windows default unlock sound. Pick a .wav or .mp3 file for a custom chime. Click Save before Test notification so the new path and volume are used.',
+  soundVolume: 'Unlock sound loudness from 0% (silent) to 100% (full). Disabled when Play sound is off.',
   testNotification:
-    'Preview the Steam-style unlock toast anytime. Each click cycles bronze → silver → gold → platinum skins. Works even when unlock toasts are disabled; real unlocks still follow the checkbox above.',
+    'Preview the Steam-style unlock toast anytime. Each click cycles bronze → silver → gold → platinum skins. Works even when unlock toasts are disabled; real unlocks still follow the checkbox above. Quit and relaunch still shows the preview.',
   testSessionRecap:
     'Opens a demo session recap for a random library game (fake duration and recent unlocks). Works even when session recap is disabled.',
   steamlessFolder:
@@ -244,22 +253,41 @@ export const HELP_SECTIONS: HelpSection[] = [
   },
   {
     id: 'notifications',
-    title: 'Notifications & tray',
+    title: 'Notifications',
     paragraphs: [
-      'Close the window to hide AchieveMe in the system tray — it keeps watching save folders. Use Show from the tray icon to reopen.',
       'When a save file changes and a new achievement unlocks, AchieveMe shows a Steam-style toast (UNLOCKED! with bronze/silver/gold chrome by rarity). When a game first reaches 100%, a platinum celebration toast follows. Library Refresh and first launch never spam toasts for existing unlocks. Use Settings → Test notification to cycle through all four skins.',
-      'After a tracked Add Game play session of at least one minute, a session recap modal summarizes time played, unlocks, and XP. Use Settings → Test session recap to preview with a random library game.'
+      'Optional unlock sound uses the Windows default chime or a custom .wav/.mp3, with a volume slider. After a tracked Add Game play session of at least one minute, a session recap modal summarizes time played, unlocks, and XP. Use Settings → Test session recap to preview with a random library game.'
     ],
     bullets: [
       'Notifications — Steam-style unlock toasts on live save changes',
       'Rarity chrome — bronze / silver / gold by achievement tier; platinum at 100%',
-      'Close to tray — app stays running in the background',
       'Sound — default Windows chime or custom .wav/.mp3',
+      'Volume — 0–100% unlock sound loudness',
       'Test notification — cycles rarity skins from Settings',
-      'Playtime — tracks hours for games added via Add Game wizard',
       'Session recap — modal after play with time, unlocks, and XP',
       'Test session recap — demo modal for a random library game'
     ]
+  },
+  {
+    id: 'tray',
+    title: 'Tray & startup',
+    paragraphs: [
+      'Close the window to hide AchieveMe in the system tray — it keeps watching save folders. Use Show from the tray icon to reopen.',
+      'Optionally launch AchieveMe when Windows starts. With start minimized enabled, a login launch stays in the tray only; opening the app yourself still shows the window.'
+    ],
+    bullets: [
+      'Close to tray — app stays running in the background',
+      'Launch on startup — optional Windows login launch',
+      'Start minimized on login — tray only when Windows starts the app'
+    ]
+  },
+  {
+    id: 'play-sessions',
+    title: 'Play sessions',
+    paragraphs: [
+      'Playtime is tracked for games set up via Add Game when a known executable under the resolved game folder is running.'
+    ],
+    bullets: ['Playtime — tracks hours for games added via Add Game wizard']
   },
   {
     id: 'game-detail',

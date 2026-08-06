@@ -32,7 +32,13 @@ export interface AppSettings {
   customWatchFolders: string[]
   notificationsEnabled: boolean
   closeToTray: boolean
+  /** When true, register AchieveMe in the OS login items list. */
+  openAtLogin: boolean
+  /** When true with openAtLogin, login launch passes --hidden (tray only). */
+  startMinimizedToTray: boolean
   soundEnabled: boolean
+  /** Unlock sound loudness from 0 (silent) to 100 (full). */
+  soundVolume: number
   customSoundPath: string
   playtimeTrackingEnabled: boolean
   sessionRecapEnabled: boolean

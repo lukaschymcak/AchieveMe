@@ -14,6 +14,7 @@ import {
 import { getStoreCoverUrl } from '../achievement/steamApiClient'
 import { getSteamLibraryHeroUrl } from '../../shared/steamUrls'
 import { loadSettings, saveSettings, normalizeSettings } from '../settings'
+import { syncLoginItemSettings } from '../loginItemService'
 import { startPlaytimeTracker, stopPlaytimeTracker } from '../achievement/playtimeService'
 import { startWatcher, pruneOrphanedGames } from '../achievement/watcherService'
 import { scanAllSources } from '../achievement/discoveryService'
@@ -27,7 +28,6 @@ import {
   acknowledgeSessionRecap,
   previewSessionRecap
 } from '../achievement/sessionRecapService'
-import { updateGameInstallPath } from '../db/repository'
 import type { ProfileStats, GameSummary, GameDetail, AppSettings, ImportResult, SteamSearchResult, GoldbergApplyRequest, SteamApiDllInfo } from '../../shared/types'
 import type { GameExecutable, ResolveGameExecutablesResult, SetGameLaunchConfigRequest, SteamlessRunResult } from '../../shared/types'
 import {
@@ -99,6 +99,7 @@ export function registerIpcHandlers(): void {
       normalized.steamlessFolder = ''
     }
     saveSettings(normalized)
+    syncLoginItemSettings(normalized)
     if (normalized.playtimeTrackingEnabled) {
       startPlaytimeTracker()
     } else {
