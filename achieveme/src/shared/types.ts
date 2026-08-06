@@ -46,6 +46,10 @@ export interface AppSettings {
   playGamesFromLauncher: boolean
   /** Absolute path to a user-linked Steamless install folder, or empty. */
   steamlessFolder: string
+  /** Hubcap / Morrenus API key for manifest downloads (Bearer token). */
+  hubcapApiKey: string
+  /** Default folder for DepotDownloader output, or empty to ask each time. */
+  depotDownloadPath: string
 }
 
 export interface UnlockChange {
@@ -307,4 +311,129 @@ export interface GameFolderInfo {
   gameDir: string
   hasSteamSettings: boolean
   dllInfo: SteamApiDllInfo | null
+}
+
+/** One depot parsed from a Hubcap manifest Lua file. */
+export interface DepotInfo {
+  key: string
+  description: string
+  size: number
+}
+
+/** Parsed Hubcap manifest ZIP contents for DepotDownloader. */
+export interface GameData {
+  appId: string
+  gameName: string
+  installDir?: string
+  buildId?: string
+  depots: Record<string, DepotInfo>
+  dlcs: Record<string, string>
+  manifests: Record<string, string>
+  selectedDepots: string[]
+  manifestZipPath?: string
+  headerImageUrl?: string
+}
+
+/** Steam Store search result enriched for the Depot Downloader wizard. */
+export interface DepotSearchResult {
+  gameId: string
+  gameName: string
+  headerImageUrl?: string
+  relevanceScore?: number
+  type?: 'game' | 'dlc'
+  shortDescription?: string
+  releaseYear?: number
+  dlcCount?: number
+}
+
+export interface DepotSearchResponse {
+  mode: 'games' | 'dlc'
+  results: DepotSearchResult[]
+  total: number
+  label: string
+  baseGame?: DepotSearchResult
+}
+
+export interface HubcapUserStats {
+  username?: string
+  dailyUsage: number
+  dailyLimit: number
+  error?: string
+}
+
+export type DepotCancelMode = 'keep' | 'delete'
+export type DepotHealthState = 'stable' | 'retrying' | 'warning' | 'degraded'
+export type DepotPhase =
+  | 'search'
+  | 'fetching'
+  | 'depots'
+  | 'downloading'
+  | 'prompt'
+  | 'dll'
+  | 'emu'
+  | 'apply'
+  | 'complete'
+  | 'canceled'
+  | 'failed'
+
+/** Request payload to start a DepotDownloader run. */
+export interface DepotDownloadStartRequest {
+  gameData: GameData
+  selectedDepots: string[]
+  libraryPath: string
+  outputPath?: string
+  steamUsername?: string
+  maxDownloads: number
+  channelId: string
+}
+
+/** Progress / log event pushed from main to renderer during a depot download. */
+export interface DepotProgressEvent {
+  channelId?: string
+  appId?: string
+  gameName?: string
+  headerImageUrl?: string
+  pct?: number
+  log?: string
+  received?: number
+  total?: number
+  totalBytes?: number
+  status?: string
+  done?: boolean
+  error?: string
+  canceled?: boolean
+  terminalReason?: 'completed' | 'failed' | 'canceled'
+  speedBps?: number | null
+  diskBps?: number | null
+  etaSec?: number | null
+  indeterminate?: boolean
+  healthState?: DepotHealthState
+  retryCountRecent?: number
+  lastHealthMessage?: string
+  startedAt?: number
+}
+
+/**
+ * Live depot download session kept in App.tsx so the wizard can close
+ * and reopen without losing progress.
+ */
+export interface ActiveDepotSession {
+  channelId: string
+  appId: string
+  gameName: string
+  headerImageUrl?: string
+  phase: DepotPhase
+  gameData: GameData | null
+  selectedDepots: string[]
+  outputPath: string
+  zipPath?: string
+  logs: string[]
+  pct: number
+  speedBps: number | null
+  etaSec: number | null
+  status: string
+  error?: string
+  dllInfo?: SteamApiDllInfo | null
+  installEmuDll?: boolean
+  denuvoOfflineActivated?: boolean
 }

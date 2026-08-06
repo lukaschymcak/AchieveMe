@@ -110,3 +110,12 @@ test('electron-builder extraResources bundles Goldberg regular release DLLs', ()
   const filter = resource.filter ?? []
   assert.match(filter.join('\n'), /\*\*\/\*/)
 })
+
+test('electron-builder extraResources bundles DepotDownloader', () => {
+  const config = loadElectronBuilderConfig()
+  const resource = config.extraResources?.[2]
+
+  assert.ok(resource, 'depotdownloader extraResources entry is required')
+  assert.equal(resource.from, 'resources/depotdownloader')
+  assert.equal(resource.to, 'depotdownloader')
+})

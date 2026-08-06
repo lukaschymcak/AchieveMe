@@ -129,7 +129,12 @@ export function classifyFolderNameMatch(folderName: string, gameName: string): F
   if (cFolder.includes(cGame) || cGame.includes(cFolder)) {
     const shorter = Math.min(cFolder.length, cGame.length)
     const longer = Math.max(cFolder.length, cGame.length)
-    if (shorter >= longer * 0.5) return 'confident'
+    const ratio = shorter / longer
+    // When the folder name is longer than the game name, it may be a data
+    // subfolder (e.g. "GameName_Data"). Use a tighter threshold so we don't
+    // stop the climb prematurely.
+    const confidentThreshold = cFolder.length > cGame.length ? 0.85 : 0.5
+    if (ratio >= confidentThreshold) return 'confident'
     if (shorter >= 3) return 'unsure'
   }
 

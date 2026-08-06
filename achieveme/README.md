@@ -33,9 +33,13 @@ AchieveMe can run in the **system tray** after you close the window (Settings �
 
 **Play** on game detail launches a remembered `.exe` when **Play games from launcher** is enabled on the Library toolbar (default on). Button labels: **Set install folder** when there is no install path (browse, then pick an exe in the modal), **Select exe** when a path exists but no exe is chosen, **Play** once an exe is saved. Picking an executable only saves it — it does not launch; use **Play** afterward. When an install path exists, AchieveMe climbs from the steam DLL / `install_path` folder until a parent folder name matches (or is similar to) the game name, then lists `.exe` files under that game root. Ambiguous matches (e.g. folder `P5X` vs a long title) ask “Is this the game’s folder?” before listing.
 
-## Tools (Steamless)
+## Tools (Steamless & Depot Downloader)
 
-**Tools** (nav between Library and Settings) hosts external utilities. Link a Steamless release folder in **Settings → External tools** (`Steamless.CLI.exe` + `Plugins` required; not shipped with AchieveMe). The Steamless wizard lists library games, prefers `launch_exe`, otherwise resolves executables from `install_path`, or **Search for executable…** on disk, then runs `Steamless.CLI.exe --recalcchecksum`. Typical output is `Game.exe.unpacked.exe` next to the input; AchieveMe does not auto-change Play.
+**Tools** (nav between Library and Settings) hosts external utilities.
+
+**Steamless:** Link a Steamless release folder in **Settings → External tools** (`Steamless.CLI.exe` + `Plugins` required; not shipped with AchieveMe). The Steamless wizard lists library games, prefers `launch_exe`, otherwise resolves executables from `install_path`, or **Search for executable…** on disk, then runs `Steamless.CLI.exe --recalcchecksum`. Typical output is `Game.exe.unpacked.exe` next to the input; AchieveMe does not auto-change Play.
+
+**Depot Downloader:** Search Steam games, download a Hubcap manifest ZIP (`hubcapmanifest.com`), pick depots, and run `DepotDownloader.dll` via `dotnet`. Configure an optional Hubcap API key and default download folder under **Settings → Depot Downloader**. Binaries live in `achieveme/resources/depotdownloader/` (bundled as `extraResources` on package). Closing the wizard during a download keeps it running; a floating **Downloads** badge reopens the wizard with live progress. After a successful download you can optionally set up Goldberg achievements (auto-scan for `steam_api*.dll`, install emulator DLL, preserve Denuvo offline config INIs).
 
 **Session recap** opens in the main window when a tracked play session ends (at least 1 minute): time played, unlocks during that window, and XP gained. Toggle in Settings; use **Test session recap** to preview with a random library game.
 
@@ -72,7 +76,8 @@ AchieveMe ships as a Windows NSIS installer built with `electron-builder`.
 1. Place the Goldberg generator beside the repo (gitignored): `goldberg-files/generate_emu_config/`
 2. That folder must include `generate_emu_config.exe`, `_internal/`, and `my_login.txt` (username on line 1, password on line 2 — required so packaged Add Game does not prompt for Steam login)
 3. Place the Goldberg **regular** release beside the repo: `goldberg-files/release/regular/` with `x64/steam_api64.dll` and `x86/steam_api.dll` (optional emulator DLL install in Add Game)
-4. The build still excludes `_OUTPUT/`, `appid_finder/`, and `bat/` even if they exist locally. `my_login.txt` **is** bundled into both Setup and Portable.
+4. Ensure `achieveme/resources/depotdownloader/` contains DepotDownloader.dll and its companion DLLs (copy from `LuDownloader.Electron/resources/` for local/dev builds)
+5. The build still excludes `_OUTPUT/`, `appid_finder/`, and `bat/` even if they exist locally. `my_login.txt` **is** bundled into both Setup and Portable.
 
 ### Build
 
@@ -89,7 +94,7 @@ Build outputs:
 | Installer (NSIS) | `achieveme/release/0.1.0/AchieveMe-Windows-0.1.0-Setup.exe` |
 | Portable (no install/uninstall) | `achieveme/release/0.1.0/AchieveMe-Windows-0.1.0-Portable.exe` |
 
-Run the portable exe directly; no installer or uninstaller. After install (or from portable unpack), the generator lives at `resources/generate_emu_config/generate_emu_config.exe` next to the app binary. The regular emu DLLs live at `resources/goldberg_release/regular/`.
+Run the portable exe directly; no installer or uninstaller. After install (or from portable unpack), the generator lives at `resources/generate_emu_config/generate_emu_config.exe` next to the app binary. The regular emu DLLs live at `resources/goldberg_release/regular/`. DepotDownloader lives at `resources/depotdownloader/`.
 
 ## Backup & restore
 

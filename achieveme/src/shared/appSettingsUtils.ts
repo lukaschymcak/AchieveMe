@@ -29,7 +29,9 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   playtimeTrackingEnabled: true,
   sessionRecapEnabled: true,
   playGamesFromLauncher: true,
-  steamlessFolder: ''
+  steamlessFolder: '',
+  hubcapApiKey: '',
+  depotDownloadPath: ''
 }
 
 export function normalizeAppSettings(
@@ -60,6 +62,8 @@ export function normalizeAppSettings(
       parsed?.sessionRecapEnabled ?? DEFAULT_APP_SETTINGS.sessionRecapEnabled,
     playGamesFromLauncher:
       parsed?.playGamesFromLauncher ?? DEFAULT_APP_SETTINGS.playGamesFromLauncher,
-    steamlessFolder: parsed?.steamlessFolder ?? DEFAULT_APP_SETTINGS.steamlessFolder
+    steamlessFolder: parsed?.steamlessFolder ?? DEFAULT_APP_SETTINGS.steamlessFolder,
+    hubcapApiKey: parsed?.hubcapApiKey ?? DEFAULT_APP_SETTINGS.hubcapApiKey,
+    depotDownloadPath: parsed?.depotDownloadPath ?? DEFAULT_APP_SETTINGS.depotDownloadPath
   }
 }

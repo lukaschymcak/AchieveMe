@@ -27,6 +27,8 @@ test('normalizeAppSettings applies defaults for legacy settings files', () => {
   assert.equal(normalized.sessionRecapEnabled, DEFAULT_APP_SETTINGS.sessionRecapEnabled)
   assert.equal(normalized.playGamesFromLauncher, DEFAULT_APP_SETTINGS.playGamesFromLauncher)
   assert.equal(normalized.steamlessFolder, DEFAULT_APP_SETTINGS.steamlessFolder)
+  assert.equal(normalized.hubcapApiKey, '')
+  assert.equal(normalized.depotDownloadPath, '')
 })
 
 test('normalizeAppSettings preserves soundVolume when set', () => {
@@ -47,13 +49,15 @@ test('normalizeAppSettings preserves playGamesFromLauncher when set', () => {
   assert.equal(normalized.playGamesFromLauncher, false)
 })
 
-test('normalizeAppSettings preserves steamlessFolder when set', () => {
+test('normalizeAppSettings preserves hubcapApiKey and depotDownloadPath when set', () => {
   const normalized = normalizeAppSettings({
     steamApiKey: 'abc',
     enabledSources: ['goldberg'],
-    steamlessFolder: 'C:\\Tools\\Steamless'
+    hubcapApiKey: 'hub-key',
+    depotDownloadPath: 'D:\\Games'
   })
-  assert.equal(normalized.steamlessFolder, 'C:\\Tools\\Steamless')
+  assert.equal(normalized.hubcapApiKey, 'hub-key')
+  assert.equal(normalized.depotDownloadPath, 'D:\\Games')
 })
 
 test('normalizeAppSettings preserves openAtLogin and startMinimizedToTray when set', () => {

@@ -80,6 +80,8 @@ export const TOOLTIPS = {
     'Export includes Goldberg/GSE saves and library metadata. Import merges file-by-file without deleting other games.',
   settingsSteamless:
     'Link a Steamless release folder that contains Steamless.CLI.exe and Plugins. Used from Tools → Steamless. Not bundled with AchieveMe.',
+  settingsDepotDownloader:
+    'Hubcap API key authenticates manifest downloads. Default download folder is used when starting a Depot Downloader run from Tools.',
   settingsNotifications:
     'Unlock toasts use a Steam-style layout with bronze/silver/gold accents by rarity, plus a platinum toast when a game first hits 100%. They fire on live save changes only. Optional sound uses the Windows default chime or a custom .wav/.mp3 with adjustable volume.',
   settingsTray:
@@ -172,7 +174,11 @@ export const SETTINGS_HINTS = {
   testSessionRecap:
     'Opens a demo session recap for a random library game (fake duration and recent unlocks). Works even when session recap is disabled.',
   steamlessFolder:
-    'Point to an extracted Steamless release (must include Steamless.CLI.exe and a Plugins folder). Configure here, then unpack games from Tools.'
+    'Point to an extracted Steamless release (must include Steamless.CLI.exe and a Plugins folder). Configure here, then unpack games from Tools.',
+  hubcapApiKey:
+    'Bearer token from hubcapmanifest.com. Required for private / rate-limited manifest downloads. Leave empty only if your Hubcap account allows unauthenticated access.',
+  depotDownloadPath:
+    'Default output folder for DepotDownloader. The wizard can still browse to a different folder per download.'
 } as const
 
 export const ADD_GAME = {
@@ -325,10 +331,11 @@ export const HELP_SECTIONS: HelpSection[] = [
   },
   {
     id: 'tools',
-    title: 'Tools (Steamless)',
+    title: 'Tools (Steamless & Depot Downloader)',
     paragraphs: [
       'Tools sits between Library and Settings. Link a Steamless release folder in Settings → External tools (must include Steamless.CLI.exe and Plugins).',
-      'Open the Steamless wizard to pick a library game (uses launch_exe when set, otherwise resolves executables from install_path) or Search for executable on disk, then run Steamless.CLI. Output is typically Game.exe.unpacked.exe beside the original; Play is not changed automatically.'
+      'Open the Steamless wizard to pick a library game (uses launch_exe when set, otherwise resolves executables from install_path) or Search for executable on disk, then run Steamless.CLI. Output is typically Game.exe.unpacked.exe beside the original; Play is not changed automatically.',
+      'Depot Downloader searches Steam, fetches a Hubcap manifest ZIP, lets you pick depots, and runs DepotDownloader.dll (dotnet required). Closing the wizard during a download keeps it running — use the floating Downloads badge to reopen. After download you can optionally set up Goldberg achievements (DLL scan, emulator install, Denuvo preserve).'
     ]
   },
   {

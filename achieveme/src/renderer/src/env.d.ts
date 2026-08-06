@@ -12,7 +12,12 @@ import type {
   GameExecutable,
   ResolveGameExecutablesResult,
   SetGameLaunchConfigRequest,
-  SteamlessRunResult
+  SteamlessRunResult,
+  DepotSearchResponse,
+  GameData,
+  DepotDownloadStartRequest,
+  DepotCancelMode,
+  DepotProgressEvent
 } from '../../shared/types'
 
 declare global {
@@ -46,6 +51,17 @@ declare global {
       browseSteamlessFolder(): Promise<string | null>
       browseSteamlessExe(): Promise<string | null>
       runSteamless(exePath: string): Promise<SteamlessRunResult>
+      depotSearch(query: string, mode?: 'games' | 'dlc'): Promise<DepotSearchResponse>
+      depotDownloadManifest(appId: string, channelId: string): Promise<string>
+      depotProcessZip(zipPath: string): Promise<GameData>
+      depotStartDownload(request: DepotDownloadStartRequest): Promise<void>
+      depotCancelDownload(channelId: string, mode?: DepotCancelMode): Promise<void>
+      depotBrowseOutputFolder(): Promise<string | null>
+      depotScanDll(rootDir: string): Promise<SteamApiDllInfo | null>
+      onDepotProgress(cb: (event: DepotProgressEvent) => void): void
+      offDepotProgress(): void
+      onDepotLog(channelId: string, cb: (payload: DepotProgressEvent) => void): void
+      offDepotLog(channelId: string): void
       onSteamlessLog(cb: (line: string) => void): void
       offSteamlessLog(): void
       onGoldbergLog(cb: (line: string) => void): void

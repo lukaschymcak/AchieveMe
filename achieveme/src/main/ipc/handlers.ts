@@ -1,4 +1,4 @@
-import { ipcMain, dialog } from 'electron'
+import { ipcMain, dialog, BrowserWindow } from 'electron'
 import fs from 'node:fs'
 import https from 'node:https'
 import path from 'node:path'
@@ -41,6 +41,22 @@ import {
   runSteamlessUnpack,
   validateSteamlessFolder
 } from '../achievement/steamlessService'
+import {
+  downloadManifest,
+  searchDepotGames
+} from '../achievement/hubcapService'
+import { processZip } from '../achievement/manifestZipService'
+import {
+  cancelDownload,
+  startDownload
+} from '../achievement/depotRunnerService'
+import { scanSteamApiDll } from '../achievement/depotScanUtils'
+import type {
+  DepotCancelMode,
+  DepotDownloadStartRequest,
+  DepotSearchResponse,
+  GameData
+} from '../../shared/types'
 
 export function registerIpcHandlers(): void {
   ipcMain.handle('get-profile-stats', (): ProfileStats | null => {
@@ -342,5 +358,60 @@ export function registerIpcHandlers(): void {
         event.sender.send('steamless-log', line)
       })
     }
+  )
+
+  ipcMain.handle(
+    'depot:search',
+    (_event, query: string, mode: 'games' | 'dlc' = 'games'): Promise<DepotSearchResponse> =>
+      searchDepotGames(query, mode)
+  )
+
+  ipcMain.handle(
+    'depot:download-manifest',
+    async (
+      event,
+      appId: string,
+      channelId: string
+    ): Promise<string> => {
+      const cacheDir = path.join(app.getPath('userData'), 'manifest_cache')
+      const destination = path.join(cacheDir, `${appId}.zip`)
+      const win = BrowserWindow.fromWebContents(event.sender) ?? undefined
+      return downloadManifest(appId, destination, channelId, win)
+    }
+  )
+
+  ipcMain.handle('depot:process-zip', (_event, zipPath: string): Promise<GameData> =>
+    processZip(zipPath)
+  )
+
+  ipcMain.handle(
+    'depot:start-download',
+    async (event, request: DepotDownloadStartRequest): Promise<void> => {
+      const win = BrowserWindow.fromWebContents(event.sender)
+      if (!win) throw new Error('No BrowserWindow for depot download.')
+      return startDownload(request, win)
+    }
+  )
+
+  ipcMain.handle(
+    'depot:cancel-download',
+    async (_event, channelId: string, mode: DepotCancelMode = 'keep'): Promise<void> =>
+      cancelDownload(channelId, mode)
+  )
+
+  ipcMain.handle('depot:browse-output-folder', async (): Promise<string | null> => {
+    const settings = loadSettings()
+    const { canceled, filePaths } = await dialog.showOpenDialog({
+      title: 'Select download output folder',
+      defaultPath: settings.depotDownloadPath.trim() || undefined,
+      properties: ['openDirectory', 'createDirectory']
+    })
+    if (canceled || filePaths.length === 0) return null
+    return path.resolve(filePaths[0])
+  })
+
+  ipcMain.handle(
+    'depot:scan-dll',
+    (_event, rootDir: string): SteamApiDllInfo | null => scanSteamApiDll(rootDir)
   )
 }

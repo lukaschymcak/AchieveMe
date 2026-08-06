@@ -112,6 +112,16 @@ test('classifyFolderNameMatch is confident for DragonSword-style names', () => {
   )
 })
 
+test('classifyFolderNameMatch is unsure for Unity _Data subfolder (not confident)', () => {
+  assert.equal(classifyFolderNameMatch('Unpacking_Data', 'Unpacking'), 'unsure')
+  assert.equal(classifyFolderNameMatch('Hades_Data', 'Hades'), 'unsure')
+  assert.equal(classifyFolderNameMatch('GameName_Data', 'Game Name'), 'unsure')
+})
+
+test('classifyFolderNameMatch is confident for exact game root folder', () => {
+  assert.equal(classifyFolderNameMatch('Unpacking', 'Unpacking'), 'confident')
+})
+
 test('classifyFolderNameMatch is unsure for P5X acronym', () => {
   assert.equal(
     classifyFolderNameMatch('P5X', 'Persona 5: The Phantom X'),
@@ -127,6 +137,22 @@ test('classifyFolderNameMatch ignores unrelated deep folders', () => {
 test('isAcronymSubsequence matches P5X against persona tokens', () => {
   const tokens = significantNameTokens('Persona 5: The Phantom X')
   assert.equal(isAcronymSubsequence('p5x', tokens), true)
+})
+
+test('resolveGameRoot climbs past Unity _Data to game root', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'achieveme-root-'))
+  try {
+    const gameRoot = path.join(tmp, 'Unpacking')
+    const dataDir = path.join(gameRoot, 'Unpacking_Data')
+    fs.mkdirSync(dataDir, { recursive: true })
+    fs.writeFileSync(path.join(gameRoot, 'Unpacking.exe'), 'x')
+
+    const result = resolveGameRoot(dataDir, 'Unpacking')
+    assert.equal(result.status, 'confident')
+    assert.equal(result.root, gameRoot)
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true })
+  }
 })
 
 test('resolveGameRoot finds DragonSword root from deep DLL path', () => {

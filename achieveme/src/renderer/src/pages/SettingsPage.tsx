@@ -457,6 +457,54 @@ export default function SettingsPage({ page, onNavigate }: Props): React.ReactEl
           </div>
         </section>
 
+        <section className="settings-page__section" aria-labelledby="settings-depot">
+          <h2 id="settings-depot" className="settings-page__section-title">
+            Depot Downloader
+            <HelpTip content={TOOLTIPS.settingsDepotDownloader} label="Depot Downloader help" />
+          </h2>
+          <p className="settings-page__lead">{SETTINGS_HINTS.hubcapApiKey}</p>
+          <div className="settings-page__folder-add settings-page__folder-add--sound">
+            <AppSearchInput
+              type="password"
+              value={settings.hubcapApiKey}
+              onChange={(e) => toggleSetting('hubcapApiKey', e.target.value)}
+              placeholder="Hubcap API key"
+              className="settings-page__input--nested"
+              spellCheck={false}
+              autoComplete="off"
+            />
+            {settings.hubcapApiKey.trim() !== '' && (
+              <Chip onClick={() => toggleSetting('hubcapApiKey', '')}>Clear</Chip>
+            )}
+          </div>
+          <p className="settings-page__lead" style={{ marginTop: 16 }}>
+            {SETTINGS_HINTS.depotDownloadPath}
+          </p>
+          <div className="settings-page__folder-add settings-page__folder-add--sound">
+            <AppSearchInput
+              type="text"
+              value={settings.depotDownloadPath}
+              onChange={(e) => toggleSetting('depotDownloadPath', e.target.value)}
+              placeholder="Default download folder"
+              className="settings-page__input--nested"
+              spellCheck={false}
+            />
+            <Chip
+              onClick={() => {
+                void window.api.depotBrowseOutputFolder().then((picked) => {
+                  if (!picked) return
+                  setSettings((s) => s && { ...s, depotDownloadPath: picked })
+                })
+              }}
+            >
+              Browse
+            </Chip>
+            {settings.depotDownloadPath.trim() !== '' && (
+              <Chip onClick={() => toggleSetting('depotDownloadPath', '')}>Clear</Chip>
+            )}
+          </div>
+        </section>
+
         <section className="settings-page__section" aria-labelledby="settings-backup">
           <h2 id="settings-backup" className="settings-page__section-title">
             Backup &amp; Restore

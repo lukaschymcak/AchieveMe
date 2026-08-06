@@ -27,6 +27,13 @@
       "filter": [
         "**/*"
       ]
+    },
+    {
+      "from": "resources/depotdownloader",
+      "to": "depotdownloader",
+      "filter": [
+        "**/*"
+      ]
     }
   ],
   "mac": {

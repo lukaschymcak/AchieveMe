@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
-import type { ProfileStats, GameSummary, GameDetail, AppSettings, ImportResult, SteamSearchResult, GoldbergApplyRequest, SteamApiDllInfo, LibraryUpdatedPayload, SessionRecapPayload, GameExecutable, ResolveGameExecutablesResult, SetGameLaunchConfigRequest, SteamlessRunResult } from '../shared/types'
+import type { ProfileStats, GameSummary, GameDetail, AppSettings, ImportResult, SteamSearchResult, GoldbergApplyRequest, SteamApiDllInfo, LibraryUpdatedPayload, SessionRecapPayload, GameExecutable, ResolveGameExecutablesResult, SetGameLaunchConfigRequest, SteamlessRunResult, DepotSearchResponse, GameData, DepotDownloadStartRequest, DepotCancelMode, DepotProgressEvent } from '../shared/types'
 
 const libraryUpdatedCallbacks = new Set<(payload: LibraryUpdatedPayload) => void>()
 
@@ -107,6 +107,43 @@ contextBridge.exposeInMainWorld('api', {
 
   runSteamless: (exePath: string): Promise<SteamlessRunResult> =>
     ipcRenderer.invoke('run-steamless', exePath),
+
+  depotSearch: (query: string, mode: 'games' | 'dlc' = 'games'): Promise<DepotSearchResponse> =>
+    ipcRenderer.invoke('depot:search', query, mode),
+
+  depotDownloadManifest: (appId: string, channelId: string): Promise<string> =>
+    ipcRenderer.invoke('depot:download-manifest', appId, channelId),
+
+  depotProcessZip: (zipPath: string): Promise<GameData> =>
+    ipcRenderer.invoke('depot:process-zip', zipPath),
+
+  depotStartDownload: (request: DepotDownloadStartRequest): Promise<void> =>
+    ipcRenderer.invoke('depot:start-download', request),
+
+  depotCancelDownload: (channelId: string, mode: DepotCancelMode = 'keep'): Promise<void> =>
+    ipcRenderer.invoke('depot:cancel-download', channelId, mode),
+
+  depotBrowseOutputFolder: (): Promise<string | null> =>
+    ipcRenderer.invoke('depot:browse-output-folder'),
+
+  depotScanDll: (rootDir: string): Promise<SteamApiDllInfo | null> =>
+    ipcRenderer.invoke('depot:scan-dll', rootDir),
+
+  onDepotProgress: (cb: (event: DepotProgressEvent) => void): void => {
+    ipcRenderer.on('depot:progress', (_event, payload: DepotProgressEvent) => cb(payload))
+  },
+
+  offDepotProgress: (): void => {
+    ipcRenderer.removeAllListeners('depot:progress')
+  },
+
+  onDepotLog: (channelId: string, cb: (payload: DepotProgressEvent) => void): void => {
+    ipcRenderer.on(channelId, (_event, payload: DepotProgressEvent) => cb(payload))
+  },
+
+  offDepotLog: (channelId: string): void => {
+    ipcRenderer.removeAllListeners(channelId)
+  },
 
   onSteamlessLog: (cb: (line: string) => void): void => {
     ipcRenderer.on('steamless-log', (_event, line: string) => cb(line))

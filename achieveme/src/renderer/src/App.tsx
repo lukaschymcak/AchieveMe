@@ -1,5 +1,10 @@
-import React, { useEffect, useState } from 'react'
-import type { GameSummary, SessionRecapPayload } from '../../shared/types'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
+import type {
+  ActiveDepotSession,
+  DepotProgressEvent,
+  GameSummary,
+  SessionRecapPayload
+} from '../../shared/types'
 import DashboardPage from './pages/DashboardPage'
 import LibraryPage from './pages/LibraryPage'
 import GameDetailPage from './pages/GameDetailPage'
@@ -8,10 +13,20 @@ import ToolsPage from './pages/ToolsPage'
 import HelpPage from './pages/HelpPage'
 import FirstRunWelcome from './components/FirstRunWelcome'
 import SessionRecapModal from './components/SessionRecapModal'
+import DepotWizard from './components/DepotWizard'
 import { shouldShowFirstRun } from './lib/helpStorage'
 import type { AppPage } from './lib/appNavigation'
 
 type TransitionDir = 'next' | 'prev' | null
+
+function isDownloadInProgress(session: ActiveDepotSession | null): boolean {
+  if (!session) return false
+  return (
+    session.phase === 'fetching' ||
+    session.phase === 'downloading' ||
+    session.phase === 'depots'
+  )
+}
 
 export default function App(): React.ReactElement {
   const [page, setPage] = useState<AppPage>('dashboard')
@@ -21,6 +36,18 @@ export default function App(): React.ReactElement {
   const [transitionDir, setTransitionDir] = useState<TransitionDir>(null)
   const [showFirstRun, setShowFirstRun] = useState(() => shouldShowFirstRun())
   const [sessionRecap, setSessionRecap] = useState<SessionRecapPayload | null>(null)
+  const [activeDepotSession, setActiveDepotSession] = useState<ActiveDepotSession | null>(null)
+  const [depotWizardOpen, setDepotWizardOpen] = useState(false)
+  const depotSessionRef = useRef<ActiveDepotSession | null>(null)
+
+  useEffect(() => {
+    depotSessionRef.current = activeDepotSession
+  }, [activeDepotSession])
+
+  const handleDepotSessionChange = useCallback((session: ActiveDepotSession | null): void => {
+    depotSessionRef.current = session
+    setActiveDepotSession(session)
+  }, [])
 
   function handleRefresh(): void {
     setRefreshing(true)
@@ -68,9 +95,101 @@ export default function App(): React.ReactElement {
     }
   }, [])
 
+  useEffect(() => {
+    function handleDepotProgress(ev: DepotProgressEvent): void {
+      const prev = depotSessionRef.current
+      if (!prev) return
+      if (ev.channelId && ev.channelId !== prev.channelId) return
+
+      const nextLogs = ev.log
+        ? [...prev.logs, ...ev.log.split('\n').filter(Boolean)].slice(-400)
+        : prev.logs
+
+      let phase = prev.phase
+      if (ev.done && ev.canceled) phase = 'canceled'
+      else if (ev.done && ev.error) phase = 'failed'
+      else if (ev.done && ev.terminalReason === 'completed') phase = 'prompt'
+      else if (prev.phase === 'downloading' || prev.phase === 'fetching') {
+        // stay on downloading while progress ticks
+        if (prev.phase === 'downloading') phase = 'downloading'
+      }
+
+      const next: ActiveDepotSession = {
+        ...prev,
+        phase,
+        logs: nextLogs,
+        pct: typeof ev.pct === 'number' ? ev.pct : prev.pct,
+        speedBps: ev.speedBps !== undefined ? ev.speedBps : prev.speedBps,
+        etaSec: ev.etaSec !== undefined ? ev.etaSec : prev.etaSec,
+        status: ev.status ?? prev.status,
+        error: ev.error ?? prev.error,
+        gameName: ev.gameName ?? prev.gameName,
+        headerImageUrl: ev.headerImageUrl ?? prev.headerImageUrl,
+        appId: ev.appId ?? prev.appId
+      }
+      depotSessionRef.current = next
+      setActiveDepotSession(next)
+    }
+
+    window.api.onDepotProgress(handleDepotProgress)
+    return () => {
+      window.api.offDepotProgress()
+    }
+  }, [])
+
   const recapOverlay = sessionRecap ? (
     <SessionRecapModal payload={sessionRecap} onDismiss={dismissSessionRecap} />
   ) : null
+
+  const depotOverlay = (
+    <>
+      {isDownloadInProgress(activeDepotSession) && (
+        <button
+          type="button"
+          className="depot-download-badge"
+          onClick={() => setDepotWizardOpen(true)}
+          aria-label={`Download in progress: ${activeDepotSession?.gameName ?? 'game'}`}
+        >
+          {activeDepotSession?.headerImageUrl ? (
+            <img
+              src={activeDepotSession.headerImageUrl}
+              alt=""
+              className="depot-download-badge__thumb"
+            />
+          ) : (
+            <span className="depot-download-badge__thumb depot-download-badge__thumb--empty" />
+          )}
+          <span className="depot-download-badge__meta">
+            <span className="depot-download-badge__name">
+              {activeDepotSession?.gameName || 'Download'}
+            </span>
+            <span className="depot-download-badge__bar" aria-hidden="true">
+              <span
+                className="depot-download-badge__fill"
+                style={{
+                  width: `${Math.max(0, Math.min(100, activeDepotSession?.pct ?? 0))}%`
+                }}
+              />
+            </span>
+            <span className="depot-download-badge__pct">
+              {Math.round(activeDepotSession?.pct ?? 0)}%
+            </span>
+          </span>
+        </button>
+      )}
+      {depotWizardOpen && (
+        <DepotWizard
+          session={activeDepotSession}
+          onSessionChange={handleDepotSessionChange}
+          onClose={() => setDepotWizardOpen(false)}
+          onGameAdded={() => {
+            void window.api.getAllGames().then(setLibraryGames)
+            void window.api.refresh()
+          }}
+        />
+      )}
+    </>
+  )
 
   if (selectedAppid) {
     const currentIdx = libraryGames.findIndex((g) => g.appid === selectedAppid)
@@ -83,6 +202,7 @@ export default function App(): React.ReactElement {
     return (
       <>
         {recapOverlay}
+        {depotOverlay}
         <div className="app-shell app-shell--game-detail">
           <main className="app-main">
             <GameDetailPage
@@ -121,6 +241,7 @@ export default function App(): React.ReactElement {
     return (
       <>
         {recapOverlay}
+        {depotOverlay}
         {showFirstRun && <FirstRunWelcome onDismiss={() => setShowFirstRun(false)} />}
         <div className="app-shell">
           <main className="app-main">
@@ -144,9 +265,15 @@ export default function App(): React.ReactElement {
     return (
       <>
         {recapOverlay}
+        {depotOverlay}
         <div className="app-shell">
           <main className="app-main">
-            <ToolsPage page={page} onNavigate={setPage} />
+            <ToolsPage
+              page={page}
+              onNavigate={setPage}
+              onOpenDepotWizard={() => setDepotWizardOpen(true)}
+              depotSession={activeDepotSession}
+            />
           </main>
         </div>
       </>
@@ -157,6 +284,7 @@ export default function App(): React.ReactElement {
     return (
       <>
         {recapOverlay}
+        {depotOverlay}
         <div className="app-shell">
           <main className="app-main">
             <SettingsPage page={page} onNavigate={setPage} />
@@ -170,6 +298,7 @@ export default function App(): React.ReactElement {
     return (
       <>
         {recapOverlay}
+        {depotOverlay}
         {showFirstRun && <FirstRunWelcome onDismiss={() => setShowFirstRun(false)} />}
         <div className="app-shell">
           <main className="app-main">
@@ -188,6 +317,7 @@ export default function App(): React.ReactElement {
     return (
       <>
         {recapOverlay}
+        {depotOverlay}
         <div className="app-shell">
           <main className="app-main">
             <HelpPage page={page} onNavigate={setPage} />
@@ -197,5 +327,10 @@ export default function App(): React.ReactElement {
     )
   }
 
-  return <>{recapOverlay}</>
+  return (
+    <>
+      {recapOverlay}
+      {depotOverlay}
+    </>
+  )
 }
