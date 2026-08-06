@@ -24,6 +24,7 @@ const BUSY_TIMEOUT_MS = 22_500
 let queueState: ToastQueueState<UnlockToastPayload> = createToastQueueState()
 let toastWindow: BrowserWindow | null = null
 let navigateHandler: ((appid: string) => void) | null = null
+let deliveredHandler: (() => void) | null = null
 let ipcRegistered = false
 let toastReady = false
 let pendingShow: UnlockToastPayload | null = null
@@ -35,6 +36,11 @@ let deliveredEpoch = 0
 
 export function setToastNavigateHandler(handler: (appid: string) => void): void {
   navigateHandler = handler
+}
+
+/** Invoked each time a toast is delivered to the window (sound, analytics, etc.). */
+export function setToastDeliveredHandler(handler: (() => void) | null): void {
+  deliveredHandler = handler
 }
 
 function clearBusyWatchdog(): void {
@@ -111,6 +117,7 @@ function createToastWindow(): BrowserWindow {
     frame: false,
     transparent: true,
     backgroundColor: '#00000000',
+    ...(process.platform === 'win32' ? { backgroundMaterial: 'none' as const } : {}),
     resizable: false,
     movable: false,
     minimizable: false,
@@ -128,6 +135,7 @@ function createToastWindow(): BrowserWindow {
     }
   })
 
+  win.setBackgroundColor('#00000000')
   win.setAlwaysOnTop(true, 'screen-saver')
   win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true })
   positionToast(win)
@@ -177,11 +185,17 @@ function deliverShow(win: BrowserWindow, payload: UnlockToastPayload): void {
   toastEpoch += 1
   deliveredEpoch = toastEpoch
   positionToast(win)
+  win.setBackgroundColor('#00000000')
   win.webContents.send('toast-show', payload)
   if (!win.isVisible()) {
     win.show()
   }
   armBusyWatchdog()
+  try {
+    deliveredHandler?.()
+  } catch (err) {
+    console.error('[unlock-toast] delivered handler failed', err)
+  }
 }
 
 function flushPendingShow(): void {

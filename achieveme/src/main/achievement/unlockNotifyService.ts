@@ -19,19 +19,33 @@ import {
   destroyUnlockToastWindow,
   enqueueUnlockToast,
   resetUnlockToastQueue,
+  setToastDeliveredHandler,
   setToastNavigateHandler
 } from './unlockToastWindow'
 
 let previewIndex = 0
 let soundWindow: BrowserWindow | null = null
+let deliveredSoundRegistered = false
+
+function ensureDeliveredSoundHandler(): void {
+  if (deliveredSoundRegistered) return
+  deliveredSoundRegistered = true
+  setToastDeliveredHandler(() => {
+    const settings = loadSettings()
+    if (!settings.soundEnabled) return
+    playUnlockSound(settings.customSoundPath, settings.soundVolume)
+  })
+}
 
 export function setUnlockNavigationHandler(handler: (appid: string) => void): void {
+  ensureDeliveredSoundHandler()
   setToastNavigateHandler(handler)
 }
 
 export function notifyUnlocks(appid: string, gameName: string, unlocks: UnlockChange[]): void {
   if (unlocks.length === 0) return
 
+  ensureDeliveredSoundHandler()
   const settings = loadSettings()
 
   if (settings.notificationsEnabled) {
@@ -46,18 +60,11 @@ export function notifyUnlocks(appid: string, gameName: string, unlocks: UnlockCh
       enqueueUnlockToast(payload)
     }
   }
-
-  if (settings.soundEnabled) {
-    playUnlockSound(settings.customSoundPath, settings.soundVolume)
-  }
 }
 
 /** Platinum celebration when a game first reaches 100% completion. */
-export function notifyPlatinumUnlock(
-  appid: string,
-  gameName: string,
-  playSound: boolean
-): void {
+export function notifyPlatinumUnlock(appid: string, gameName: string): void {
+  ensureDeliveredSoundHandler()
   const settings = loadSettings()
 
   if (settings.notificationsEnabled) {
@@ -70,15 +77,11 @@ export function notifyPlatinumUnlock(
     }
     enqueueUnlockToast(payload)
   }
-
-  if (playSound && settings.soundEnabled) {
-    playUnlockSound(settings.customSoundPath, settings.soundVolume)
-  }
 }
 
 /** Sample toast for Settings — cycles rarity skins; ignores notificationsEnabled; respects sound. */
 export function previewUnlockToast(): void {
-  const settings = loadSettings()
+  ensureDeliveredSoundHandler()
   const tier = toastPreviewTierAt(previewIndex)
   previewIndex = nextToastPreviewIndex(previewIndex)
 
@@ -93,10 +96,6 @@ export function previewUnlockToast(): void {
     tier
   }
   enqueueUnlockToast(payload)
-
-  if (settings.soundEnabled) {
-    playUnlockSound(settings.customSoundPath, settings.soundVolume)
-  }
 }
 
 function ensureSoundWindow(): BrowserWindow {

@@ -183,8 +183,11 @@ export const ADD_GAME = {
   emuHelp:
     'Replaces the game’s Steam API DLL with Goldberg so the game runs through the emulator. Your original DLL is saved as a .bak backup first. Leave this off if the game is already emulated or you only want achievement tracking files.',
   emuQuestion: 'Also apply the Goldberg emulator?',
+  denuvoQuestion: 'Is this game Denuvo offline activated?',
+  denuvoBackupWarning:
+    'Recommended: back up the existing steam_settings folder next to the Steam API DLL before continuing. AchieveMe will keep configs.user.ini, configs.overlay.ini, configs.app.ini, and configs.main.ini when replacing steam_settings, but a full folder backup is safer.',
   applyHelp:
-    'Runs generate_emu_config, copies steam_settings, and seeds a 0% Goldberg save. If you opted in, it also installs the emulator DLL. After you play, progress appears automatically or via Refresh. Click Done, then Refresh the library.'
+    'Runs generate_emu_config, copies steam_settings, and seeds a 0% Goldberg save. If you opted in, it also installs the emulator DLL. For Denuvo offline-activated games, key config INIs are preserved. After you play, progress appears automatically or via Refresh. Click Done, then Refresh the library.'
 } as const
 
 export interface HelpSection {

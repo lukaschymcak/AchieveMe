@@ -14,6 +14,7 @@ import {
   readAchievementSchema,
   validateDllPath
 } from './goldbergFolderUtils'
+import { installSteamSettings } from './goldbergSteamSettingsUtils'
 
 function resolveGeneratorDir(): string {
   if (app.isPackaged) {
@@ -28,21 +29,6 @@ function resolveReleaseDir(): string {
     return path.join(process.resourcesPath, 'goldberg_release')
   }
   return path.join(app.getAppPath(), '..', 'goldberg-files', 'release')
-}
-
-function copyDirectoryMerge(source: string, target: string): void {
-  fs.mkdirSync(target, { recursive: true })
-
-  for (const entry of fs.readdirSync(source, { withFileTypes: true })) {
-    const srcPath = path.join(source, entry.name)
-    const destPath = path.join(target, entry.name)
-    if (entry.isDirectory()) {
-      copyDirectoryMerge(srcPath, destPath)
-    } else {
-      fs.mkdirSync(path.dirname(destPath), { recursive: true })
-      fs.copyFileSync(srcPath, destPath)
-    }
-  }
 }
 
 function readIniValue(iniText: string, section: string, key: string): string | null {
@@ -151,7 +137,7 @@ export async function applyGoldberg(
   settings: ReturnType<typeof loadSettings>,
   log: (line: string) => void
 ): Promise<void> {
-  const { appid, dllPath, installEmuDll } = request
+  const { appid, dllPath, installEmuDll, denuvoOfflineActivated } = request
   if (!/^\d+$/.test(appid)) {
     throw new Error(`Invalid AppID: ${appid}`)
   }
@@ -173,13 +159,12 @@ export async function applyGoldberg(
   const settingsSource = await runGenerator(appid, generatorDir, log)
 
   const settingsTarget = path.join(gameDir, 'steam_settings')
-  if (fs.existsSync(settingsTarget)) {
-    log('Replacing existing steam_settings...')
-    fs.rmSync(settingsTarget, { recursive: true, force: true })
-  }
-  log('Copying steam_settings to game folder...')
-  copyDirectoryMerge(settingsSource, settingsTarget)
-  log(`steam_settings installed at: ${settingsTarget}`)
+  installSteamSettings({
+    source: settingsSource,
+    target: settingsTarget,
+    preserveDenuvoConfigs: denuvoOfflineActivated,
+    log
+  })
 
   const schemaPath = path.join(settingsSource, 'achievements.json')
 

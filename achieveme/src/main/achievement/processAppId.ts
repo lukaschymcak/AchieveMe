@@ -90,7 +90,7 @@ export async function processAppId(
       notifyUnlocks(appid, enriched.game.name, diff.unlocked)
     }
     if (newlyPlatinum) {
-      notifyPlatinumUnlock(appid, enriched.game.name, diff.unlocked.length === 0)
+      notifyPlatinumUnlock(appid, enriched.game.name)
     }
   }
 

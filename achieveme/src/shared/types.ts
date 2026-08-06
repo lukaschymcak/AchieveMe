@@ -249,6 +249,11 @@ export interface GoldbergApplyRequest {
   dllPath: string
   /** When true, backup and replace the game steam_api DLL with Goldberg regular emu. */
   installEmuDll: boolean
+  /**
+   * When true, keep existing configs.user/overlay/app/main.ini under steam_settings
+   * after replace (Denuvo offline-activated games).
+   */
+  denuvoOfflineActivated: boolean
 }
 
 export interface LibraryUpdatedPayload {

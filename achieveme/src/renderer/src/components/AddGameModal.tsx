@@ -26,6 +26,7 @@ export default function AddGameModal({ onClose, onGameAdded }: Props): React.Rea
   const [selected, setSelected] = useState<SteamSearchResult | null>(null)
   const [dllInfo, setDllInfo] = useState<SteamApiDllInfo | null>(null)
   const [installEmuDll, setInstallEmuDll] = useState(false)
+  const [denuvoOfflineActivated, setDenuvoOfflineActivated] = useState(false)
   const [applyState, setApplyState] = useState<ApplyState>('idle')
   const [logLines, setLogLines] = useState<string[]>([])
   const [errorMsg, setErrorMsg] = useState('')
@@ -116,7 +117,8 @@ export default function AddGameModal({ onClose, onGameAdded }: Props): React.Rea
       await window.api.applyGoldberg({
         appid: selected.appid,
         dllPath: dllInfo.path,
-        installEmuDll
+        installEmuDll,
+        denuvoOfflineActivated
       })
       setApplyState('done')
     } catch (err) {
@@ -222,6 +224,8 @@ export default function AddGameModal({ onClose, onGameAdded }: Props): React.Rea
               dllInfo={dllInfo}
               installEmuDll={installEmuDll}
               onInstallEmuDllChange={setInstallEmuDll}
+              denuvoOfflineActivated={denuvoOfflineActivated}
+              onDenuvoOfflineActivatedChange={setDenuvoOfflineActivated}
             />
           )}
           {step === 'apply' && selected && dllInfo && (
@@ -526,12 +530,16 @@ function EmuStep({
   game,
   dllInfo,
   installEmuDll,
-  onInstallEmuDllChange
+  onInstallEmuDllChange,
+  denuvoOfflineActivated,
+  onDenuvoOfflineActivatedChange
 }: {
   game: SteamSearchResult
   dllInfo: SteamApiDllInfo
   installEmuDll: boolean
   onInstallEmuDllChange: (value: boolean) => void
+  denuvoOfflineActivated: boolean
+  onDenuvoOfflineActivatedChange: (value: boolean) => void
 }): React.ReactElement {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', flex: 1, padding: '16px 20px', gap: 16 }}>
@@ -590,6 +598,47 @@ function EmuStep({
           {ADD_GAME.emuQuestion}
         </span>
       </label>
+
+      <label
+        style={{
+          display: 'flex',
+          alignItems: 'flex-start',
+          gap: 10,
+          padding: '12px 14px',
+          background: 'oklch(14% 0.014 275)',
+          border: '1px solid oklch(20% 0.016 275)',
+          borderRadius: 8,
+          cursor: 'pointer'
+        }}
+      >
+        <input
+          type="checkbox"
+          checked={denuvoOfflineActivated}
+          onChange={(e) => onDenuvoOfflineActivatedChange(e.target.checked)}
+          aria-label={ADD_GAME.denuvoQuestion}
+          style={{ marginTop: 2, flexShrink: 0 }}
+        />
+        <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--ink)', lineHeight: 1.4 }}>
+          {ADD_GAME.denuvoQuestion}
+        </span>
+      </label>
+
+      {denuvoOfflineActivated && (
+        <div
+          role="status"
+          style={{
+            padding: '12px 14px',
+            background: 'oklch(22% 0.04 85)',
+            border: '1px solid oklch(45% 0.08 85)',
+            borderRadius: 8,
+            fontSize: 13,
+            color: 'oklch(88% 0.04 85)',
+            lineHeight: 1.5
+          }}
+        >
+          {ADD_GAME.denuvoBackupWarning}
+        </div>
+      )}
     </div>
   )
 }
