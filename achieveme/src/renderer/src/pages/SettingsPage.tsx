@@ -20,7 +20,6 @@ export default function SettingsPage({ page, onNavigate }: Props): React.ReactEl
   const [settings, setSettings] = useState<AppSettings | null>(null)
   const [saved, setSaved] = useState(false)
   const [saveHint, setSaveHint] = useState(false)
-  const [importMsg, setImportMsg] = useState<string | null>(null)
   const [newFolder, setNewFolder] = useState('')
   const [showSourcesTable, setShowSourcesTable] = useState(false)
 
@@ -89,18 +88,6 @@ export default function SettingsPage({ page, onNavigate }: Props): React.ReactEl
     })
   }
 
-  function importZip(): void {
-    if (!window.confirm(SETTINGS_HINTS.importConfirm)) return
-    window.api.importZip().then((result) => {
-      if (!result) return
-      const errNote = result.errors.length > 0 ? ` (${result.errors.length} warnings)` : ''
-      setImportMsg(
-        `Imported ${result.gamesImported} games, wrote ${result.filesWritten} files${errNote}. Open Library and click Refresh if the list looks stale.`
-      )
-      setTimeout(() => setImportMsg(null), 6000)
-    })
-  }
-
   if (!settings) {
     return (
       <AppShell centered>
@@ -129,14 +116,6 @@ export default function SettingsPage({ page, onNavigate }: Props): React.ReactEl
                 role="status"
               >
                 {SETTINGS_HINTS.saveSuccess}
-              </span>
-            )}
-            {importMsg && (
-              <span
-                className="settings-page__status settings-page__status--success settings-page__chrome-status"
-                role="status"
-              >
-                {importMsg}
               </span>
             )}
             <Chip variant="action" onClick={save}>
@@ -502,22 +481,6 @@ export default function SettingsPage({ page, onNavigate }: Props): React.ReactEl
             {settings.depotDownloadPath.trim() !== '' && (
               <Chip onClick={() => toggleSetting('depotDownloadPath', '')}>Clear</Chip>
             )}
-          </div>
-        </section>
-
-        <section className="settings-page__section" aria-labelledby="settings-backup">
-          <h2 id="settings-backup" className="settings-page__section-title">
-            Backup &amp; Restore
-            <HelpTip content={TOOLTIPS.settingsBackup} label="Backup and restore help" />
-          </h2>
-          <p className="settings-page__lead">{SETTINGS_HINTS.backup}</p>
-          <div className="settings-page__action-row">
-            <Chip variant="action" onClick={() => window.api.exportZip()}>
-              Export
-            </Chip>
-            <Chip variant="action" onClick={importZip}>
-              Import
-            </Chip>
           </div>
         </section>
 

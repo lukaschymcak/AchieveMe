@@ -218,27 +218,6 @@ export type GoldbergProgress = Record<
   }
 >
 
-export interface PortableSaveFile {
-  appid: string
-  source: SourceId
-  format: 'goldberg-json'
-  rootKind: 'default' | 'custom'
-  rootSource: SourceId
-  customRoot?: string
-  relativePath: string
-  progress: GoldbergProgress
-}
-
-export interface ExportBundleV2 {
-  formatVersion: 2
-  exportedAt: string
-  games: Game[]
-  achievements: Achievement[]
-  saveFiles: PortableSaveFile[]
-}
-
-export type ExportBundle = ExportBundleV2
-
 export interface SaveLocation {
   appid: string
   source: SourceId
@@ -248,31 +227,6 @@ export interface SaveLocation {
   custom_root: string
   relative_path: string
   updated_at: number
-}
-
-export interface ImportResult {
-  gamesImported: number
-  saveFilesWritten: number
-  filesWritten: number
-  errors: string[]
-}
-
-export interface PortableFolder {
-  appid: string
-  source: SourceId
-  rootKind: 'default' | 'custom'
-  rootSource: SourceId
-  customRoot?: string
-  relativePath: string
-  archivePath: string
-}
-
-export interface FullBackupManifest {
-  formatVersion: 3
-  exportedAt: string
-  games: Game[]
-  achievements: Achievement[]
-  folders: PortableFolder[]
 }
 
 export interface SteamSearchResult {

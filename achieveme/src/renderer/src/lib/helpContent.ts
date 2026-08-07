@@ -73,11 +73,9 @@ export const TOOLTIPS = {
   settingsApiKey:
     'Required for achievement names, icons, and hidden flags. Cover art and global unlock % work without a key.',
   settingsSources:
-    'Only enabled sources are scanned. Goldberg and GSE support backup, delete, and write-back.',
+    'Only enabled sources are scanned. Goldberg and GSE support delete and write-back.',
   settingsCustomFolders:
     'Extra roots scanned for every enabled source. Use for non-standard install paths.',
-  settingsBackup:
-    'Export includes Goldberg/GSE saves and library metadata. Import merges file-by-file without deleting other games.',
   settingsSteamless:
     'Link a Steamless release folder that contains Steamless.CLI.exe and Plugins. Used from Tools → Steamless. Not bundled with AchieveMe.',
   settingsDepotDownloader:
@@ -155,11 +153,7 @@ export const SETTINGS_HINTS = {
   apiKeySettingsNote: 'After saving here, open Library and click Refresh to rescan.',
   customFolders:
     'Extra roots scanned for every enabled source. Use for non-standard installs. Use the layout {appid}/{achievement file}, e.g. C:\\Saves\\570\\achievements.json.',
-  backup:
-    'Export: library metadata plus Goldberg/GSE appid folders and emulator settings. Does not include CODEX or RUNE saves. Import merges file-by-file and never deletes other games on disk. Custom watch folders must exist on the target PC or imports may warn and skip paths.',
   saveSuccess: 'Saved. Open Library and click Refresh to rescan for games.',
-  importConfirm:
-    'Import merges backup files into your emulator folders. Existing games not in the backup are left untouched. Continue?',
   notifications:
     'Steam-style unlock toasts (rarity accents; platinum at 100%) with optional sound and volume when new achievements appear in save files. Refresh and first library scan never trigger toasts.',
   tray:
@@ -224,7 +218,7 @@ export const HELP_SECTIONS: HelpSection[] = [
     id: 'sources',
     title: 'Emulator sources',
     paragraphs: [
-      'Goldberg and GSE saves support backup, delete, and write-back. CODEX and RUNE are read-only in AchieveMe.'
+      'Goldberg and GSE saves support delete and write-back. CODEX and RUNE are read-only in AchieveMe.'
     ],
     bullets: EMULATOR_SOURCES.map(
       (s) =>
@@ -336,15 +330,6 @@ export const HELP_SECTIONS: HelpSection[] = [
       'Tools sits between Library and Settings. Link a Steamless release folder in Settings → External tools (must include Steamless.CLI.exe and Plugins).',
       'Open the Steamless wizard to pick a library game (uses launch_exe when set, otherwise resolves executables from install_path) or Search for executable on disk, then run Steamless.CLI. Output is typically Game.exe.unpacked.exe beside the original; Play is not changed automatically.',
       'Depot Downloader searches Steam, fetches a Hubcap manifest ZIP, lets you pick depots, and runs DepotDownloader.dll (dotnet required). Closing the wizard during a download keeps it running — use the floating Downloads badge to reopen. After download you can optionally set up Goldberg achievements (DLL scan, emulator install, Denuvo preserve).'
-    ]
-  },
-  {
-    id: 'backup',
-    title: 'Backup & restore',
-    paragraphs: [
-      'Export includes library metadata and Goldberg/GSE {appid} folders plus emulator settings folders.',
-      'Export does not include CODEX or RUNE files.',
-      'Import merges file-by-file and does not delete other games. Custom watch paths must exist on the target machine.'
     ]
   },
   {

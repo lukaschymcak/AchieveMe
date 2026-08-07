@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
-import type { ProfileStats, GameSummary, GameDetail, AppSettings, ImportResult, SteamSearchResult, GoldbergApplyRequest, SteamApiDllInfo, LibraryUpdatedPayload, SessionRecapPayload, GameExecutable, ResolveGameExecutablesResult, SetGameLaunchConfigRequest, SteamlessRunResult, DepotSearchResponse, GameData, DepotDownloadStartRequest, DepotCancelMode, DepotProgressEvent, ManifestCheckResult, ManifestCheckGameResult } from '../shared/types'
+import type { ProfileStats, GameSummary, GameDetail, AppSettings, SteamSearchResult, GoldbergApplyRequest, SteamApiDllInfo, LibraryUpdatedPayload, SessionRecapPayload, GameExecutable, ResolveGameExecutablesResult, SetGameLaunchConfigRequest, SteamlessRunResult, DepotSearchResponse, GameData, DepotDownloadStartRequest, DepotCancelMode, DepotProgressEvent, ManifestCheckResult, ManifestCheckGameResult } from '../shared/types'
 
 const libraryUpdatedCallbacks = new Set<(payload: LibraryUpdatedPayload) => void>()
 
@@ -60,12 +60,6 @@ contextBridge.exposeInMainWorld('api', {
 
   deleteGame: (appid: string): Promise<void> =>
     ipcRenderer.invoke('delete-game', appid),
-
-  exportZip: (): Promise<void> =>
-    ipcRenderer.invoke('export-zip'),
-
-  importZip: (): Promise<ImportResult | null> =>
-    ipcRenderer.invoke('import-zip'),
 
   searchSteamGames: (query: string): Promise<SteamSearchResult[]> =>
     ipcRenderer.invoke('search-steam-games', query),

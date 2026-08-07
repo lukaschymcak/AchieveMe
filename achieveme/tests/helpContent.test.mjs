@@ -37,7 +37,6 @@ describe('helpContent', () => {
     const ids = HELP_SECTIONS.map((s) => s.id)
     assert.ok(ids.includes('about'))
     assert.ok(ids.includes('sync'))
-    assert.ok(ids.includes('backup'))
     assert.ok(ids.includes('notifications'))
     assert.ok(ids.includes('tray'))
     assert.ok(ids.includes('play-sessions'))

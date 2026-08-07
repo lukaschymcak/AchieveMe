@@ -108,30 +108,3 @@ export function encodePortablePath(
     relativePath: path.basename(filePath)
   }
 }
-
-export interface ResolvePortableOptions {
-  customRootOverride?: string
-}
-
-export function resolvePortablePath(
-  hint: PortablePathHint,
-  settings: AppSettings,
-  options: ResolvePortableOptions = {}
-): string {
-  const rel = hint.relativePath.replace(/\//g, path.sep)
-
-  if (hint.rootKind === 'default') {
-    const defaults = getDefaultRootsForSource(hint.rootSource)
-    const root = defaults[0]
-    if (!root) {
-      throw new Error(`No default root for source ${hint.rootSource}`)
-    }
-    return path.join(root, rel)
-  }
-
-  const customRoot = options.customRootOverride ?? hint.customRoot
-  if (!customRoot) {
-    throw new Error('Custom root path is missing')
-  }
-  return path.join(customRoot, rel)
-}

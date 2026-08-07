@@ -3,7 +3,6 @@ import type {
   GameSummary,
   GameDetail,
   AppSettings,
-  ImportResult,
   SteamSearchResult,
   GoldbergApplyRequest,
   SteamApiDllInfo,
@@ -33,8 +32,6 @@ declare global {
       refresh(): Promise<void>
       refreshGame(appid: string): Promise<void>
       deleteGame(appid: string): Promise<void>
-      exportZip(): Promise<void>
-      importZip(): Promise<ImportResult | null>
       searchSteamGames(query: string): Promise<SteamSearchResult[]>
       browseDllPath(): Promise<SteamApiDllInfo | null>
       browseSoundPath(): Promise<string | null>

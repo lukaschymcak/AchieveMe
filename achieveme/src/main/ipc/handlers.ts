@@ -22,8 +22,6 @@ import { startPlaytimeTracker, stopPlaytimeTracker } from '../achievement/playti
 import { startWatcher, pruneOrphanedGames } from '../achievement/watcherService'
 import { scanAllSources } from '../achievement/discoveryService'
 import { processAppId } from '../achievement/processAppId'
-import { buildFullBackupZip } from '../achievement/exportZipService'
-import { importFullBackupZip } from '../achievement/importZipService'
 import { normalizeProfileStats, regenerateProfileStats } from '../achievement/profileStatsService'
 import { applyGoldberg } from '../achievement/goldbergSetupService'
 import { previewUnlockToast } from '../achievement/unlockNotifyService'
@@ -36,7 +34,6 @@ import type {
   GameSummary,
   GameDetail,
   AppSettings,
-  ImportResult,
   SteamSearchResult,
   GoldbergApplyRequest,
   SteamApiDllInfo,
@@ -204,32 +201,6 @@ export function registerIpcHandlers(): void {
 
     deleteGame(db, appid)
     regenerateProfileStats(db)
-  })
-
-  ipcMain.handle('export-zip', async (): Promise<void> => {
-    const { canceled, filePath } = await dialog.showSaveDialog({
-      title: 'Export Backup',
-      defaultPath: 'achieveme-backup.zip',
-      filters: [{ name: 'ZIP', extensions: ['zip'] }]
-    })
-    if (canceled || !filePath) return
-
-    const db = getDb()
-    const settings = loadSettings()
-    buildFullBackupZip(db, settings, filePath)
-  })
-
-  ipcMain.handle('import-zip', async (): Promise<ImportResult | null> => {
-    const { canceled, filePaths } = await dialog.showOpenDialog({
-      title: 'Import Backup',
-      filters: [{ name: 'ZIP', extensions: ['zip'] }],
-      properties: ['openFile']
-    })
-    if (canceled || filePaths.length === 0) return null
-
-    const db = getDb()
-    const settings = loadSettings()
-    return importFullBackupZip(db, filePaths[0], settings)
   })
 
   ipcMain.handle('browse-sound-path', async (): Promise<string | null> => {
