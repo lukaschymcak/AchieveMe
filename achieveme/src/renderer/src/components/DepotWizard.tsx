@@ -7,6 +7,7 @@ import type {
   GameData,
   SteamApiDllInfo
 } from '../../../shared/types'
+import { pickManifestGids } from '../../../shared/manifestUpdateUtils'
 import { AppSearchInput, Chip } from './app'
 import { ADD_GAME } from '../lib/helpContent'
 
@@ -263,6 +264,15 @@ export default function DepotWizard({
         maxDownloads: 20,
         channelId
       })
+      const selectedGids = pickManifestGids(local.gameData?.manifests ?? {}, depotIds)
+      if (Object.keys(selectedGids).length > 0) {
+        await window.api.manifestSaveGids(
+          local.appId || local.gameData.appId,
+          selectedGids,
+          local.gameName || local.gameData.gameName,
+          out
+        )
+      }
       // App progress listener may already have set phase to prompt; reinforce on resolve.
       onSessionChange({
         ...local,
@@ -369,6 +379,8 @@ export default function DepotWizard({
   }
 
   function handleSkipSetup(): void {
+    // Library row already exists from manifestSaveGids + notifyLibraryUpdated.
+    // Do not call onGameAdded/refresh — that prunes depot-only installs.
     onSessionChange(null)
     onClose()
   }

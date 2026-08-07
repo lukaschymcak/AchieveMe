@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
-import type { ProfileStats, GameSummary, GameDetail, AppSettings, ImportResult, SteamSearchResult, GoldbergApplyRequest, SteamApiDllInfo, LibraryUpdatedPayload, SessionRecapPayload, GameExecutable, ResolveGameExecutablesResult, SetGameLaunchConfigRequest, SteamlessRunResult, DepotSearchResponse, GameData, DepotDownloadStartRequest, DepotCancelMode, DepotProgressEvent } from '../shared/types'
+import type { ProfileStats, GameSummary, GameDetail, AppSettings, ImportResult, SteamSearchResult, GoldbergApplyRequest, SteamApiDllInfo, LibraryUpdatedPayload, SessionRecapPayload, GameExecutable, ResolveGameExecutablesResult, SetGameLaunchConfigRequest, SteamlessRunResult, DepotSearchResponse, GameData, DepotDownloadStartRequest, DepotCancelMode, DepotProgressEvent, ManifestCheckResult, ManifestCheckGameResult } from '../shared/types'
 
 const libraryUpdatedCallbacks = new Set<(payload: LibraryUpdatedPayload) => void>()
 
@@ -24,6 +24,14 @@ const sessionRecapCallbacks = new Set<(payload: SessionRecapPayload) => void>()
 
 function dispatchSessionRecap(_event: IpcRendererEvent, payload: SessionRecapPayload): void {
   for (const cb of sessionRecapCallbacks) {
+    cb(payload)
+  }
+}
+
+const depotProgressCallbacks = new Set<(event: DepotProgressEvent) => void>()
+
+function dispatchDepotProgress(_event: IpcRendererEvent, payload: DepotProgressEvent): void {
+  for (const cb of depotProgressCallbacks) {
     cb(payload)
   }
 }
@@ -129,12 +137,55 @@ contextBridge.exposeInMainWorld('api', {
   depotScanDll: (rootDir: string): Promise<SteamApiDllInfo | null> =>
     ipcRenderer.invoke('depot:scan-dll', rootDir),
 
+  manifestCheck: (appIds: string[]): Promise<ManifestCheckResult[]> =>
+    ipcRenderer.invoke('manifest:check', appIds),
+
+  manifestSaveGids: (
+    appid: string,
+    gids: Record<string, string>,
+    gameName?: string,
+    installPath?: string
+  ): Promise<void> =>
+    ipcRenderer.invoke('manifest:save-gids', appid, gids, gameName, installPath),
+
+  manifestCheckGame: (appid: string): Promise<ManifestCheckGameResult> =>
+    ipcRenderer.invoke('manifest:check-game', appid),
+
+  manifestGetGameData: (appid: string, forceRefresh: boolean): Promise<GameData> =>
+    ipcRenderer.invoke('manifest:get-game-data', appid, forceRefresh),
+
+  manifestUpdateGame: (
+    appid: string,
+    installPath: string,
+    selectedDepots: string[],
+    steamUsername?: string
+  ): Promise<void> =>
+    ipcRenderer.invoke('manifest:update-game', appid, installPath, selectedDepots, steamUsername),
+
+  manifestValidateGame: (
+    appid: string,
+    installPath: string,
+    selectedDepots: string[],
+    steamUsername?: string
+  ): Promise<void> =>
+    ipcRenderer.invoke('manifest:validate-game', appid, installPath, selectedDepots, steamUsername),
+
   onDepotProgress: (cb: (event: DepotProgressEvent) => void): void => {
-    ipcRenderer.on('depot:progress', (_event, payload: DepotProgressEvent) => cb(payload))
+    if (depotProgressCallbacks.size === 0) {
+      ipcRenderer.on('depot:progress', dispatchDepotProgress)
+    }
+    depotProgressCallbacks.add(cb)
   },
 
-  offDepotProgress: (): void => {
-    ipcRenderer.removeAllListeners('depot:progress')
+  offDepotProgress: (cb?: (event: DepotProgressEvent) => void): void => {
+    if (cb) {
+      depotProgressCallbacks.delete(cb)
+    } else {
+      depotProgressCallbacks.clear()
+    }
+    if (depotProgressCallbacks.size === 0) {
+      ipcRenderer.removeListener('depot:progress', dispatchDepotProgress)
+    }
   },
 
   onDepotLog: (channelId: string, cb: (payload: DepotProgressEvent) => void): void => {

@@ -9,8 +9,11 @@ import {
   getGame,
   getAchievementsForGame,
   getSaveLocationsForApp,
-  deleteGame
+  deleteGame,
+  saveManifestGids,
+  saveUpdateStatus
 } from '../db/repository'
+import { parseManifestGidsJson, pickManifestGids } from '../../shared/manifestUpdateUtils'
 import { getStoreCoverUrl } from '../achievement/steamApiClient'
 import { getSteamLibraryHeroUrl } from '../../shared/steamUrls'
 import { loadSettings, saveSettings, normalizeSettings } from '../settings'
@@ -28,8 +31,26 @@ import {
   acknowledgeSessionRecap,
   previewSessionRecap
 } from '../achievement/sessionRecapService'
-import type { ProfileStats, GameSummary, GameDetail, AppSettings, ImportResult, SteamSearchResult, GoldbergApplyRequest, SteamApiDllInfo } from '../../shared/types'
-import type { GameExecutable, ResolveGameExecutablesResult, SetGameLaunchConfigRequest, SteamlessRunResult } from '../../shared/types'
+import type {
+  ProfileStats,
+  GameSummary,
+  GameDetail,
+  AppSettings,
+  ImportResult,
+  SteamSearchResult,
+  GoldbergApplyRequest,
+  SteamApiDllInfo,
+  GameExecutable,
+  ResolveGameExecutablesResult,
+  SetGameLaunchConfigRequest,
+  SteamlessRunResult,
+  DepotCancelMode,
+  DepotDownloadStartRequest,
+  DepotSearchResponse,
+  GameData,
+  ManifestCheckResult,
+  ManifestCheckGameResult
+} from '../../shared/types'
 import {
   LAUNCH_NEEDS_EXE,
   launchGame,
@@ -51,12 +72,26 @@ import {
   startDownload
 } from '../achievement/depotRunnerService'
 import { scanSteamApiDll } from '../achievement/depotScanUtils'
-import type {
-  DepotCancelMode,
-  DepotDownloadStartRequest,
-  DepotSearchResponse,
-  GameData
-} from '../../shared/types'
+import {
+  checkGameUpdate,
+  runManifestChecker,
+  runStartupUpdateCheck
+} from '../achievement/manifestCheckerService'
+import { notifyLibraryUpdated } from '../achievement/libraryNotifyService'
+import { resolveGameRoot } from '../achievement/gameLaunchUtils'
+
+/**
+ * Resolves DepotDownloader `-dir` from a possibly deep install/DLL path.
+ *
+ * @param installPath - Stored install path (often steam_api.dll folder).
+ * @param gameName - Library game title for folder-name matching.
+ */
+function resolveDepotOutputDir(installPath: string, gameName: string): string {
+  const resolved = resolveGameRoot(installPath, gameName)
+  if (resolved.status === 'confident') return resolved.root
+  if (resolved.status === 'unsure') return resolved.candidatePath
+  return path.resolve(installPath)
+}
 
 export function registerIpcHandlers(): void {
   ipcMain.handle('get-profile-stats', (): ProfileStats | null => {
@@ -87,7 +122,8 @@ export function registerIpcHandlers(): void {
         last_unlocked_at: g.last_unlocked_at,
         playtime_seconds: g.playtime_seconds ?? 0,
         install_path: g.install_path ?? '',
-        launch_exe: g.launch_exe ?? ''
+        launch_exe: g.launch_exe ?? '',
+        update_status: g.update_status ?? ''
       })
     }
     return summaries
@@ -146,6 +182,9 @@ export function registerIpcHandlers(): void {
         await processAppId(game.appid, settings, true, true)
       }
     }
+
+    // Fire-and-forget — leave existing update_status alone on failure
+    void runStartupUpdateCheck(db).catch(() => undefined)
   })
 
   ipcMain.handle('delete-game', async (_event, appid: string): Promise<void> => {
@@ -413,5 +452,160 @@ export function registerIpcHandlers(): void {
   ipcMain.handle(
     'depot:scan-dll',
     (_event, rootDir: string): SteamApiDllInfo | null => scanSteamApiDll(rootDir)
+  )
+
+  ipcMain.handle(
+    'manifest:check',
+    (_event, appIds: string[]): Promise<ManifestCheckResult[]> => runManifestChecker(appIds)
+  )
+
+  ipcMain.handle(
+    'manifest:save-gids',
+    (
+      _event,
+      appid: string,
+      gids: Record<string, string>,
+      gameName?: string,
+      installPath?: string
+    ): void => {
+      saveManifestGids(getDb(), appid, gids, gameName, installPath)
+      notifyLibraryUpdated(appid)
+    }
+  )
+
+  ipcMain.handle(
+    'manifest:check-game',
+    (_event, appid: string): Promise<ManifestCheckGameResult> =>
+      checkGameUpdate(getDb(), appid)
+  )
+
+  ipcMain.handle(
+    'manifest:get-game-data',
+    async (event, appid: string, forceRefresh: boolean): Promise<GameData> => {
+      const clean = String(appid || '').trim()
+      if (!clean) throw new Error('AppID is required.')
+      const win = BrowserWindow.fromWebContents(event.sender)
+      const cacheDir = path.join(app.getPath('userData'), 'manifest_cache')
+      const zipPath = path.join(cacheDir, `${clean}.zip`)
+      if (forceRefresh || !fs.existsSync(zipPath)) {
+        await downloadManifest(
+          clean,
+          zipPath,
+          `manifest:get-game-data:progress:${clean}`,
+          win ?? undefined
+        )
+      }
+      return processZip(zipPath)
+    }
+  )
+
+  ipcMain.handle(
+    'manifest:update-game',
+    async (
+      event,
+      appid: string,
+      installPath: string,
+      selectedDepots: string[],
+      steamUsername?: string
+    ): Promise<void> => {
+      const clean = String(appid || '').trim()
+      const outDir = String(installPath || '').trim()
+      if (!clean) throw new Error('AppID is required.')
+      if (!outDir) throw new Error('Install path is required.')
+      if (!Array.isArray(selectedDepots) || selectedDepots.length === 0) {
+        throw new Error('No depots selected.')
+      }
+
+      const win = BrowserWindow.fromWebContents(event.sender)
+      if (!win) throw new Error('No BrowserWindow for game update.')
+
+      const game = getGame(getDb(), clean)
+      if (!game) throw new Error(`Game ${clean} not found in library.`)
+
+      const cacheDir = path.join(app.getPath('userData'), 'manifest_cache')
+      const zipPath = path.join(cacheDir, `${clean}.zip`)
+      await downloadManifest(clean, zipPath, `manifest:update-game:progress:${clean}`, win)
+      const gameData = await processZip(zipPath)
+
+      const contentDir = resolveDepotOutputDir(outDir, game.name || gameData.gameName)
+      const channelId = `depot:${clean}:update`
+      await startDownload(
+        {
+          gameData,
+          selectedDepots,
+          libraryPath: contentDir,
+          outputPath: contentDir,
+          steamUsername,
+          maxDownloads: 20,
+          channelId
+        },
+        win
+      )
+
+      const gids = pickManifestGids(gameData.manifests, selectedDepots)
+      if (!Object.keys(gids).length) {
+        throw new Error('No manifest GIDs for selected depots.')
+      }
+      saveManifestGids(getDb(), clean, gids, game.name || gameData.gameName)
+      saveUpdateStatus(getDb(), clean, 'up_to_date')
+      notifyLibraryUpdated(clean)
+    }
+  )
+
+  ipcMain.handle(
+    'manifest:validate-game',
+    async (
+      event,
+      appid: string,
+      installPath: string,
+      selectedDepots: string[],
+      steamUsername?: string
+    ): Promise<void> => {
+      const clean = String(appid || '').trim()
+      const outDir = String(installPath || '').trim()
+      if (!clean) throw new Error('AppID is required.')
+      if (!outDir) throw new Error('Install path is required.')
+      if (!Array.isArray(selectedDepots) || selectedDepots.length === 0) {
+        throw new Error('No depots selected.')
+      }
+
+      const win = BrowserWindow.fromWebContents(event.sender)
+      if (!win) throw new Error('No BrowserWindow for game validate.')
+
+      const game = getGame(getDb(), clean)
+      if (!game) throw new Error(`Game ${clean} not found in library.`)
+
+      const storedGids = parseManifestGidsJson(game.manifest_gids)
+      if (!Object.keys(storedGids).length) {
+        throw new Error('No stored manifest GIDs — download the game first.')
+      }
+
+      const cacheDir = path.join(app.getPath('userData'), 'manifest_cache')
+      const zipPath = path.join(cacheDir, `${clean}.zip`)
+
+      // Use cached ZIP if available (keys stay valid); download fresh only if missing
+      if (!fs.existsSync(zipPath)) {
+        await downloadManifest(clean, zipPath, `manifest:validate-game:progress:${clean}`, win)
+      }
+
+      const gameData = await processZip(zipPath)
+      const contentDir = resolveDepotOutputDir(outDir, game.name || gameData.gameName)
+
+      await startDownload(
+        {
+          gameData,
+          selectedDepots,
+          libraryPath: contentDir,
+          outputPath: contentDir,
+          steamUsername,
+          maxDownloads: 20,
+          channelId: `depot:${clean}:validate`
+        },
+        win
+      )
+
+      // Repair only — do not change manifest_gids or update_status
+      notifyLibraryUpdated(clean)
+    }
   )
 }

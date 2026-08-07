@@ -86,6 +86,34 @@ export interface SessionRecapPayload {
   unlocks: SessionRecapUnlock[]
 }
 
+/** Live Steam PICS update status relative to stored manifest GIDs. */
+export type UpdateStatus = 'up_to_date' | 'update_available' | ''
+
+/** One depot row returned by a Steam PICS product-info query. */
+export interface ManifestCheckResult {
+  appId: string
+  depotId: string
+  manifestGid: string
+  buildId?: string
+}
+
+/** Result of checking one game and persisting `update_status`. */
+export interface ManifestCheckGameResult {
+  status: UpdateStatus
+  rows: ManifestCheckResult[]
+  buildId?: string
+}
+
+/** In-flight update or validate job tracked at the App shell so progress survives navigation. */
+export interface ActiveUpdateSession {
+  appid: string
+  mode: 'update' | 'validate'
+  busy: boolean
+  pct: number
+  label: string
+  error: string
+}
+
 // One row in the `games` SQLite table
 export interface Game {
   appid: string
@@ -100,6 +128,10 @@ export interface Game {
   install_path: string
   /** Absolute path to the chosen game .exe for Play, or empty. */
   launch_exe: string
+  /** JSON `{ depotId: gid }` baseline from DepotWizard, or empty. */
+  manifest_gids: string
+  /** Last known Steam update status from PICS check. */
+  update_status: UpdateStatus
 }
 
 // One row in the `achievements` SQLite table
@@ -164,6 +196,7 @@ export interface GameSummary {
   playtime_seconds: number
   install_path: string
   launch_exe: string
+  update_status: UpdateStatus
 }
 
 // Sent over IPC to renderer for the game detail page

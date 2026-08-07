@@ -1,8 +1,20 @@
 import type Database from 'better-sqlite3'
-import type { Game, Achievement, SaveLocation } from '../../shared/types'
+import type { Game, Achievement, SaveLocation, UpdateStatus } from '../../shared/types'
 
 const GAME_COLUMNS =
-  'appid, name, total_achievements, unlocked_achievements, completion_pct, has_platinum, last_unlocked_at, schema_fetched_at, playtime_seconds, install_path, launch_exe'
+  'appid, name, total_achievements, unlocked_achievements, completion_pct, has_platinum, last_unlocked_at, schema_fetched_at, playtime_seconds, install_path, launch_exe, manifest_gids, update_status'
+
+function normalizeGameRow(row: Game | undefined): Game | undefined {
+  if (!row) return undefined
+  return {
+    ...row,
+    playtime_seconds: row.playtime_seconds ?? 0,
+    install_path: row.install_path ?? '',
+    launch_exe: row.launch_exe ?? '',
+    manifest_gids: row.manifest_gids ?? '',
+    update_status: (row.update_status ?? '') as UpdateStatus
+  }
+}
 
 // ─── Games ───────────────────────────────────────────────────────────────────
 
@@ -11,17 +23,19 @@ export function upsertGame(db: Database.Database, game: Game): void {
   const playtimeSeconds = game.playtime_seconds ?? existing?.playtime_seconds ?? 0
   const installPath = game.install_path ?? existing?.install_path ?? ''
   const launchExe = game.launch_exe ?? existing?.launch_exe ?? ''
+  const manifestGids = game.manifest_gids ?? existing?.manifest_gids ?? ''
+  const updateStatus = game.update_status ?? existing?.update_status ?? ''
 
   db.prepare(`
     INSERT INTO games (
       appid, name, total_achievements, unlocked_achievements,
       completion_pct, has_platinum, last_unlocked_at, schema_fetched_at,
-      playtime_seconds, install_path, launch_exe
+      playtime_seconds, install_path, launch_exe, manifest_gids, update_status
     )
     VALUES (
       @appid, @name, @total_achievements, @unlocked_achievements,
       @completion_pct, @has_platinum, @last_unlocked_at, @schema_fetched_at,
-      @playtime_seconds, @install_path, @launch_exe
+      @playtime_seconds, @install_path, @launch_exe, @manifest_gids, @update_status
     )
     ON CONFLICT(appid) DO UPDATE SET
       name                  = excluded.name,
@@ -43,25 +57,99 @@ export function upsertGame(db: Database.Database, game: Game): void {
       launch_exe            = CASE
         WHEN excluded.launch_exe != '' THEN excluded.launch_exe
         ELSE games.launch_exe
+      END,
+      manifest_gids         = CASE
+        WHEN excluded.manifest_gids != '' THEN excluded.manifest_gids
+        ELSE games.manifest_gids
+      END,
+      update_status         = CASE
+        WHEN excluded.update_status != '' THEN excluded.update_status
+        ELSE games.update_status
       END
   `).run({
     ...game,
     playtime_seconds: playtimeSeconds,
     install_path: installPath,
-    launch_exe: launchExe
+    launch_exe: launchExe,
+    manifest_gids: manifestGids,
+    update_status: updateStatus
   })
 }
 
 export function getGame(db: Database.Database, appid: string): Game | undefined {
-  return db.prepare(`SELECT ${GAME_COLUMNS} FROM games WHERE appid = ?`).get(appid) as
+  const row = db.prepare(`SELECT ${GAME_COLUMNS} FROM games WHERE appid = ?`).get(appid) as
     | Game
     | undefined
+  return normalizeGameRow(row)
 }
 
 export function getAllGames(db: Database.Database): Game[] {
-  return db
+  const rows = db
     .prepare(`SELECT ${GAME_COLUMNS} FROM games ORDER BY completion_pct DESC`)
     .all() as Game[]
+  return rows.map((row) => normalizeGameRow(row)!)
+}
+
+/**
+ * Returns games that have a stored manifest GID baseline for update checks.
+ *
+ * @param db - Open SQLite database.
+ */
+export function getAllGamesWithGids(db: Database.Database): Game[] {
+  const rows = db
+    .prepare(`SELECT ${GAME_COLUMNS} FROM games WHERE manifest_gids != '' ORDER BY name ASC`)
+    .all() as Game[]
+  return rows.map((row) => normalizeGameRow(row)!)
+}
+
+/**
+ * Persists depot → GID baseline JSON and marks the game up to date.
+ * Creates a stub game row when the app is not yet in the library.
+ *
+ * @param db - Open SQLite database.
+ * @param appid - Steam AppID.
+ * @param gids - Depot → manifest GID map.
+ * @param gameName - Optional display name for stub insert.
+ */
+export function saveManifestGids(
+  db: Database.Database,
+  appid: string,
+  gids: Record<string, string>,
+  gameName?: string,
+  installPath?: string
+): void {
+  const cleanAppid = String(appid || '').trim()
+  if (!cleanAppid) throw new Error('Invalid AppID for manifest GIDs.')
+  const json = JSON.stringify(gids || {})
+  const name = String(gameName || '').trim() || `App ${cleanAppid}`
+  const iPath = String(installPath || '').trim()
+
+  db.prepare(`
+    INSERT INTO games (appid, name, manifest_gids, update_status, install_path)
+    VALUES (?, ?, ?, 'up_to_date', ?)
+    ON CONFLICT(appid) DO UPDATE SET
+      manifest_gids = excluded.manifest_gids,
+      update_status = 'up_to_date',
+      name = CASE
+        WHEN games.name = '' OR games.name LIKE 'App %' THEN excluded.name
+        ELSE games.name
+      END,
+      install_path = CASE
+        WHEN games.install_path = '' AND excluded.install_path != '' THEN excluded.install_path
+        ELSE games.install_path
+      END
+  `).run(cleanAppid, name, json, iPath)
+}
+
+/**
+ * Persists the last known Steam update status for a game.
+ *
+ * @param db - Open SQLite database.
+ * @param appid - Steam AppID.
+ * @param status - Update status to store.
+ */
+export function saveUpdateStatus(db: Database.Database, appid: string, status: UpdateStatus): void {
+  db.prepare('UPDATE games SET update_status = ? WHERE appid = ?').run(status, appid)
 }
 
 export function updateGamePlaytime(db: Database.Database, appid: string, seconds: number): void {

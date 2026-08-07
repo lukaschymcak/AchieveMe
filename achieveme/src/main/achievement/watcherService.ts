@@ -1,6 +1,7 @@
 import chokidar, { type FSWatcher } from 'chokidar'
 import path from 'node:path'
 import type { AppSettings } from '../../shared/types'
+import { parseManifestGidsJson } from '../../shared/manifestUpdateUtils'
 import { getDb } from '../db/database'
 import { deleteGame, getAllGames } from '../db/repository'
 import { getWatchRoots, scanAllSources } from './discoveryService'
@@ -42,6 +43,8 @@ export function pruneOrphanedGames(settings: AppSettings): void {
   let removed = 0
 
   for (const game of getAllGames(db)) {
+    // DepotDownloader installs keep GIDs even with 0 achievements — never prune them.
+    if (Object.keys(parseManifestGidsJson(game.manifest_gids)).length > 0) continue
     if (!onDisk.has(game.appid)) {
       deleteGame(db, game.appid)
       removed++

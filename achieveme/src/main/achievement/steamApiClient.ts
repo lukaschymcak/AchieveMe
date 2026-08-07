@@ -244,7 +244,9 @@ function buildGameRecord(
     schema_fetched_at: schema ? Math.floor(Date.now() / 1000) : existingGame?.schema_fetched_at ?? 0,
     playtime_seconds: existingGame?.playtime_seconds ?? 0,
     install_path: existingGame?.install_path ?? '',
-    launch_exe: existingGame?.launch_exe ?? ''
+    launch_exe: existingGame?.launch_exe ?? '',
+    manifest_gids: existingGame?.manifest_gids ?? '',
+    update_status: existingGame?.update_status ?? ''
   }
 }
 

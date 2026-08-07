@@ -1,7 +1,7 @@
 import { app, BrowserWindow, shell } from 'electron'
 import path from 'node:path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
-import { initDb } from './db/database'
+import { initDb, getDb } from './db/database'
 import { loadSettings } from './settings'
 import { startWatcher } from './achievement/watcherService'
 import { startPlaytimeTracker, stopPlaytimeTracker } from './achievement/playtimeService'
@@ -11,6 +11,7 @@ import { registerIpcHandlers } from './ipc/handlers'
 import { destroyTray, initTray, isQuitting, setQuitting } from './trayService'
 import { shouldQuitForMissingInstanceLock } from './singleInstance'
 import { shouldStartHidden, syncLoginItemSettings } from './loginItemService'
+import { runStartupUpdateCheck } from './achievement/manifestCheckerService'
 
 // Allow unlock-sound Audio.play() from the hidden sound window without a user gesture.
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required')
@@ -42,8 +43,10 @@ function createWindow(): void {
   })
 
   mainWindow.on('ready-to-show', () => {
-    if (shouldStartHidden(process.argv)) return
-    mainWindow?.show()
+    if (!shouldStartHidden(process.argv)) {
+      mainWindow?.show()
+    }
+    void runStartupUpdateCheck(getDb()).catch(() => undefined)
   })
 
   mainWindow.on('close', (event) => {

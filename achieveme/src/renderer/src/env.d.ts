@@ -17,7 +17,9 @@ import type {
   GameData,
   DepotDownloadStartRequest,
   DepotCancelMode,
-  DepotProgressEvent
+  DepotProgressEvent,
+  ManifestCheckResult,
+  ManifestCheckGameResult
 } from '../../shared/types'
 
 declare global {
@@ -58,8 +60,29 @@ declare global {
       depotCancelDownload(channelId: string, mode?: DepotCancelMode): Promise<void>
       depotBrowseOutputFolder(): Promise<string | null>
       depotScanDll(rootDir: string): Promise<SteamApiDllInfo | null>
+      manifestCheck(appIds: string[]): Promise<ManifestCheckResult[]>
+      manifestSaveGids(
+        appid: string,
+        gids: Record<string, string>,
+        gameName?: string,
+        installPath?: string
+      ): Promise<void>
+      manifestCheckGame(appid: string): Promise<ManifestCheckGameResult>
+      manifestGetGameData(appid: string, forceRefresh: boolean): Promise<GameData>
+      manifestUpdateGame(
+        appid: string,
+        installPath: string,
+        selectedDepots: string[],
+        steamUsername?: string
+      ): Promise<void>
+      manifestValidateGame(
+        appid: string,
+        installPath: string,
+        selectedDepots: string[],
+        steamUsername?: string
+      ): Promise<void>
       onDepotProgress(cb: (event: DepotProgressEvent) => void): void
-      offDepotProgress(): void
+      offDepotProgress(cb?: (event: DepotProgressEvent) => void): void
       onDepotLog(channelId: string, cb: (payload: DepotProgressEvent) => void): void
       offDepotLog(channelId: string): void
       onSteamlessLog(cb: (line: string) => void): void

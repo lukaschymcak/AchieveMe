@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import type {
   ActiveDepotSession,
+  ActiveUpdateSession,
   DepotProgressEvent,
   GameSummary,
   SessionRecapPayload
@@ -14,6 +15,7 @@ import HelpPage from './pages/HelpPage'
 import FirstRunWelcome from './components/FirstRunWelcome'
 import SessionRecapModal from './components/SessionRecapModal'
 import DepotWizard from './components/DepotWizard'
+import AddGameModal from './components/AddGameModal'
 import { shouldShowFirstRun } from './lib/helpStorage'
 import type { AppPage } from './lib/appNavigation'
 
@@ -37,7 +39,13 @@ export default function App(): React.ReactElement {
   const [showFirstRun, setShowFirstRun] = useState(() => shouldShowFirstRun())
   const [sessionRecap, setSessionRecap] = useState<SessionRecapPayload | null>(null)
   const [activeDepotSession, setActiveDepotSession] = useState<ActiveDepotSession | null>(null)
+  const [activeUpdateSession, setActiveUpdateSession] = useState<ActiveUpdateSession | null>(null)
   const [depotWizardOpen, setDepotWizardOpen] = useState(false)
+  const [addGamePrefill, setAddGamePrefill] = useState<{
+    appid: string
+    name: string
+    installPath?: string
+  } | null>(null)
   const depotSessionRef = useRef<ActiveDepotSession | null>(null)
 
   useEffect(() => {
@@ -133,9 +141,25 @@ export default function App(): React.ReactElement {
 
     window.api.onDepotProgress(handleDepotProgress)
     return () => {
-      window.api.offDepotProgress()
+      window.api.offDepotProgress(handleDepotProgress)
     }
   }, [])
+
+  function handleSetupAchievements(appid: string, name: string, installPath?: string): void {
+    setAddGamePrefill({ appid, name, installPath })
+  }
+
+  const addGameOverlay = addGamePrefill ? (
+    <AddGameModal
+      prefill={addGamePrefill}
+      onClose={() => setAddGamePrefill(null)}
+      onGameAdded={() => {
+        void window.api.getAllGames().then(setLibraryGames)
+        void window.api.refresh()
+        setAddGamePrefill(null)
+      }}
+    />
+  ) : null
 
   const recapOverlay = sessionRecap ? (
     <SessionRecapModal payload={sessionRecap} onDismiss={dismissSessionRecap} />
@@ -203,11 +227,17 @@ export default function App(): React.ReactElement {
       <>
         {recapOverlay}
         {depotOverlay}
+        {addGameOverlay}
         <div className="app-shell app-shell--game-detail">
           <main className="app-main">
             <GameDetailPage
               appid={selectedAppid}
               transitionDir={transitionDir}
+              activeUpdateSession={activeUpdateSession}
+              onUpdateSessionChange={setActiveUpdateSession}
+              onSetupAchievements={(name, installPath) =>
+                handleSetupAchievements(selectedAppid, name, installPath)
+              }
               onBack={() => {
                 setTransitionDir(null)
                 setSelectedAppid(null)

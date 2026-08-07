@@ -439,7 +439,9 @@ function GameCard({
       }}
       role="button"
       tabIndex={0}
-      aria-label={`${game.name}, ${game.unlocked_achievements} of ${game.total_achievements} achievements, ${formatPlaytimeCompact(game.playtime_seconds ?? 0)} playtime, ${completionPct} percent complete`}
+      aria-label={`${game.name}, ${game.unlocked_achievements} of ${game.total_achievements} achievements, ${formatPlaytimeCompact(game.playtime_seconds ?? 0)} playtime, ${completionPct} percent complete${
+        game.update_status === 'update_available' ? ', update available' : ''
+      }`}
     >
       <GameCardHoldOverlay
         classPrefix="library-card"
@@ -470,6 +472,11 @@ function GameCard({
         ) : (
           <div className="library-card__cover library-card__cover--placeholder">{game.name}</div>
         )}
+        {game.update_status === 'update_available' && (
+          <span className="library-card__update-badge" title="Update available" aria-label="Update available">
+            ↑
+          </span>
+        )}
         <div className="library-card__scrim" aria-hidden />
         <div className="library-card__overlay">
           <div className="library-card__main">
@@ -482,6 +489,9 @@ function GameCard({
                 · {formatPlaytimeCompact(game.playtime_seconds ?? 0)}
               </span>
               {hasPlatinum && <span className="library-card__platinum">✦ Platinum</span>}
+              {game.update_status === 'update_available' && (
+                <span className="library-card__update-chip">↑ Update</span>
+              )}
             </div>
             <div
               className="library-card__progress"
@@ -588,6 +598,11 @@ function GameListRow({
           <img className="library-list-row__thumb" src={game.cover_url} alt="" loading="lazy" />
         ) : (
           <div className="library-list-row__thumb library-list-row__thumb--placeholder">{game.name}</div>
+        )}
+        {game.update_status === 'update_available' && (
+          <span className="library-list-row__update-badge" title="Update available" aria-label="Update available">
+            ↑
+          </span>
         )}
       </div>
 

@@ -9,6 +9,7 @@ type ApplyState = 'idle' | 'running' | 'done' | 'error'
 interface Props {
   onClose: () => void
   onGameAdded: () => void
+  prefill?: { appid: string; name: string; installPath?: string }
 }
 
 const STEP_TITLES: Record<Step, string> = {
@@ -18,12 +19,18 @@ const STEP_TITLES: Record<Step, string> = {
   apply: 'Add Game — Apply'
 }
 
-export default function AddGameModal({ onClose, onGameAdded }: Props): React.ReactElement {
-  const [step, setStep] = useState<Step>('search')
+export default function AddGameModal({
+  onClose,
+  onGameAdded,
+  prefill
+}: Props): React.ReactElement {
+  const [step, setStep] = useState<Step>(prefill ? 'dll' : 'search')
   const [query, setQuery] = useState('')
   const [searching, setSearching] = useState(false)
   const [results, setResults] = useState<SteamSearchResult[]>([])
-  const [selected, setSelected] = useState<SteamSearchResult | null>(null)
+  const [selected, setSelected] = useState<SteamSearchResult | null>(
+    prefill ? { appid: prefill.appid, name: prefill.name, imageUrl: null } : null
+  )
   const [dllInfo, setDllInfo] = useState<SteamApiDllInfo | null>(null)
   const [installEmuDll, setInstallEmuDll] = useState(false)
   const [denuvoOfflineActivated, setDenuvoOfflineActivated] = useState(false)
@@ -43,6 +50,16 @@ export default function AddGameModal({ onClose, onGameAdded }: Props): React.Rea
     return () => {
       window.api.offGoldbergLog()
     }
+  }, [])
+
+  useEffect(() => {
+    if (!prefill?.installPath) return
+    window.api
+      .depotScanDll(prefill.installPath)
+      .then((found) => {
+        if (found) setDllInfo(found)
+      })
+      .catch(() => undefined)
   }, [])
 
   function handleQueryChange(value: string): void {
