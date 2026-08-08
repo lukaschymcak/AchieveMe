@@ -2328,7 +2328,8 @@ button:focus-visible {
 
 .library-card {
   position: relative;
-  aspect-ratio: 16 / 10;
+  /* Slightly taller than Steam header (460×215 ≈ 2.14:1); cover crops sides lightly */
+  aspect-ratio: 2 / 1;
   border-radius: var(--radius-md);
   border: 2px solid var(--border-subtle);
   background: var(--surface-2);
@@ -2372,7 +2373,7 @@ button:focus-visible {
 }
 
 .library-card--skeleton {
-  aspect-ratio: 16 / 10;
+  aspect-ratio: 2 / 1;
   background: var(--surface-2);
   border-color: var(--border-subtle);
   cursor: default;
