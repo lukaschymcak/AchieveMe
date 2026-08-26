@@ -18,12 +18,15 @@ import type {
   DepotCancelMode,
   DepotProgressEvent,
   ManifestCheckResult,
-  ManifestCheckGameResult
+  ManifestCheckGameResult,
+  NewsPayload,
+  GetNewsOptions
 } from '../../shared/types'
 
 declare global {
   interface Window {
     api: {
+      getNews(options?: GetNewsOptions | boolean): Promise<NewsPayload>
       getProfileStats(): Promise<ProfileStats | null>
       getAllGames(): Promise<GameSummary[]>
       getGameDetail(appid: string): Promise<GameDetail | null>

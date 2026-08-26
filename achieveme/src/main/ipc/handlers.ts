@@ -46,8 +46,11 @@ import type {
   DepotSearchResponse,
   GameData,
   ManifestCheckResult,
-  ManifestCheckGameResult
+  ManifestCheckGameResult,
+  NewsPayload,
+  GetNewsOptions
 } from '../../shared/types'
+import { getNews } from '../achievement/steamNewsService'
 import {
   LAUNCH_NEEDS_EXE,
   launchGame,
@@ -91,6 +94,16 @@ function resolveDepotOutputDir(installPath: string, gameName: string): string {
 }
 
 export function registerIpcHandlers(): void {
+  ipcMain.handle(
+    'get-news',
+    async (_event, options?: GetNewsOptions | boolean): Promise<NewsPayload> => {
+      if (typeof options === 'boolean') {
+        return getNews(getDb(), options)
+      }
+      return getNews(getDb(), Boolean(options?.forceRefresh))
+    }
+  )
+
   ipcMain.handle('get-profile-stats', (): ProfileStats | null => {
     const statsPath = path.join(app.getPath('userData'), 'profile_stats.json')
     try {

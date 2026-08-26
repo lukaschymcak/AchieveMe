@@ -89,7 +89,9 @@ export const TOOLTIPS = {
   settingsPlaytime:
     'Playtime is tracked when a known game executable under the resolved game folder (climbed from the Add Game DLL path) is running.',
   settingsSessionRecap:
-    'After a tracked play session of at least one minute, AchieveMe shows time played, unlocks, and XP gained.'
+    'After a tracked play session of at least one minute, AchieveMe shows time played, unlocks, and XP gained.',
+  refreshNews:
+    'Refetch popular Steam releases and library announcements, ignoring the one-hour cache.'
 } as const
 
 export const EMPTY_STATES = {
@@ -100,6 +102,10 @@ export const EMPTY_STATES = {
   noSearchMatch: 'No games match your search.',
   noMonthlyActivity:
     'Unlock achievements in your games — monthly totals come from save file timestamps. Open Library and click Refresh to resync.',
+  noNewsReleases:
+    'No popular Steam releases in this window right now. Try the other tab or Refresh later.',
+  noLibraryNews:
+    'No Steam announcements yet. Add games to your library (or unlock achievements so titles rank higher), then Refresh.',
   /** @deprecated Prefer getEmptyAchievementsMessage — kept for callers that only need a generic fallback. */
   noAchievements:
     'No achievements loaded for this game. Add a Steam API key in Settings if missing, then Refresh the library. The list comes from Steam schema (cached after the first successful fetch), not from emulator save files. If the game has no Steam achievements, the list will stay empty.',
@@ -324,10 +330,18 @@ export const HELP_SECTIONS: HelpSection[] = [
     ]
   },
   {
+    id: 'news',
+    title: 'News (popular releases & library announcements)',
+    paragraphs: [
+      'News sits between Library and Tools. Popular releases lists Steam titles on the public popular-wishlist chart that are due this week or this month (exact wishlist counts are not published by Steam). Library news shows Steam community announcements for up to 20 games already in your library.',
+      'Titles already in your library open game detail. Other titles open the Steam Store in your browser. Announcement links open Steam news pages. Refresh ignores the one-hour cache. AchieveMe does not scrape third-party repack or crack sites.'
+    ]
+  },
+  {
     id: 'tools',
     title: 'Tools (Steamless & Depot Downloader)',
     paragraphs: [
-      'Tools sits between Library and Settings. Link a Steamless release folder in Settings → External tools (must include Steamless.CLI.exe and Plugins).',
+      'Tools sits between News and Settings. Link a Steamless release folder in Settings → External tools (must include Steamless.CLI.exe and Plugins).',
       'Open the Steamless wizard to pick a library game (uses launch_exe when set, otherwise resolves executables from install_path) or Search for executable on disk, then run Steamless.CLI. Output is typically Game.exe.unpacked.exe beside the original; Play is not changed automatically.',
       'Depot Downloader searches Steam, fetches a Hubcap manifest ZIP, lets you pick depots, and runs DepotDownloader.dll (dotnet required). Closing the wizard during a download keeps it running — use the floating Downloads badge to reopen. After download you can optionally set up Goldberg achievements (DLL scan, emulator install, Denuvo preserve).'
     ]

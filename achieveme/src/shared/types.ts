@@ -400,6 +400,45 @@ export interface DepotProgressEvent {
   startedAt?: number
 }
 
+/** One Steam store release row on the News page. */
+export interface NewsRelease {
+  appid: string
+  name: string
+  releaseLabel: string
+  headerImage: string
+  /** Unix seconds when known; null for TBA / Coming soon. */
+  releaseUnix: number | null
+  inLibrary: boolean
+}
+
+/** One Steam community announcement for a library game. */
+export interface LibraryNewsItem {
+  appid: string
+  gameName: string
+  title: string
+  url: string
+  /** Unix seconds. */
+  date: number
+  contents: string
+  feedLabel: string
+}
+
+/** Full News page payload from `get-news`. */
+export interface NewsPayload {
+  /** Popular Steam titles releasing (or released) within 7 days. */
+  thisWeek: NewsRelease[]
+  /** Popular Steam titles releasing in 8–31 days. */
+  thisMonth: NewsRelease[]
+  libraryNews: LibraryNewsItem[]
+  fetchedAt: number
+  fromCache: boolean
+}
+
+/** Options for `get-news` / `window.api.getNews`. */
+export interface GetNewsOptions {
+  forceRefresh?: boolean
+}
+
 /**
  * Live depot download session kept in App.tsx so the wizard can close
  * and reopen without losing progress.

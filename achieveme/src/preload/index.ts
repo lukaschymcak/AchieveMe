@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
-import type { ProfileStats, GameSummary, GameDetail, AppSettings, SteamSearchResult, GoldbergApplyRequest, SteamApiDllInfo, LibraryUpdatedPayload, SessionRecapPayload, GameExecutable, ResolveGameExecutablesResult, SetGameLaunchConfigRequest, SteamlessRunResult, DepotSearchResponse, GameData, DepotDownloadStartRequest, DepotCancelMode, DepotProgressEvent, ManifestCheckResult, ManifestCheckGameResult } from '../shared/types'
+import type { ProfileStats, GameSummary, GameDetail, AppSettings, SteamSearchResult, GoldbergApplyRequest, SteamApiDllInfo, LibraryUpdatedPayload, SessionRecapPayload, GameExecutable, ResolveGameExecutablesResult, SetGameLaunchConfigRequest, SteamlessRunResult, DepotSearchResponse, GameData, DepotDownloadStartRequest, DepotCancelMode, DepotProgressEvent, ManifestCheckResult, ManifestCheckGameResult, NewsPayload, GetNewsOptions } from '../shared/types'
 
 const libraryUpdatedCallbacks = new Set<(payload: LibraryUpdatedPayload) => void>()
 
@@ -37,6 +37,13 @@ function dispatchDepotProgress(_event: IpcRendererEvent, payload: DepotProgressE
 }
 
 contextBridge.exposeInMainWorld('api', {
+  getNews: (options: GetNewsOptions | boolean = {}): Promise<NewsPayload> => {
+    if (typeof options === 'boolean') {
+      return ipcRenderer.invoke('get-news', { forceRefresh: options })
+    }
+    return ipcRenderer.invoke('get-news', options)
+  },
+
   getProfileStats: (): Promise<ProfileStats | null> =>
     ipcRenderer.invoke('get-profile-stats'),
 

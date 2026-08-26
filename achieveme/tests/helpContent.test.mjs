@@ -40,7 +40,14 @@ describe('helpContent', () => {
     assert.ok(ids.includes('notifications'))
     assert.ok(ids.includes('tray'))
     assert.ok(ids.includes('play-sessions'))
+    assert.ok(ids.includes('news'))
     assert.ok(ids.includes('faq'))
+  })
+
+  it('defines news refresh tooltip and empty states', () => {
+    assert.match(TOOLTIPS.refreshNews, /cache/i)
+    assert.match(EMPTY_STATES.noNewsReleases, /popular/i)
+    assert.match(EMPTY_STATES.noLibraryNews, /library/i)
   })
 
   it('getEmptyAchievementsMessage distinguishes key / steam-empty / fetch-failed', () => {

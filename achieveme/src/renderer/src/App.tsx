@@ -8,6 +8,7 @@ import type {
 } from '../../shared/types'
 import DashboardPage from './pages/DashboardPage'
 import LibraryPage from './pages/LibraryPage'
+import NewsPage from './pages/NewsPage'
 import GameDetailPage from './pages/GameDetailPage'
 import SettingsPage from './pages/SettingsPage'
 import ToolsPage from './pages/ToolsPage'
@@ -284,6 +285,24 @@ export default function App(): React.ReactElement {
               onRefresh={handleRefresh}
               refreshing={refreshing}
               onDisplayedGamesChange={setLibraryGames}
+            />
+          </main>
+        </div>
+      </>
+    )
+  }
+
+  if (page === 'news') {
+    return (
+      <>
+        {recapOverlay}
+        {depotOverlay}
+        <div className="app-shell">
+          <main className="app-main">
+            <NewsPage
+              page={page}
+              onNavigate={setPage}
+              onSelectGame={setSelectedAppid}
             />
           </main>
         </div>

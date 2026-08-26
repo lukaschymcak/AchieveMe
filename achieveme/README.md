@@ -37,7 +37,7 @@ AchieveMe can run in the **system tray** after you close the window (Settings �
 
 ## Tools (Steamless & Depot Downloader)
 
-**Tools** (nav between Library and Settings) hosts external utilities.
+**Tools** (nav between News and Settings) hosts external utilities.
 
 **Steamless:** Link a Steamless release folder in **Settings → External tools** (`Steamless.CLI.exe` + `Plugins` required; not shipped with AchieveMe). The Steamless wizard lists library games, prefers `launch_exe`, otherwise resolves executables from `install_path`, or **Search for executable…** on disk, then runs `Steamless.CLI.exe --recalcchecksum`. Typical output is `Game.exe.unpacked.exe` next to the input; AchieveMe does not auto-change Play.
 
@@ -50,6 +50,10 @@ AchieveMe can run in the **system tray** after you close the window (Settings �
 ## Dashboard
 
 The **Dashboard** is the progress pulse home screen: level + XP ring, library snapshot, proportional trophy shelf, monthly unlock chart, recent unlocks, and games close to 100%. Stats are precomputed in `profile_stats.json` via `src/main/achievement/profileStatsService.ts` (regenerated on library refresh and save-file updates). Legacy stats files missing new fields are normalized at read time; run **Refresh** in Library to populate recent unlocks and near-completion games.
+
+## News
+
+The **News** page (nav between Library and Tools) shows **popular** Steam releases for **This week** and **This month**, plus Steam community announcements for up to 20 games already in the library. Popularity uses Steam’s public `filter=popularwishlist` chart (top ~1000) — exact wishlist counts are not published. Titles are date-bucketed from that chart only (`src/main/achievement/steamNewsService.ts`, 1h `api_cache`). Library news uses `ISteamNews/GetNewsForApp`. In-library titles open game detail; others open the Steam Store. AchieveMe does not scrape third-party repack or crack sites.
 
 ## Development
 
@@ -108,13 +112,14 @@ Run the portable exe directly; no installer or uninstaller. After install (or fr
 4. **Library search/sort** — Search by name and switch sort modes (least complete, most unlocked, recently unlocked). Grid cards use ~2:1 aspect with Steam headers filling via cover (light side crop, no black bars).
 5. **Live library update** — With the library open, edit a game's `achievements.json` on disk and save; the card fraction, %, and progress bar should update within ~1s without opening the game. Dashboard stats and open game detail should also refresh automatically.
 6. **Game detail nav & hidden descriptions** — Open a game from the library; confirm **← Library** and **Refresh all** appear as frosted pills on the hero (no separate top nav). Use the left/right arrow buttons on the screen edges to move through games in the library's current sort order without returning to the list; each transition should slide in from the direction of travel. For games with unearned hidden achievements, use the **Hidden** filter pill (with count) to toggle description text; achievement rows always stay visible. With **Play games from launcher** checked on the Library toolbar, use **Set install folder** / **Select exe** / **Play** next to the title (and the chevron → Change executable) to attach a folder, pick any `.exe` under the resolved tree (save only), then launch with **Play**.
-7. **Help & tooltips** — Open **Help** from the nav; confirm sections load. Click **?** on Dashboard stats and Library Refresh; dismiss first-run welcome and long-press coach mark on Library.
-8. **Tray & unlock toast** — Close the window; confirm tray icon remains (Settings → Tray & startup). Edit a save file to unlock **several** achievements at once; confirm each sequential toast plays its own chime (not only the first). Confirm no sharp black rectangle around the rounded toast (desktop visible through corners). Or use Settings → Notifications → Test notification. Click opens the game; Tray → Show restores the window; Quit exits. Re-test after Quit + relaunch and after close-to-tray → Show; toast and sound should still work. Custom sound: browse a `.wav` or `.mp3`, set volume, Save, then Test.
-9. **Startup & start minimized** — Settings → Tray & startup → enable Launch when Windows starts → Save; confirm Task Manager → Startup lists AchieveMe. Enable Start minimized to tray on login → Quit → relaunch with `--hidden` (or reboot); tray icon present, no main window; Tray → Show opens UI. Launch without `--hidden` still shows the window.
-10. **Sound volume** — Settings → Notifications → set Unlock sound volume to ~30% → Save → Test notification (quieter). Set 0% → Save → Test (toast, no sound).
-11. **Progress bars** — Open a Goldberg/GSE game with `progress`/`max_progress` in its save; confirm unearned rows show a partial bar on game detail.
-12. **Playtime** — Add a game via Add Game, launch its `.exe`, play briefly, close it; confirm playtime appears on game detail and Dashboard snapshot after ~15s.
-13. **Session recap** — Settings → Test session recap with ≥1 library game; confirm modal shows random game, duration, unlocks/XP. For a real recap: play a tracked game ≥1 minute then quit; modal should appear (toggle off suppresses real recaps only).
+7. **Help & tooltips** — Open **Help** from the nav; confirm sections load (including News). Click **?** on Dashboard stats, Library Refresh, and News Refresh; dismiss first-run welcome and long-press coach mark on Library.
+8. **News** — Open **News**; confirm **This week** / **This month** show popular Steam titles only. Click an in-library title → game detail; click one not in library → Steam Store in the browser. Confirm Library news lists announcements when the library has games; Refresh refetches.
+9. **Tray & unlock toast** — Close the window; confirm tray icon remains (Settings → Tray & startup). Edit a save file to unlock **several** achievements at once; confirm each sequential toast plays its own chime (not only the first). Confirm no sharp black rectangle around the rounded toast (desktop visible through corners). Or use Settings → Notifications → Test notification. Click opens the game; Tray → Show restores the window; Quit exits. Re-test after Quit + relaunch and after close-to-tray → Show; toast and sound should still work. Custom sound: browse a `.wav` or `.mp3`, set volume, Save, then Test.
+10. **Startup & start minimized** — Settings → Tray & startup → enable Launch when Windows starts → Save; confirm Task Manager → Startup lists AchieveMe. Enable Start minimized to tray on login → Quit → relaunch with `--hidden` (or reboot); tray icon present, no main window; Tray → Show opens UI. Launch without `--hidden` still shows the window.
+11. **Sound volume** — Settings → Notifications → set Unlock sound volume to ~30% → Save → Test notification (quieter). Set 0% → Save → Test (toast, no sound).
+12. **Progress bars** — Open a Goldberg/GSE game with `progress`/`max_progress` in its save; confirm unearned rows show a partial bar on game detail.
+13. **Playtime** — Add a game via Add Game, launch its `.exe`, play briefly, close it; confirm playtime appears on game detail and Dashboard snapshot after ~15s.
+14. **Session recap** — Settings → Test session recap with ≥1 library game; confirm modal shows random game, duration, unlocks/XP. For a real recap: play a tracked game ≥1 minute then quit; modal should appear (toggle off suppresses real recaps only).
 
 ### In-detail navigation
 
