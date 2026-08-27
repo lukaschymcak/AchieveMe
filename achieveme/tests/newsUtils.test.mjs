@@ -8,6 +8,11 @@ const {
   parseSteamReleaseLabel,
   bucketRelease,
   formatReleaseDaysFromToday,
+  isReleaseShipped,
+  sortNewsReleases,
+  formatFetchedAtRelative,
+  filterReleasesByGenreTagIds,
+  NEWS_GENRE_FILTERS,
   dedupeReleasesByAppid,
   pickLibraryNewsAppids
 } = await import(pathToFileURL(path.join(rootDir, '../src/shared/newsUtils.ts')).href)
@@ -53,6 +58,63 @@ test('formatReleaseDaysFromToday formats relative day labels', () => {
   assert.equal(formatReleaseDaysFromToday(todayUnix + 3 * day, now), 'in 3 days')
   assert.equal(formatReleaseDaysFromToday(todayUnix - day, now), '1 day ago')
   assert.equal(formatReleaseDaysFromToday(todayUnix - 2 * day, now), '2 days ago')
+})
+
+test('isReleaseShipped is true only for calendar days before today', () => {
+  const now = new Date('2026-03-15T12:00:00')
+  const todayUnix = Math.floor(new Date('2026-03-15T08:00:00').getTime() / 1000)
+  const day = 86400
+
+  assert.equal(isReleaseShipped(null, now), false)
+  assert.equal(isReleaseShipped(todayUnix, now), false)
+  assert.equal(isReleaseShipped(todayUnix + day, now), false)
+  assert.equal(isReleaseShipped(todayUnix - day, now), true)
+})
+
+test('sortNewsReleases puts in-library first then soonest date', () => {
+  const sorted = sortNewsReleases([
+    { name: 'Zeta', releaseUnix: 100, inLibrary: false },
+    { name: 'Alpha', releaseUnix: 50, inLibrary: false },
+    { name: 'Mine', releaseUnix: 200, inLibrary: true },
+    { name: 'TBA', releaseUnix: null, inLibrary: false },
+    { name: 'AlsoMine', releaseUnix: 10, inLibrary: true }
+  ])
+  assert.deepEqual(
+    sorted.map((x) => x.name),
+    ['AlsoMine', 'Mine', 'Alpha', 'Zeta', 'TBA']
+  )
+})
+
+test('formatFetchedAtRelative uses minute hour and day buckets', () => {
+  const now = new Date('2026-03-15T12:00:00Z')
+  const nowUnix = Math.floor(now.getTime() / 1000)
+
+  assert.equal(formatFetchedAtRelative(nowUnix, now), 'just now')
+  assert.equal(formatFetchedAtRelative(nowUnix - 30, now), 'just now')
+  assert.equal(formatFetchedAtRelative(nowUnix - 12 * 60, now), '12m ago')
+  assert.equal(formatFetchedAtRelative(nowUnix - 3 * 3600, now), '3h ago')
+  assert.equal(formatFetchedAtRelative(nowUnix - 2 * 86400, now), '2d ago')
+})
+
+test('filterReleasesByGenreTagIds ORs selected tags and no-ops when empty', () => {
+  const items = [
+    { name: 'A', tagIds: [19, 492] },
+    { name: 'B', tagIds: [122] },
+    { name: 'C', tagIds: [] }
+  ]
+  assert.deepEqual(
+    filterReleasesByGenreTagIds(items, []).map((x) => x.name),
+    ['A', 'B', 'C']
+  )
+  assert.deepEqual(
+    filterReleasesByGenreTagIds(items, [19]).map((x) => x.name),
+    ['A']
+  )
+  assert.deepEqual(
+    filterReleasesByGenreTagIds(items, [19, 122]).map((x) => x.name),
+    ['A', 'B']
+  )
+  assert.ok(NEWS_GENRE_FILTERS.some((g) => g.id === 19 && g.label === 'Action'))
 })
 
 test('dedupeReleasesByAppid keeps first', () => {

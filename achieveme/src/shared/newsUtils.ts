@@ -126,6 +126,108 @@ export function formatReleaseDaysFromToday(
 }
 
 /**
+ * Returns true when the release calendar day is before today.
+ *
+ * @param unixSeconds - Release time, or null for TBA.
+ * @param now - Reference Date.
+ */
+export function isReleaseShipped(
+  unixSeconds: number | null,
+  now: Date = new Date()
+): boolean {
+  if (unixSeconds == null || !Number.isFinite(unixSeconds)) return false
+
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const release = new Date(unixSeconds * 1000)
+  const startOfRelease = new Date(release.getFullYear(), release.getMonth(), release.getDate())
+  return startOfRelease.getTime() < startOfToday.getTime()
+}
+
+/**
+ * Sorts News releases: in-library first, then soonest releaseUnix, nulls last, name tiebreak.
+ *
+ * @param items - Release rows.
+ */
+export function sortNewsReleases<
+  T extends { name: string; releaseUnix: number | null; inLibrary: boolean }
+>(items: T[]): T[] {
+  return [...items].sort((a, b) => {
+    if (a.inLibrary !== b.inLibrary) return a.inLibrary ? -1 : 1
+
+    const aUnix = a.releaseUnix
+    const bUnix = b.releaseUnix
+    const aNull = aUnix == null || !Number.isFinite(aUnix)
+    const bNull = bUnix == null || !Number.isFinite(bUnix)
+    if (aNull !== bNull) return aNull ? 1 : -1
+    if (!aNull && !bNull && aUnix !== bUnix) return (aUnix as number) - (bUnix as number)
+
+    return String(a.name).localeCompare(String(b.name))
+  })
+}
+
+/**
+ * Formats a relative age from a unix fetch timestamp (minute/hour/day buckets).
+ *
+ * @param fetchedAtUnix - Fetch time in unix seconds.
+ * @param now - Reference Date.
+ */
+export function formatFetchedAtRelative(
+  fetchedAtUnix: number,
+  now: Date = new Date()
+): string {
+  if (!Number.isFinite(fetchedAtUnix)) return 'just now'
+
+  const nowUnix = Math.floor(now.getTime() / 1000)
+  const delta = Math.max(0, nowUnix - Math.floor(fetchedAtUnix))
+
+  if (delta < 60) return 'just now'
+  if (delta < 3600) {
+    const minutes = Math.floor(delta / 60)
+    return `${minutes}m ago`
+  }
+  if (delta < DAY_SECONDS) {
+    const hours = Math.floor(delta / 3600)
+    return `${hours}h ago`
+  }
+  const days = Math.floor(delta / DAY_SECONDS)
+  return `${days}d ago`
+}
+
+/** Fixed Steam genre tags exposed as News page filter chips. */
+export const NEWS_GENRE_FILTERS = [
+  { id: 19, label: 'Action' },
+  { id: 21, label: 'Adventure' },
+  { id: 122, label: 'RPG' },
+  { id: 9, label: 'Strategy' },
+  { id: 599, label: 'Simulation' },
+  { id: 597, label: 'Casual' },
+  { id: 492, label: 'Indie' },
+  { id: 701, label: 'Sports' },
+  { id: 699, label: 'Racing' }
+] as const
+
+/**
+ * OR-filters releases by selected Steam genre tag IDs.
+ * Empty selection returns items unchanged.
+ *
+ * @param items - Release rows with tagIds.
+ * @param selectedTagIds - Active genre filter IDs.
+ */
+export function filterReleasesByGenreTagIds<T extends { tagIds: number[] }>(
+  items: T[],
+  selectedTagIds: number[]
+): T[] {
+  const selected = selectedTagIds.filter((id) => Number.isFinite(id))
+  if (selected.length === 0) return items
+
+  const wanted = new Set(selected)
+  return items.filter((item) => {
+    const tags = Array.isArray(item.tagIds) ? item.tagIds : []
+    return tags.some((id) => wanted.has(id))
+  })
+}
+
+/**
  * Deduplicates releases by appid, keeping the first occurrence.
  *
  * @param items - Release rows.

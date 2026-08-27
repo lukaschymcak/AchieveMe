@@ -409,6 +409,8 @@ export interface NewsRelease {
   /** Unix seconds when known; null for TBA / Coming soon. */
   releaseUnix: number | null
   inLibrary: boolean
+  /** Steam store tag IDs from search HTML (empty when missing). */
+  tagIds: number[]
 }
 
 /** One Steam community announcement for a library game. */

@@ -9,6 +9,8 @@ export interface ParsedSearchRelease {
   name: string
   releaseLabel: string
   headerImage: string
+  /** Steam store tag IDs from `data-ds-tagids` (empty when missing). */
+  tagIds: number[]
 }
 
 function decodeBasicEntities(value: string): string {
@@ -27,6 +29,33 @@ function stripTags(value: string): string {
 }
 
 /**
+ * Parses `data-ds-tagids` values like `[19, 21]` or `19,21` into unique numbers.
+ *
+ * @param raw - Attribute value, or empty.
+ */
+export function parseSteamTagIds(raw: string): number[] {
+  const source = String(raw || '').trim()
+  if (!source) return []
+
+  const seen = new Set<number>()
+  const out: number[] = []
+  const matches = source.match(/\d+/g) || []
+  for (const token of matches) {
+    const id = Number(token)
+    if (!Number.isFinite(id) || seen.has(id)) continue
+    seen.add(id)
+    out.push(id)
+  }
+  return out
+}
+
+function tagIdsFromOpeningAttrs(attrs: string): number[] {
+  const match = attrs.match(/\bdata-ds-tagids=["']([^"']*)["']/i)
+  if (!match) return []
+  return parseSteamTagIds(match[1] || '')
+}
+
+/**
  * Parses Steam infinite-search `results_html` into release items.
  *
  * @param html - HTML fragment from store search JSON `results_html`.
@@ -38,17 +67,18 @@ export function parseSearchResultsHtml(html: string): ParsedSearchRelease[] {
   const items: ParsedSearchRelease[] = []
   const seen = new Set<string>()
 
-  // Each result is typically an <a class="search_result_row" data-ds-appid="...">...</a>
+  // Capture full opening attrs so we can read both data-ds-appid and data-ds-tagids.
   const rowRe =
-    /<a\b[^>]*\bdata-ds-appid=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi
+    /<a\b([^>]*\bdata-ds-appid=["']([^"']+)["'][^>]*)>([\s\S]*?)<\/a>/gi
 
   let match: RegExpExecArray | null
   while ((match = rowRe.exec(source)) !== null) {
-    const rawId = String(match[1] || '').trim()
+    const attrs = match[1] || ''
+    const rawId = String(match[2] || '').trim()
     const appid = rawId.split(',')[0]?.trim() || ''
     if (!appid || seen.has(appid)) continue
 
-    const body = match[2] || ''
+    const body = match[3] || ''
 
     const titleMatch = body.match(/class=["'][^"']*\btitle\b[^"']*["'][^>]*>([\s\S]*?)<\/span>/i)
     const name = titleMatch ? stripTags(titleMatch[1]) : ''
@@ -63,9 +93,10 @@ export function parseSearchResultsHtml(html: string): ParsedSearchRelease[] {
       body.match(/<img\b[^>]*\bsrc=["']([^"']+)["']/i) ||
       body.match(/<img\b[^>]*\bdata-src=["']([^"']+)["']/i)
     const headerImage = imgMatch ? decodeBasicEntities(imgMatch[1].trim()) : ''
+    const tagIds = tagIdsFromOpeningAttrs(attrs)
 
     seen.add(appid)
-    items.push({ appid, name, releaseLabel, headerImage })
+    items.push({ appid, name, releaseLabel, headerImage, tagIds })
   }
 
   return items

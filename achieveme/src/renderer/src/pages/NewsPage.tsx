@@ -5,7 +5,14 @@ import type {
   NewsPayload,
   NewsRelease
 } from '../../../shared/types'
-import { formatReleaseDaysFromToday } from '../../../shared/newsUtils'
+import {
+  NEWS_GENRE_FILTERS,
+  filterReleasesByGenreTagIds,
+  formatFetchedAtRelative,
+  formatReleaseDaysFromToday,
+  isReleaseShipped,
+  sortNewsReleases
+} from '../../../shared/newsUtils'
 import { AppChrome, AppNav, AppShell, Chip } from '../components/app'
 import HelpTip from '../components/HelpTip'
 import type { AppPage } from '../lib/appNavigation'
@@ -23,10 +30,38 @@ type ReleaseTab = 'week' | 'month'
 const LOAD_ERROR =
   'Could not load Steam news. Check your network connection and try Refresh.'
 
+const SKELETON_RELEASE_COUNT = 5
+const SKELETON_LIBRARY_COUNT = 4
+const GENRE_FILTER_STORAGE_KEY = 'achieveme.newsGenreFilters'
+
 const TAB_LABELS: Array<{ id: ReleaseTab; label: string }> = [
   { id: 'week', label: 'This week' },
   { id: 'month', label: 'This month' }
 ]
+
+const VALID_GENRE_IDS = new Set<number>(NEWS_GENRE_FILTERS.map((g) => g.id))
+
+function loadGenreFilters(): number[] {
+  try {
+    const raw = localStorage.getItem(GENRE_FILTER_STORAGE_KEY)
+    if (!raw) return []
+    const parsed = JSON.parse(raw) as unknown
+    if (!Array.isArray(parsed)) return []
+    return parsed
+      .map((id) => Number(id))
+      .filter((id) => Number.isFinite(id) && VALID_GENRE_IDS.has(id))
+  } catch {
+    return []
+  }
+}
+
+function saveGenreFilters(ids: number[]): void {
+  try {
+    localStorage.setItem(GENRE_FILTER_STORAGE_KEY, JSON.stringify(ids))
+  } catch {
+    // Ignore quota / private-mode failures.
+  }
+}
 
 function storeUrl(appid: string): string {
   return `https://store.steampowered.com/app/${encodeURIComponent(appid)}`
@@ -54,6 +89,7 @@ export default function NewsPage({
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [tab, setTab] = useState<ReleaseTab>('week')
   const [refreshing, setRefreshing] = useState(false)
+  const [genreFilters, setGenreFilters] = useState<number[]>(() => loadGenreFilters())
 
   const fetchNews = useCallback((options: GetNewsOptions = {}) => {
     const forceRefresh = Boolean(options.forceRefresh)
@@ -96,7 +132,40 @@ export default function NewsPage({
       })
   }, [])
 
-  const list = useMemo(() => (payload ? releasesForTab(payload, tab) : []), [payload, tab])
+  const weekCount = useMemo(
+    () =>
+      payload
+        ? filterReleasesByGenreTagIds(payload.thisWeek, genreFilters).length
+        : 0,
+    [payload, genreFilters]
+  )
+  const monthCount = useMemo(
+    () =>
+      payload
+        ? filterReleasesByGenreTagIds(payload.thisMonth, genreFilters).length
+        : 0,
+    [payload, genreFilters]
+  )
+
+  const list = useMemo(
+    () =>
+      payload
+        ? sortNewsReleases(
+            filterReleasesByGenreTagIds(releasesForTab(payload, tab), genreFilters)
+          )
+        : [],
+    [payload, tab, genreFilters]
+  )
+
+  function handleGenreToggle(tagId: number): void {
+    setGenreFilters((current) => {
+      const next = current.includes(tagId)
+        ? current.filter((id) => id !== tagId)
+        : [...current, tagId]
+      saveGenreFilters(next)
+      return next
+    })
+  }
 
   function handleReleaseActivate(release: NewsRelease): void {
     if (release.inLibrary && onSelectGame) {
@@ -122,14 +191,6 @@ export default function NewsPage({
         }
       />
 
-      {loadState === 'loading' && (
-        <div className="news-page news-page--state" aria-busy="true">
-          <p className="news-page__loading" role="status" aria-live="polite">
-            Loading Steam news…
-          </p>
-        </div>
-      )}
-
       {loadState === 'error' && (
         <div className="news-page news-page--state">
           <div className="news-page__error" role="alert">
@@ -141,15 +202,29 @@ export default function NewsPage({
         </div>
       )}
 
+      {loadState === 'loading' && (
+        <div className="news-page" aria-busy="true">
+          <header className="news-page__header">
+            <h1 className="news-page__title">News</h1>
+            <p className="news-page__lead" role="status" aria-live="polite">
+              Loading Steam news…
+            </p>
+          </header>
+          <NewsSkeletonColumns />
+        </div>
+      )}
+
       {loadState === 'ready' && payload && (
         <div className="news-page">
           <header className="news-page__header">
             <h1 className="news-page__title">News</h1>
             <p className="news-page__lead">
-              Popular Steam releases this week and this month (Steam popular-wishlist chart —
-              exact wishlist counts are not public), plus announcements for games in your library.
-              {payload.fromCache ? ' Showing cached results.' : ''}
-              {refreshing ? ' Updating…' : ''}
+              Popular Steam releases this week and this month, plus announcements for games in your
+              library.
+            </p>
+            <p className="news-page__updated">
+              Updated {formatFetchedAtRelative(payload.fetchedAt)}
+              {refreshing ? ' · Updating…' : ''}
             </p>
           </header>
 
@@ -160,22 +235,50 @@ export default function NewsPage({
                   Popular releases
                 </h2>
                 <div className="news-section__tabs" role="tablist" aria-label="Release window">
-                  {TAB_LABELS.map((item) => (
-                    <Chip
-                      key={item.id}
-                      variant="nav"
-                      active={tab === item.id}
-                      aria-current={tab === item.id ? 'page' : undefined}
-                      onClick={() => setTab(item.id)}
-                    >
-                      {item.label}
-                    </Chip>
-                  ))}
+                  {TAB_LABELS.map((item) => {
+                    const count = item.id === 'week' ? weekCount : monthCount
+                    return (
+                      <Chip
+                        key={item.id}
+                        variant="nav"
+                        active={tab === item.id}
+                        aria-current={tab === item.id ? 'page' : undefined}
+                        onClick={() => setTab(item.id)}
+                      >
+                        {item.label} ({count})
+                      </Chip>
+                    )
+                  })}
                 </div>
               </div>
 
+              <div
+                className="news-genre-filters"
+                role="group"
+                aria-label="Filter popular releases by genre"
+              >
+                {NEWS_GENRE_FILTERS.map((genre) => {
+                  const active = genreFilters.includes(genre.id)
+                  return (
+                    <Chip
+                      key={genre.id}
+                      variant="nav"
+                      active={active}
+                      aria-pressed={active}
+                      onClick={() => handleGenreToggle(genre.id)}
+                    >
+                      {genre.label}
+                    </Chip>
+                  )
+                })}
+              </div>
+
               {list.length === 0 ? (
-                <p className="news-page__empty">{EMPTY_STATES.noNewsReleases}</p>
+                <p className="news-page__empty">
+                  {genreFilters.length > 0
+                    ? EMPTY_STATES.noNewsReleasesFiltered
+                    : EMPTY_STATES.noNewsReleases}
+                </p>
               ) : (
                 <ul className="news-release-list">
                   {list.map((release) => (
@@ -238,8 +341,56 @@ export default function NewsPage({
   )
 }
 
+function NewsSkeletonColumns(): React.ReactElement {
+  return (
+    <div className="news-page__columns" aria-hidden="true">
+      <section className="news-section news-section--releases">
+        <div className="news-section__head">
+          <div className="news-skeleton news-skeleton--title" />
+          <div className="news-section__tabs">
+            <div className="news-skeleton news-skeleton--chip" />
+            <div className="news-skeleton news-skeleton--chip" />
+          </div>
+        </div>
+        <ul className="news-release-list">
+          {Array.from({ length: SKELETON_RELEASE_COUNT }, (_, i) => (
+            <li key={`release-skel-${i}`} className="news-release-list__item">
+              <div className="news-release-row news-release-row--skeleton">
+                <span className="news-release-row__media">
+                  <span className="news-release-row__placeholder" />
+                </span>
+                <span className="news-release-row__body">
+                  <span className="news-skeleton news-skeleton--name" />
+                  <span className="news-skeleton news-skeleton--meta" />
+                </span>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </section>
+      <section className="news-section news-section--library">
+        <div className="news-section__head">
+          <div className="news-skeleton news-skeleton--title" />
+        </div>
+        <ul className="news-library-list">
+          {Array.from({ length: SKELETON_LIBRARY_COUNT }, (_, i) => (
+            <li key={`library-skel-${i}`} className="news-library-list__item">
+              <div className="news-library-row news-library-row--skeleton">
+                <span className="news-skeleton news-skeleton--meta" />
+                <span className="news-skeleton news-skeleton--name" />
+                <span className="news-skeleton news-skeleton--excerpt" />
+              </div>
+            </li>
+          ))}
+        </ul>
+      </section>
+    </div>
+  )
+}
+
 function ReleaseRowContent({ release }: { release: NewsRelease }): React.ReactElement {
   const daysLabel = formatReleaseDaysFromToday(release.releaseUnix)
+  const shipped = isReleaseShipped(release.releaseUnix)
 
   return (
     <>
@@ -259,6 +410,9 @@ function ReleaseRowContent({ release }: { release: NewsRelease }): React.ReactEl
               <span className="news-release-row__days"> · {daysLabel}</span>
             ) : null}
           </span>
+          {shipped && (
+            <span className="news-release-row__badge news-release-row__badge--released">Released</span>
+          )}
           {release.inLibrary && <span className="news-release-row__badge">In library</span>}
         </span>
       </span>
@@ -276,25 +430,28 @@ function LibraryNewsRow({
   return (
     <article className="news-library-row">
       <div className="news-library-row__top">
-        {onOpenGame ? (
-          <button type="button" className="news-library-row__game" onClick={onOpenGame}>
-            {item.gameName}
-          </button>
-        ) : (
-          <span className="news-library-row__game">{item.gameName}</span>
-        )}
+        <div className="news-library-row__actions">
+          {onOpenGame ? (
+            <button type="button" className="news-library-row__game" onClick={onOpenGame}>
+              {item.gameName}
+            </button>
+          ) : (
+            <span className="news-library-row__game">{item.gameName}</span>
+          )}
+          <a
+            className="news-library-row__steam"
+            href={item.url}
+            target="_blank"
+            rel="noreferrer"
+          >
+            Open on Steam
+          </a>
+        </div>
         <time className="news-library-row__date" dateTime={new Date(item.date * 1000).toISOString()}>
           {formatNewsDate(item.date)}
         </time>
       </div>
-      <a
-        className="news-library-row__title"
-        href={item.url}
-        target="_blank"
-        rel="noreferrer"
-      >
-        {item.title}
-      </a>
+      <p className="news-library-row__title">{item.title}</p>
       {item.contents ? <p className="news-library-row__excerpt">{item.contents}</p> : null}
     </article>
   )

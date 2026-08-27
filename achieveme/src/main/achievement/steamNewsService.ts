@@ -3,6 +3,7 @@
  *
  * Popularity gate: Steam's public popular-wishlist chart (exact wishlist counts
  * are not published). Chart membership is the "popular enough" filter.
+ * Results are always limited to games (`category1=998`).
  */
 
 import https from 'node:https'
@@ -23,8 +24,8 @@ const CACHE_APPID = '__steam_news__'
 const USER_AGENT = 'AchieveMe/1.0'
 
 const PAGE_SIZE = 50
-/** Top pages of Steam popular-wishlist chart (~50 each). */
-const POPULAR_WISHLIST_PAGES = 20
+/** Top pages of Steam popular-wishlist chart (~50 each). Keep low to avoid Steam 429. */
+const POPULAR_WISHLIST_PAGES = 8
 const LIBRARY_NEWS_LIMIT = 20
 const NEWS_PER_APP = 3
 const FETCH_CONCURRENCY = 4
@@ -94,7 +95,8 @@ function writeCache(db: Database.Database, type: string, data: unknown): void {
 function popularWishlistUrl(start: number): string {
   return (
     `https://store.steampowered.com/search/results/?infinite=1` +
-    `&cc=US&l=english&start=${start}&count=${PAGE_SIZE}&filter=popularwishlist`
+    `&cc=US&l=english&start=${start}&count=${PAGE_SIZE}` +
+    `&filter=popularwishlist&category1=998`
   )
 }
 
@@ -115,30 +117,40 @@ async function fetchSearchPage(url: string): Promise<ReturnType<typeof parseSear
 /**
  * Loads Steam's popular-wishlist chart in rank order.
  * Exact wishlist counts are not public; this chart is the popularity gate.
+ * On mid-fetch Steam errors (e.g. 429), keeps any pages already collected.
  */
 async function fetchPopularWishlistChart(
   db: Database.Database,
   forceRefresh: boolean
 ): Promise<{ items: ReturnType<typeof parseSearchResultsHtml>; fromCache: boolean }> {
-  const cacheType = 'popularwishlist'
+  const cacheType = 'popularwishlist_v3'
   if (!forceRefresh) {
     const fresh = readCacheFresh(db, cacheType) as ReturnType<typeof parseSearchResultsHtml> | null
     if (fresh) return { items: fresh, fromCache: true }
   }
 
-  try {
-    const pages: ReturnType<typeof parseSearchResultsHtml>[] = []
-    for (let i = 0; i < POPULAR_WISHLIST_PAGES; i++) {
-      pages.push(await fetchSearchPage(popularWishlistUrl(i * PAGE_SIZE)))
+  const pages: ReturnType<typeof parseSearchResultsHtml>[] = []
+  let partialError: string | null = null
+
+  for (let i = 0; i < POPULAR_WISHLIST_PAGES; i++) {
+    const start = i * PAGE_SIZE
+    try {
+      pages.push(await fetchSearchPage(popularWishlistUrl(start)))
+    } catch (pageErr) {
+      partialError = String(pageErr instanceof Error ? pageErr.message : pageErr)
+      break
     }
+  }
+
+  if (pages.length > 0) {
     const items = dedupeReleasesByAppid(pages.flat())
     writeCache(db, cacheType, items)
     return { items, fromCache: false }
-  } catch (err) {
-    const stale = readCacheAny(db, cacheType) as ReturnType<typeof parseSearchResultsHtml> | null
-    if (stale) return { items: stale, fromCache: true }
-    throw err
   }
+
+  const stale = readCacheAny(db, cacheType) as ReturnType<typeof parseSearchResultsHtml> | null
+  if (stale) return { items: stale, fromCache: true }
+  throw new Error(partialError || 'Failed to fetch Steam popular wishlist')
 }
 
 function toNewsRelease(
@@ -153,7 +165,8 @@ function toNewsRelease(
     releaseLabel: row.releaseLabel || 'Coming soon',
     headerImage: row.headerImage,
     releaseUnix,
-    inLibrary: libraryIds.has(row.appid)
+    inLibrary: libraryIds.has(row.appid),
+    tagIds: Array.isArray(row.tagIds) ? row.tagIds : []
   }
 }
 

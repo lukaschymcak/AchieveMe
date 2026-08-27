@@ -46,7 +46,9 @@ describe('helpContent', () => {
 
   it('defines news refresh tooltip and empty states', () => {
     assert.match(TOOLTIPS.refreshNews, /cache/i)
+    assert.match(TOOLTIPS.refreshNews, /wishlist/i)
     assert.match(EMPTY_STATES.noNewsReleases, /popular/i)
+    assert.match(EMPTY_STATES.noNewsReleasesFiltered, /genre/i)
     assert.match(EMPTY_STATES.noLibraryNews, /library/i)
   })
 
