@@ -11,11 +11,12 @@ import {
   getSaveLocationsForApp,
   deleteGame,
   saveManifestGids,
-  saveUpdateStatus
+  saveUpdateStatus,
+  deleteCacheEntry
 } from '../db/repository'
 import { parseManifestGidsJson, pickManifestGids } from '../../shared/manifestUpdateUtils'
 import { getStoreCoverUrl } from '../achievement/steamApiClient'
-import { getSteamLibraryHeroUrl } from '../../shared/steamUrls'
+import { cacheCoverUrl, cacheHeroUrl } from '../../shared/imageCacheUrls'
 import { loadSettings, saveSettings, normalizeSettings } from '../settings'
 import { syncLoginItemSettings } from '../loginItemService'
 import { startPlaytimeTracker, stopPlaytimeTracker } from '../achievement/playtimeService'
@@ -79,6 +80,7 @@ import {
 } from '../achievement/manifestCheckerService'
 import { notifyLibraryUpdated } from '../achievement/libraryNotifyService'
 import { resolveGameRoot } from '../achievement/gameLaunchUtils'
+import { pruneAppImages } from '../achievement/imageCacheProtocol'
 
 /**
  * Resolves DepotDownloader `-dir` from a possibly deep install/DLL path.
@@ -120,11 +122,11 @@ export function registerIpcHandlers(): void {
 
     const summaries: GameSummary[] = []
     for (const g of games) {
-      const cover_url = await getStoreCoverUrl(db, g.appid)
+      const remoteCover = await getStoreCoverUrl(db, g.appid)
       summaries.push({
         appid: g.appid,
         name: g.name,
-        cover_url,
+        cover_url: remoteCover ? cacheCoverUrl(g.appid) : '',
         total_achievements: g.total_achievements,
         unlocked_achievements: g.unlocked_achievements,
         completion_pct: g.completion_pct,
@@ -144,9 +146,13 @@ export function registerIpcHandlers(): void {
     const game = getGame(db, appid)
     if (!game) return null
     const achievements = getAchievementsForGame(db, appid)
-    const cover_url = await getStoreCoverUrl(db, appid)
-    const backdrop_url = getSteamLibraryHeroUrl(appid)
-    return { game, achievements, cover_url, backdrop_url }
+    const remoteCover = await getStoreCoverUrl(db, appid)
+    return {
+      game,
+      achievements,
+      cover_url: remoteCover ? cacheCoverUrl(appid) : '',
+      backdrop_url: cacheHeroUrl(appid)
+    }
   })
 
   ipcMain.handle('get-settings', (): AppSettings => {
@@ -213,7 +219,10 @@ export function registerIpcHandlers(): void {
     }
 
     deleteGame(db, appid)
+    pruneAppImages(appid)
+    deleteCacheEntry(db, '__steam_news__', `news:${appid}`)
     regenerateProfileStats(db)
+    notifyLibraryUpdated(appid)
   })
 
   ipcMain.handle('browse-sound-path', async (): Promise<string | null> => {

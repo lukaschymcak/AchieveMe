@@ -374,7 +374,7 @@ export const HELP_SECTIONS: HelpSection[] = [
       'Empty achievement list? Need a Steam API key; or Steam has not published schema yet (try Refresh later); or the game has no achievements.',
       'Live updates? Save file edits propagate in ~1s via the file watcher.',
       'Keyboard: Enter/Space on a focused card opens it; Escape closes the long-press menu.',
-      'Privacy: data stays local (SQLite + userData). API key in settings.json. Hidden descriptions may fetch from SteamDB.'
+      'Privacy: data stays local (SQLite + userData, including cached cover/hero/icon images). API key in settings.json. Hidden descriptions may fetch from SteamDB.'
     ]
   }
 ]

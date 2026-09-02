@@ -14,7 +14,10 @@ const {
   filterReleasesByGenreTagIds,
   NEWS_GENRE_FILTERS,
   dedupeReleasesByAppid,
-  pickLibraryNewsAppids
+  pickLibraryNewsAppids,
+  hasUsableNewsPayload,
+  groupLibraryNewsByRecency,
+  pruneNewsPayloadForLibrary
 } = await import(pathToFileURL(path.join(rootDir, '../src/shared/newsUtils.ts')).href)
 
 test('parseSteamReleaseLabel returns null for TBA labels', () => {
@@ -139,4 +142,126 @@ test('pickLibraryNewsAppids prefers recent unlocks', () => {
     2
   )
   assert.deepEqual(ids, ['b', 'a'])
+})
+
+test('hasUsableNewsPayload is true only when payload is non-null', () => {
+  assert.equal(hasUsableNewsPayload(null), false)
+  assert.equal(hasUsableNewsPayload({ fetchedAt: 1 }), true)
+})
+
+test('groupLibraryNewsByRecency buckets today thisWeek and older', () => {
+  // Local noon on a fixed calendar day — avoid DST edge by using midday.
+  const now = new Date(2026, 2, 15, 12, 0, 0) // 15 Mar 2026 local
+  const todayStart = Math.floor(
+    new Date(2026, 2, 15, 0, 0, 0).getTime() / 1000
+  )
+  const day = 86400
+
+  const items = [
+    { id: 'today-noon', date: todayStart + 12 * 3600 },
+    { id: 'today-morning', date: todayStart + 3600 },
+    { id: 'yesterday', date: todayStart - day + 12 * 3600 },
+    { id: 'day-2', date: todayStart - 2 * day + 12 * 3600 },
+    { id: 'day-6', date: todayStart - 6 * day + 12 * 3600 },
+    { id: 'day-7-edge', date: todayStart - 7 * day }, // exactly weekStart → thisWeek
+    { id: 'day-8', date: todayStart - 8 * day + 12 * 3600 }
+  ]
+
+  const grouped = groupLibraryNewsByRecency(items, now)
+
+  assert.deepEqual(
+    grouped.today.map((x) => x.id),
+    ['today-noon', 'today-morning']
+  )
+  assert.deepEqual(
+    grouped.thisWeek.map((x) => x.id),
+    ['yesterday', 'day-2', 'day-6', 'day-7-edge']
+  )
+  assert.deepEqual(
+    grouped.older.map((x) => x.id),
+    ['day-8']
+  )
+})
+
+test('groupLibraryNewsByRecency returns empty arrays for empty input', () => {
+  const grouped = groupLibraryNewsByRecency([], new Date(2026, 2, 15, 12, 0, 0))
+  assert.deepEqual(grouped, { today: [], thisWeek: [], older: [] })
+})
+
+function sampleNewsPayload() {
+  return {
+    thisWeek: [
+      {
+        appid: '1',
+        name: 'Keep',
+        releaseLabel: 'Soon',
+        headerImage: '',
+        releaseUnix: 1,
+        inLibrary: true,
+        tagIds: []
+      },
+      {
+        appid: '2',
+        name: 'Gone',
+        releaseLabel: 'Soon',
+        headerImage: '',
+        releaseUnix: 2,
+        inLibrary: true,
+        tagIds: []
+      }
+    ],
+    thisMonth: [
+      {
+        appid: '3',
+        name: 'Out',
+        releaseLabel: 'Later',
+        headerImage: '',
+        releaseUnix: 3,
+        inLibrary: false,
+        tagIds: []
+      }
+    ],
+    libraryNews: [
+      {
+        appid: '1',
+        gameName: 'Keep',
+        title: 'Patch',
+        url: 'https://example.com/1',
+        date: 100,
+        contents: '',
+        feedLabel: ''
+      },
+      {
+        appid: '2',
+        gameName: 'Gone',
+        title: 'News',
+        url: 'https://example.com/2',
+        date: 90,
+        contents: '',
+        feedLabel: ''
+      }
+    ],
+    fetchedAt: 12345,
+    fromCache: true
+  }
+}
+
+test('pruneNewsPayloadForLibrary strips deleted library news and remaps inLibrary', () => {
+  const pruned = pruneNewsPayloadForLibrary(sampleNewsPayload(), new Set(['1']))
+  assert.equal(pruned.fetchedAt, 12345)
+  assert.equal(pruned.fromCache, true)
+  assert.deepEqual(
+    pruned.libraryNews.map((x) => x.appid),
+    ['1']
+  )
+  assert.equal(pruned.thisWeek.find((r) => r.appid === '1')?.inLibrary, true)
+  assert.equal(pruned.thisWeek.find((r) => r.appid === '2')?.inLibrary, false)
+  assert.equal(pruned.thisMonth[0].inLibrary, false)
+})
+
+test('pruneNewsPayloadForLibrary with empty library clears library news', () => {
+  const pruned = pruneNewsPayloadForLibrary(sampleNewsPayload(), new Set())
+  assert.equal(pruned.libraryNews.length, 0)
+  assert.ok(pruned.thisWeek.every((r) => r.inLibrary === false))
+  assert.ok(pruned.thisMonth.every((r) => r.inLibrary === false))
 })

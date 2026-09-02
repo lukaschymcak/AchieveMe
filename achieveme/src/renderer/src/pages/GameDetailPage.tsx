@@ -11,7 +11,7 @@ import type {
 import { LAUNCH_NEEDS_EXE } from '../../../shared/types'
 import { parseManifestGidsJson } from '../../../shared/manifestUpdateUtils'
 import { formatPlaytimePlayed } from '../../../shared/playtimeUtils'
-import { getSteamLibraryHeroUrl } from '../../../shared/steamUrls'
+import { cacheHeroUrl } from '../../../shared/imageCacheUrls'
 import HelpTip from '../components/HelpTip'
 import { TOOLTIPS, getEmptyAchievementsMessage } from '../lib/helpContent'
 import {
@@ -824,7 +824,7 @@ export default function GameDetailPage({
 
   useEffect(() => {
     let cancelled = false
-    const heroUrl = getSteamLibraryHeroUrl(appid)
+    const heroUrl = cacheHeroUrl(appid)
 
     const applyCoverFallback = (): void => {
       void window.api.getGameDetail(appid).then((d) => {

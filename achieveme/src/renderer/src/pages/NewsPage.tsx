@@ -10,6 +10,8 @@ import {
   filterReleasesByGenreTagIds,
   formatFetchedAtRelative,
   formatReleaseDaysFromToday,
+  groupLibraryNewsByRecency,
+  hasUsableNewsPayload,
   isReleaseShipped,
   sortNewsReleases
 } from '../../../shared/newsUtils'
@@ -18,21 +20,38 @@ import HelpTip from '../components/HelpTip'
 import type { AppPage } from '../lib/appNavigation'
 import { EMPTY_STATES, TOOLTIPS } from '../lib/helpContent'
 
+export type NewsLoadState = 'loading' | 'ready' | 'error'
+
+export const NEWS_LOAD_ERROR =
+  'Could not load Steam news. Check your network connection and try Refresh.'
+
 interface Props {
   page: AppPage
   onNavigate: (page: AppPage) => void
   onSelectGame?: (appid: string) => void
+  /** Prefetched payload from App (survives News unmount). */
+  payload: NewsPayload | null
+  errorMessage: string | null
+  loadState: NewsLoadState
+  onNewsResult: (result: {
+    payload: NewsPayload | null
+    errorMessage: string | null
+    loadState: NewsLoadState
+  }) => void
 }
 
-type LoadState = 'loading' | 'ready' | 'error'
 type ReleaseTab = 'week' | 'month'
-
-const LOAD_ERROR =
-  'Could not load Steam news. Check your network connection and try Refresh.'
 
 const SKELETON_RELEASE_COUNT = 5
 const SKELETON_LIBRARY_COUNT = 4
 const GENRE_FILTER_STORAGE_KEY = 'achieveme.newsGenreFilters'
+const OLDER_PREVIEW = 3
+
+const LIBRARY_GROUP_LABELS: Array<{ id: 'today' | 'thisWeek' | 'older'; label: string }> = [
+  { id: 'today', label: 'Today' },
+  { id: 'thisWeek', label: 'This week' },
+  { id: 'older', label: 'Older' }
+]
 
 const TAB_LABELS: Array<{ id: ReleaseTab; label: string }> = [
   { id: 'week', label: 'This week' },
@@ -82,55 +101,60 @@ function releasesForTab(payload: NewsPayload, tab: ReleaseTab): NewsRelease[] {
 export default function NewsPage({
   page,
   onNavigate,
-  onSelectGame
+  onSelectGame,
+  payload,
+  errorMessage,
+  loadState,
+  onNewsResult
 }: Props): React.ReactElement {
-  const [loadState, setLoadState] = useState<LoadState>('loading')
-  const [payload, setPayload] = useState<NewsPayload | null>(null)
-  const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [tab, setTab] = useState<ReleaseTab>('week')
   const [refreshing, setRefreshing] = useState(false)
   const [genreFilters, setGenreFilters] = useState<number[]>(() => loadGenreFilters())
+  const [olderExpanded, setOlderExpanded] = useState(false)
 
-  const fetchNews = useCallback((options: GetNewsOptions = {}) => {
-    const forceRefresh = Boolean(options.forceRefresh)
-    setRefreshing(true)
+  const fetchNews = useCallback(
+    (options: GetNewsOptions = {}) => {
+      const forceRefresh = Boolean(options.forceRefresh)
+      setRefreshing(true)
 
-    return window.api
-      .getNews({ forceRefresh })
-      .then((data) => {
-        setPayload(data)
-        setErrorMessage(null)
-        setLoadState('ready')
-      })
-      .catch(() => {
-        setPayload((current) => {
-          if (current) {
-            setLoadState('ready')
-            return current
-          }
-          setErrorMessage(LOAD_ERROR)
-          setLoadState('error')
-          return current
+      return window.api
+        .getNews({ forceRefresh })
+        .then((data) => {
+          onNewsResult({
+            payload: data,
+            errorMessage: null,
+            loadState: 'ready'
+          })
         })
-      })
-      .finally(() => {
-        setRefreshing(false)
-      })
-  }, [])
+        .catch(() => {
+          if (hasUsableNewsPayload(payload)) {
+            onNewsResult({
+              payload,
+              errorMessage: null,
+              loadState: 'ready'
+            })
+            return
+          }
+          onNewsResult({
+            payload: null,
+            errorMessage: NEWS_LOAD_ERROR,
+            loadState: 'error'
+          })
+        })
+        .finally(() => {
+          setRefreshing(false)
+        })
+    },
+    [onNewsResult, payload]
+  )
 
+  // Fallback only if App prefetch never populated (should be rare).
   useEffect(() => {
-    void window.api
-      .getNews({ forceRefresh: false })
-      .then((data) => {
-        setPayload(data)
-        setErrorMessage(null)
-        setLoadState('ready')
-      })
-      .catch(() => {
-        setErrorMessage(LOAD_ERROR)
-        setLoadState('error')
-      })
-  }, [])
+    if (hasUsableNewsPayload(payload)) return
+    if (loadState === 'loading') return
+    if (loadState === 'error') return
+    void fetchNews({ forceRefresh: false })
+  }, [payload, loadState, fetchNews])
 
   const weekCount = useMemo(
     () =>
@@ -155,6 +179,11 @@ export default function NewsPage({
           )
         : [],
     [payload, tab, genreFilters]
+  )
+
+  const libraryGroups = useMemo(
+    () => groupLibraryNewsByRecency(payload?.libraryNews ?? []),
+    [payload]
   )
 
   function handleGenreToggle(tagId: number): void {
@@ -194,7 +223,7 @@ export default function NewsPage({
       {loadState === 'error' && (
         <div className="news-page news-page--state">
           <div className="news-page__error" role="alert">
-            <p className="news-page__error-text">{errorMessage ?? LOAD_ERROR}</p>
+            <p className="news-page__error-text">{errorMessage ?? NEWS_LOAD_ERROR}</p>
             <Chip variant="action" onClick={() => void fetchNews({ forceRefresh: true })}>
               Retry
             </Chip>
@@ -318,20 +347,63 @@ export default function NewsPage({
               {payload.libraryNews.length === 0 ? (
                 <p className="news-page__empty">{EMPTY_STATES.noLibraryNews}</p>
               ) : (
-                <ul className="news-library-list">
-                  {payload.libraryNews.map((item) => (
-                    <li key={`${item.appid}-${item.url}-${item.date}`} className="news-library-list__item">
-                      <LibraryNewsRow
-                        item={item}
-                        onOpenGame={
-                          onSelectGame
-                            ? () => onSelectGame(item.appid)
-                            : undefined
-                        }
-                      />
-                    </li>
-                  ))}
-                </ul>
+                <div className="news-library-groups">
+                  {LIBRARY_GROUP_LABELS.map((group) => {
+                    const items = libraryGroups[group.id]
+                    if (items.length === 0) return null
+
+                    const visible =
+                      group.id === 'older' && !olderExpanded
+                        ? items.slice(0, OLDER_PREVIEW)
+                        : items
+                    const hiddenCount =
+                      group.id === 'older' ? Math.max(0, items.length - OLDER_PREVIEW) : 0
+
+                    return (
+                      <div
+                        key={group.id}
+                        className="news-library-group"
+                        aria-labelledby={`news-library-${group.id}`}
+                      >
+                        <h3
+                          id={`news-library-${group.id}`}
+                          className="news-library-group__title"
+                        >
+                          {group.label}
+                        </h3>
+                        <ul className="news-library-list">
+                          {visible.map((item) => (
+                            <li
+                              key={`${item.appid}-${item.url}-${item.date}`}
+                              className="news-library-list__item"
+                            >
+                              <LibraryNewsRow
+                                item={item}
+                                onOpenGame={
+                                  onSelectGame
+                                    ? () => onSelectGame(item.appid)
+                                    : undefined
+                                }
+                              />
+                            </li>
+                          ))}
+                        </ul>
+                        {group.id === 'older' && hiddenCount > 0 ? (
+                          <div className="news-library-group__expand">
+                            <Chip
+                              variant="action"
+                              onClick={() => setOlderExpanded((open) => !open)}
+                            >
+                              {olderExpanded
+                                ? 'Show less'
+                                : `Show older (${hiddenCount})`}
+                            </Chip>
+                          </div>
+                        ) : null}
+                      </div>
+                    )
+                  })}
+                </div>
               )}
             </section>
           </div>

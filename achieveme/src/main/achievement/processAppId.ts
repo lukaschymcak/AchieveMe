@@ -11,13 +11,17 @@ import {
 import { scanAllSources } from './discoveryService'
 import { parseAchievementsBySource } from './parsers/parseBySource'
 import { mergeRawAchievements } from './rawMerge'
-import { enrichApp } from './steamApiClient'
+import { enrichApp, getStoreCoverUrl } from './steamApiClient'
 import { regenerateProfileStats } from './profileStatsService'
 import { encodePortablePath, GOLDBERG_JSON_SOURCES } from './savePathUtils'
 import { notifyLibraryUpdated } from './libraryNotifyService'
 import { diffAchievements } from './achievementDiff'
 import { notifyPlatinumUnlock, notifyUnlocks } from './unlockNotifyService'
 import { isNewPlatinum } from '../../shared/unlockToastUtils'
+import { getSteamLibraryHeroUrl, normalizeSteamIconUrl } from '../../shared/steamUrls'
+import { iconFilenameFromSteamValue } from '../../shared/imageCacheUrls'
+import { prefetchGameImages } from './imageCacheService'
+import { getDefaultImageCacheDeps, pruneAppImages } from './imageCacheProtocol'
 import type { AppSettings } from '../../shared/types'
 
 export async function processAppId(
@@ -36,6 +40,7 @@ export async function processAppId(
   const forThisApp = allDiscovered.filter((d) => d.appid === appid)
   if (forThisApp.length === 0) {
     deleteGame(db, appid)
+    pruneAppImages(appid)
     regenerateProfileStats(db)
     notifyLibraryUpdated(appid)
     return
@@ -84,6 +89,27 @@ export async function processAppId(
 
   // 6. Rebuild profile_stats.json
   regenerateProfileStats(db)
+
+  // 7. Warm local image cache (non-blocking)
+  void (async () => {
+    const coverRemoteUrl = await getStoreCoverUrl(db, appid)
+    const icons: { filename: string; remoteUrl: string }[] = []
+    for (const ach of enriched.achievements) {
+      for (const value of [ach.icon_url, ach.icon_gray_url]) {
+        if (!value) continue
+        const filename = iconFilenameFromSteamValue(value)
+        const remoteUrl = normalizeSteamIconUrl(appid, value)
+        if (!filename || !remoteUrl) continue
+        icons.push({ filename, remoteUrl })
+      }
+    }
+    await prefetchGameImages(getDefaultImageCacheDeps(), appid, {
+      coverRemoteUrl,
+      heroRemoteUrl: getSteamLibraryHeroUrl(appid),
+      icons,
+      forceRefresh
+    })
+  })().catch(() => {})
 
   if (!suppressNotifications && hadPriorRows) {
     if (diff.unlocked.length > 0) {

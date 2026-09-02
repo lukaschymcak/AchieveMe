@@ -3,6 +3,7 @@ import { getDb } from '../db/database'
 import { getAchievementsForGame, getAllGames, getGame } from '../db/repository'
 import { loadSettings } from '../settings'
 import type { SessionRecapPayload } from '../../shared/types'
+import { cacheIconUrlFromSteamValue } from '../../shared/imageCacheUrls'
 import {
   pickDemoSessionSeconds,
   pickDemoUnlocks,
@@ -11,6 +12,16 @@ import {
   unlocksInSessionWindow,
   xpForSessionUnlocks
 } from '../../shared/sessionRecapUtils'
+
+function toCacheIconUnlocks<T extends { iconUrl: string }>(
+  appid: string,
+  unlocks: T[]
+): T[] {
+  return unlocks.map((u) => ({
+    ...u,
+    iconUrl: cacheIconUrlFromSteamValue(appid, u.iconUrl)
+  }))
+}
 
 let resolveMainWindow: (() => BrowserWindow | null) | null = null
 let queue: SessionRecapPayload[] = []
@@ -59,10 +70,9 @@ export function buildSessionRecap(
   )
   const startSec = Math.floor(sessionStartMs / 1000)
   const endSec = Math.floor(sessionEndMs / 1000)
-  const unlocks = unlocksInSessionWindow(
-    getAchievementsForGame(db, appid),
-    startSec,
-    endSec
+  const unlocks = toCacheIconUnlocks(
+    appid,
+    unlocksInSessionWindow(getAchievementsForGame(db, appid), startSec, endSec)
   )
 
   return {
@@ -104,7 +114,10 @@ export function previewSessionRecap(): void {
   if (index < 0) return
 
   const game = games[index]!
-  const unlocks = pickDemoUnlocks(getAchievementsForGame(db, game.appid), 3)
+  const unlocks = toCacheIconUnlocks(
+    game.appid,
+    pickDemoUnlocks(getAchievementsForGame(db, game.appid), 3)
+  )
   const payload: SessionRecapPayload = {
     appid: game.appid,
     gameName: game.name,

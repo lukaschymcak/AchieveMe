@@ -2,6 +2,8 @@
  * Steam release-date bucketing for the News page calendar.
  */
 
+import type { NewsPayload } from './types'
+
 export type ReleaseBucket = 'thisWeek' | 'thisMonth' | 'later' | 'tba' | 'releasedThisWeek'
 
 const DAY_SECONDS = 86400
@@ -261,3 +263,100 @@ export function pickLibraryNewsAppids(
   })
   return sorted.slice(0, limit).map((g) => String(g.appid).trim()).filter(Boolean)
 }
+
+/**
+ * Returns true when a News payload is present and can be shown without refetch.
+ *
+ * @param payload - Prefetched or fetched News payload, or null.
+ */
+export function hasUsableNewsPayload(payload: { fetchedAt: number } | null): boolean {
+  return payload != null
+}
+
+export type LibraryNewsRecencyBucket = 'today' | 'thisWeek' | 'older'
+
+export interface LibraryNewsByRecency<T extends { date: number }> {
+  today: T[]
+  thisWeek: T[]
+  older: T[]
+}
+
+/**
+ * Local midnight for `now` as unix seconds.
+ *
+ * @param now - Reference Date (local timezone).
+ */
+function startOfLocalDayUnix(now: Date): number {
+  return Math.floor(
+    new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime() / 1000
+  )
+}
+
+/**
+ * Groups library news items by recency relative to the local calendar.
+ * Preserves input order within each bucket. Empty buckets are empty arrays
+ * (UI should hide them).
+ *
+ * - today: same local calendar day as `now`
+ * - thisWeek: before today, still within the previous 7 local days
+ * - older: everything else
+ *
+ * @param items - Library news rows (typically newest-first).
+ * @param now - Reference Date (defaults to current local time).
+ */
+export function groupLibraryNewsByRecency<T extends { date: number }>(
+  items: T[],
+  now: Date = new Date()
+): LibraryNewsByRecency<T> {
+  const todayStart = startOfLocalDayUnix(now)
+  const tomorrowStart = todayStart + DAY_SECONDS
+  const weekStart = todayStart - WEEK_SECONDS
+
+  const today: T[] = []
+  const thisWeek: T[] = []
+  const older: T[] = []
+
+  for (const item of items) {
+    const date = item.date
+    if (!Number.isFinite(date)) {
+      older.push(item)
+      continue
+    }
+    if (date >= todayStart && date < tomorrowStart) {
+      today.push(item)
+    } else if (date >= weekStart && date < todayStart) {
+      thisWeek.push(item)
+    } else {
+      older.push(item)
+    }
+  }
+
+  return { today, thisWeek, older }
+}
+
+/**
+ * Drops library news for appids no longer in the library and remaps
+ * popular-release `inLibrary` flags. Preserves `fetchedAt` / `fromCache`.
+ *
+ * @param payload - Current News payload.
+ * @param libraryAppids - AppIDs currently in the library.
+ */
+export function pruneNewsPayloadForLibrary(
+  payload: NewsPayload,
+  libraryAppids: ReadonlySet<string>
+): NewsPayload {
+  return {
+    thisWeek: payload.thisWeek.map((row) => ({
+      ...row,
+      inLibrary: libraryAppids.has(row.appid)
+    })),
+    thisMonth: payload.thisMonth.map((row) => ({
+      ...row,
+      inLibrary: libraryAppids.has(row.appid)
+    })),
+    libraryNews: payload.libraryNews.filter((item) => libraryAppids.has(item.appid)),
+    fetchedAt: payload.fetchedAt,
+    fromCache: payload.fromCache
+  }
+}
+

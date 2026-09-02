@@ -1,5 +1,5 @@
 import type { Achievement } from '../../../shared/types'
-import { normalizeSteamIconUrl } from '../../../shared/steamUrls'
+import { cacheIconUrlFromSteamValue } from '../../../shared/imageCacheUrls'
 
 export { achievementDescription, isHiddenAchievement } from './achievementDescription'
 
@@ -82,7 +82,7 @@ export function achievementIconSrc(
   iconUrl: string,
   iconGrayUrl: string
 ): string {
-  if (earned) return normalizeSteamIconUrl(appid, iconUrl)
-  return normalizeSteamIconUrl(appid, iconGrayUrl)
+  if (earned) return cacheIconUrlFromSteamValue(appid, iconUrl)
+  return cacheIconUrlFromSteamValue(appid, iconGrayUrl)
 }
 

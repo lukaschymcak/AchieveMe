@@ -27,9 +27,9 @@ AchieveMe can run in the **system tray** after you close the window (Settings �
 
 **Progress bars** on game detail show partial achievement progress from Goldberg/GSE `progress` / `max_progress` fields in `achievements.json`.
 
-**Achievement icons** are live Steam CDN URLs from `GetSchemaForGame` (not downloaded to disk). Display normalizes hashes and legacy `steamcdn-a.akamaihd.net` schema URLs to `shared.akamai.steamstatic.com/community_assets/...`.
+**Achievement icons** are downloaded into `%APPDATA%\achieveme\images\{appid}\icon\` on first use (and prefetched after enrich). Display uses the `achieveme-img://` protocol; SQLite still stores Steam CDN URLs / hashes. Legacy `steamcdn-a.akamaihd.net` schema URLs are normalized to `shared.akamai.steamstatic.com/community_assets/...` before download.
 
-**Library cover art:** grid cards and list thumbs use Steam Store API `header_image` (~460×215). Cards use `aspect-ratio: 2 / 1` (slightly taller than the header); `object-fit: cover` fills the frame with light side crop, no letterboxing. Game detail uses the same header plus `library_hero` for the backdrop.
+**Library cover art:** grid cards and list thumbs use Steam Store API `header_image` (~460×215), cached under `images\{appid}\cover\`. Cards use `aspect-ratio: 2 / 1` (slightly taller than the header); `object-fit: cover` fills the frame with light side crop, no letterboxing. Game detail uses the same cover plus `library_hero` (cached under `images\{appid}\hero\`) for the backdrop.
 
 **Playtime** is tracked for games set up via **Add Game** (install folder stored on disk). Dashboard, game detail, and library cards/rows always show tracked playtime (or `—` when none yet). On the Emulator step you can mark a game as **Denuvo offline activated** so AchieveMe keeps existing `configs.user.ini`, `configs.overlay.ini`, `configs.app.ini`, and `configs.main.ini` when replacing `steam_settings` (back up that folder first if it already exists).
 
@@ -53,7 +53,7 @@ The **Dashboard** is the progress pulse home screen: level + XP ring, library sn
 
 ## News
 
-The **News** page (nav between Library and Tools) shows **popular** Steam releases for **This week** and **This month** (with counts), plus Steam community announcements for up to 20 games already in the library. Popularity uses Steam’s public `filter=popularwishlist` chart with `category1=998` (games only; top ~400) — exact wishlist counts are not published. Genre chips OR-filter by Steam `data-ds-tagids` from search HTML (none selected = show all; selection persists in `localStorage`). Lists sort in-library first, then soonest release date; shipped titles show a Released chip. Library news: game name opens detail, **Open on Steam** opens the announcement. Data is cached in SQLite `api_cache` for one hour (`src/main/achievement/steamNewsService.ts`). AchieveMe does not scrape third-party repack or crack sites.
+The **News** page (nav between Library and Tools) shows **popular** Steam releases for **This week** and **This month** (with counts), plus Steam community announcements for up to 20 games already in the library. Popularity uses Steam’s public `filter=popularwishlist` chart with `category1=998` (games only; top ~400) — exact wishlist counts are not published. Genre chips OR-filter by Steam `data-ds-tagids` from search HTML (none selected = show all; selection persists in `localStorage`). Lists sort in-library first, then soonest release date; shipped titles show a Released chip. Library news: game name opens detail, **Open on Steam** opens the announcement; items are grouped into **Today**, **This week**, and **Older** (Older shows three rows until expanded). Removing a game from the library drops its library announcements immediately and clears **In library** on popular rows. Data is cached in SQLite `api_cache` for one hour (`src/main/achievement/steamNewsService.ts`) and is **prefetched at app start** (main warm + renderer App mount) so opening News is usually instant. AchieveMe does not scrape third-party repack or crack sites.
 
 ## Development
 

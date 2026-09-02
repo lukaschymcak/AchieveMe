@@ -7,6 +7,7 @@ import { deleteGame, getAllGames } from '../db/repository'
 import { getWatchRoots, scanAllSources } from './discoveryService'
 import { processAppId } from './processAppId'
 import { regenerateProfileStats } from './profileStatsService'
+import { pruneAppImages } from './imageCacheProtocol'
 
 let watcher: FSWatcher | null = null
 const debounceTimers = new Map<string, NodeJS.Timeout>()
@@ -47,6 +48,7 @@ export function pruneOrphanedGames(settings: AppSettings): void {
     if (Object.keys(parseManifestGidsJson(game.manifest_gids)).length > 0) continue
     if (!onDisk.has(game.appid)) {
       deleteGame(db, game.appid)
+      pruneAppImages(game.appid)
       removed++
     }
   }

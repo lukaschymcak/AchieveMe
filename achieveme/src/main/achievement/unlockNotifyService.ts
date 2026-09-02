@@ -5,6 +5,7 @@ import { pathToFileURL } from 'node:url'
 import { BrowserWindow } from 'electron'
 import { loadSettings } from '../settings'
 import type { UnlockChange, UnlockToastPayload } from '../../shared/types'
+import { cacheIconUrlFromSteamValue } from '../../shared/imageCacheUrls'
 import {
   nextToastPreviewIndex,
   toastPreviewDisplayName,
@@ -54,7 +55,7 @@ export function notifyUnlocks(appid: string, gameName: string, unlocks: UnlockCh
         appid,
         gameName,
         displayName: unlock.displayName,
-        iconUrl: unlock.iconUrl,
+        iconUrl: cacheIconUrlFromSteamValue(appid, unlock.iconUrl),
         tier: unlock.tier
       }
       enqueueUnlockToast(payload)

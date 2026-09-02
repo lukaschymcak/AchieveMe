@@ -12,9 +12,17 @@ import { destroyTray, initTray, isQuitting, setQuitting } from './trayService'
 import { shouldQuitForMissingInstanceLock } from './singleInstance'
 import { shouldStartHidden, syncLoginItemSettings } from './loginItemService'
 import { runStartupUpdateCheck } from './achievement/manifestCheckerService'
+import {
+  registerImageCacheProtocol,
+  registerImageCacheSchemes
+} from './achievement/imageCacheProtocol'
+import { getNews } from './achievement/steamNewsService'
 
 // Allow unlock-sound Audio.play() from the hidden sound window without a user gesture.
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required')
+
+// Privileged custom scheme for locally cached Steam images (must be before ready).
+registerImageCacheSchemes()
 
 let mainWindow: BrowserWindow | null = null
 
@@ -91,7 +99,9 @@ function bootApp(): void {
     })
 
     initDb()
+    registerImageCacheProtocol()
     registerIpcHandlers()
+    void getNews(getDb(), false).catch(() => {})
     const settings = loadSettings()
     syncLoginItemSettings(settings)
     startWatcher(settings).catch(() => {})

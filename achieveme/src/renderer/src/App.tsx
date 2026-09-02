@@ -4,11 +4,12 @@ import type {
   ActiveUpdateSession,
   DepotProgressEvent,
   GameSummary,
+  NewsPayload,
   SessionRecapPayload
 } from '../../shared/types'
 import DashboardPage from './pages/DashboardPage'
 import LibraryPage from './pages/LibraryPage'
-import NewsPage from './pages/NewsPage'
+import NewsPage, { NEWS_LOAD_ERROR, type NewsLoadState } from './pages/NewsPage'
 import GameDetailPage from './pages/GameDetailPage'
 import SettingsPage from './pages/SettingsPage'
 import ToolsPage from './pages/ToolsPage'
@@ -19,6 +20,7 @@ import DepotWizard from './components/DepotWizard'
 import AddGameModal from './components/AddGameModal'
 import { shouldShowFirstRun } from './lib/helpStorage'
 import type { AppPage } from './lib/appNavigation'
+import { pruneNewsPayloadForLibrary } from '../../shared/newsUtils'
 
 type TransitionDir = 'next' | 'prev' | null
 
@@ -47,11 +49,47 @@ export default function App(): React.ReactElement {
     name: string
     installPath?: string
   } | null>(null)
+  const [newsPayload, setNewsPayload] = useState<NewsPayload | null>(null)
+  const [newsError, setNewsError] = useState<string | null>(null)
+  const [newsLoadState, setNewsLoadState] = useState<NewsLoadState>('loading')
   const depotSessionRef = useRef<ActiveDepotSession | null>(null)
 
   useEffect(() => {
     depotSessionRef.current = activeDepotSession
   }, [activeDepotSession])
+
+  const handleNewsResult = useCallback(
+    (result: {
+      payload: NewsPayload | null
+      errorMessage: string | null
+      loadState: NewsLoadState
+    }): void => {
+      setNewsPayload(result.payload)
+      setNewsError(result.errorMessage)
+      setNewsLoadState(result.loadState)
+    },
+    []
+  )
+
+  useEffect(() => {
+    let cancelled = false
+    void window.api
+      .getNews({ forceRefresh: false })
+      .then((data) => {
+        if (cancelled) return
+        setNewsPayload(data)
+        setNewsError(null)
+        setNewsLoadState('ready')
+      })
+      .catch(() => {
+        if (cancelled) return
+        setNewsError(NEWS_LOAD_ERROR)
+        setNewsLoadState('error')
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   const handleDepotSessionChange = useCallback((session: ActiveDepotSession | null): void => {
     depotSessionRef.current = session
@@ -70,7 +108,13 @@ export default function App(): React.ReactElement {
 
   useEffect(() => {
     function handleLibraryUpdated(): void {
-      window.api.getAllGames().then(setLibraryGames)
+      void window.api.getAllGames().then((games) => {
+        setLibraryGames(games)
+        const libraryIds = new Set(games.map((g) => g.appid))
+        setNewsPayload((prev) =>
+          prev ? pruneNewsPayloadForLibrary(prev, libraryIds) : prev
+        )
+      })
     }
 
     window.api.onLibraryUpdated(handleLibraryUpdated)
@@ -303,6 +347,10 @@ export default function App(): React.ReactElement {
               page={page}
               onNavigate={setPage}
               onSelectGame={setSelectedAppid}
+              payload={newsPayload}
+              errorMessage={newsError}
+              loadState={newsLoadState}
+              onNewsResult={handleNewsResult}
             />
           </main>
         </div>

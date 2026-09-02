@@ -295,6 +295,17 @@ export function setCacheEntry(
   `).run(appid, type, data_json, now)
 }
 
+/**
+ * Deletes one api_cache row.
+ *
+ * @param db - Open SQLite database.
+ * @param appid - Cache appid key.
+ * @param type - Cache type key.
+ */
+export function deleteCacheEntry(db: Database.Database, appid: string, type: string): void {
+  db.prepare('DELETE FROM api_cache WHERE appid = ? AND type = ?').run(appid, type)
+}
+
 // ─── Save Locations ───────────────────────────────────────────────────────────
 
 export function upsertSaveLocation(db: Database.Database, row: SaveLocation): void {
