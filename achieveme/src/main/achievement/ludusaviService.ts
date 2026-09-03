@@ -10,11 +10,47 @@ import {
   takeNewestSnapshots,
   type LudusaviSnapshot
 } from '../../shared/ludusaviApiUtils.ts'
-import { withLudusaviConfig } from '../../shared/ludusaviCloudUtils.ts'
+import {
+  buildCloudDownloadArgv,
+  buildCloudSetArgv,
+  buildCloudUploadArgv,
+  ludusaviCloudSoftNoteFromApi,
+  parseCloudRemoteLabelFromConfigYaml,
+  withLudusaviConfig,
+  type LudusaviCloudProviderId
+} from '../../shared/ludusaviCloudUtils.ts'
+import { ludusaviConfigYamlPath } from './ludusaviConfigPatch.ts'
 
 export type { LudusaviSnapshot }
 
 export { withLudusaviConfig }
+
+/** AchieveMe isolated Ludusavi `--config` directory (empty until app ready). */
+let isolatedConfigDir = ''
+
+/**
+ * Sets the AchieveMe-owned Ludusavi config directory used for all CLI runs.
+ *
+ * @param dir - Absolute path under Electron userData.
+ */
+export function setAchieveMeLudusaviConfigDir(dir: string): void {
+  isolatedConfigDir = String(dir || '').trim()
+}
+
+/**
+ * Returns the active isolated Ludusavi config directory.
+ */
+export function getActiveLudusaviConfigDir(): string {
+  return isolatedConfigDir
+}
+
+function resolveLudusaviRunner(
+  exe: string,
+  runCommand?: LudusaviCommandRunner
+): LudusaviCommandRunner {
+  const base = runCommand ?? createDefaultLudusaviRunner(exe)
+  return wrapLudusaviRunnerWithConfig(base, isolatedConfigDir)
+}
 
 export interface LudusaviCommandResult {
   code: number
@@ -168,38 +204,51 @@ export function wrapLudusaviRunnerWithConfig(
 export async function findTitleBySteamId(
   exe: string,
   appid: string,
-  runCommand: LudusaviCommandRunner = createDefaultLudusaviRunner(exe)
+  runCommand?: LudusaviCommandRunner
 ): Promise<string | null> {
   const cleanAppid = String(appid || '').trim()
   if (!/^\d+$/.test(cleanAppid)) return null
 
-  const result = await runCommand(['find', '--steam-id', cleanAppid, '--api'])
+  const runner = resolveLudusaviRunner(exe, runCommand)
+  const result = await runner(['find', '--steam-id', cleanAppid, '--api'])
   const parsed = parseLudusaviApiJson(result.stdout)
   return extractFindTitle(parsed)
 }
 
 /**
- * Runs `ludusavi backup --force --api --no-cloud-sync --full-limit 5` for one title.
+ * Runs `ludusavi backup --force --api` with optional cloud sync and `--full-limit 5`.
  *
  * @param exe - Absolute path to ludusavi.exe.
  * @param title - Exact Ludusavi game title.
- * @param runCommand - Optional injectable runner (tests).
+ * @param runCommandOrOptions - Injectable runner, or options bag.
+ * @param maybeOptions - Options when the third arg is a runner.
  */
 export async function backupGame(
   exe: string,
   title: string,
-  runCommand: LudusaviCommandRunner = createDefaultLudusaviRunner(exe)
+  runCommandOrOptions?: LudusaviCommandRunner | { cloudSync?: boolean },
+  maybeOptions?: { cloudSync?: boolean }
 ): Promise<LudusaviBackupResult> {
   const cleanTitle = String(title || '').trim()
   if (!cleanTitle) {
     return { ok: false, error: 'Game title is required.' }
   }
 
-  const result = await runCommand([
+  let runCommand: LudusaviCommandRunner | undefined
+  let cloudSync = false
+  if (typeof runCommandOrOptions === 'function') {
+    runCommand = runCommandOrOptions
+    cloudSync = Boolean(maybeOptions?.cloudSync)
+  } else if (runCommandOrOptions && typeof runCommandOrOptions === 'object') {
+    cloudSync = Boolean(runCommandOrOptions.cloudSync)
+  }
+
+  const runner = resolveLudusaviRunner(exe, runCommand)
+  const result = await runner([
     'backup',
     '--force',
     '--api',
-    '--no-cloud-sync',
+    cloudSync ? '--cloud-sync' : '--no-cloud-sync',
     '--full-limit',
     String(LUDUSAVI_FULL_BACKUP_LIMIT),
     cleanTitle
@@ -218,7 +267,15 @@ export async function backupGame(
     }
   }
 
-  return extractBackupGameResult(parsed, cleanTitle)
+  const base = extractBackupGameResult(parsed, cleanTitle)
+  const soft = ludusaviCloudSoftNoteFromApi(parsed)
+  if (soft && base.ok) {
+    return { ...base, error: soft }
+  }
+  if (soft && !base.ok && !base.error) {
+    return { ...base, error: soft }
+  }
+  return base
 }
 
 /**
@@ -231,12 +288,13 @@ export async function backupGame(
 export async function listGameBackups(
   exe: string,
   title: string,
-  runCommand: LudusaviCommandRunner = createDefaultLudusaviRunner(exe)
+  runCommand?: LudusaviCommandRunner
 ): Promise<LudusaviSnapshot[]> {
   const cleanTitle = String(title || '').trim()
   if (!cleanTitle) return []
 
-  const result = await runCommand(['backups', '--api', cleanTitle])
+  const runner = resolveLudusaviRunner(exe, runCommand)
+  const result = await runner(['backups', '--api', cleanTitle])
   const parsed = parseLudusaviApiJson(result.stdout)
   if (!parsed) return []
   return takeNewestSnapshots(
@@ -266,14 +324,15 @@ export async function restoreGame(
   }
 
   let backupId: string | undefined
-  let runCommand: LudusaviCommandRunner
+  let runCommand: LudusaviCommandRunner | undefined
   if (typeof backupIdOrRunner === 'function') {
     runCommand = backupIdOrRunner
   } else {
     backupId = backupIdOrRunner
-    runCommand = maybeRunner ?? createDefaultLudusaviRunner(exe)
+    runCommand = maybeRunner
   }
 
+  const runner = resolveLudusaviRunner(exe, runCommand)
   const argv = ['restore', '--force', '--api', '--no-cloud-sync']
   if (backupId !== undefined && String(backupId).trim() !== '') {
     const id = String(backupId).trim()
@@ -284,7 +343,7 @@ export async function restoreGame(
   }
   argv.push(cleanTitle)
 
-  const result = await runCommand(argv)
+  const result = await runner(argv)
 
   const parsed = parseLudusaviApiJson(result.stdout)
   if (!parsed) {
@@ -300,4 +359,155 @@ export async function restoreGame(
   }
 
   return extractBackupGameResult(parsed, cleanTitle)
+}
+
+export interface LudusaviCloudOpResult {
+  ok: boolean
+  error?: string
+  softNote?: string
+}
+
+/**
+ * Bootstraps the isolated Ludusavi config directory via `config show`.
+ *
+ * @param exe - Absolute path to ludusavi.exe.
+ * @param runCommand - Optional injectable runner (tests).
+ */
+export async function ensureLudusaviConfigDir(
+  exe: string,
+  runCommand?: LudusaviCommandRunner
+): Promise<LudusaviCloudOpResult> {
+  if (!isolatedConfigDir) {
+    return { ok: false, error: 'Ludusavi config directory is not configured.' }
+  }
+  fs.mkdirSync(isolatedConfigDir, { recursive: true })
+  const runner = resolveLudusaviRunner(exe, runCommand)
+  const result = await runner(['config', 'show'])
+  if (result.code !== 0 && !fs.existsSync(ludusaviConfigYamlPath(isolatedConfigDir))) {
+    return {
+      ok: false,
+      error: result.stderr.trim() || `Ludusavi exited with code ${result.code}.`
+    }
+  }
+  return { ok: true }
+}
+
+/**
+ * Runs `ludusavi cloud set <provider>` under the isolated config.
+ *
+ * @param exe - Absolute path to ludusavi.exe.
+ * @param provider - Provider id from Settings.
+ * @param customRemoteId - Required for `custom`.
+ * @param runCommand - Optional injectable runner (tests).
+ */
+export async function cloudSetProvider(
+  exe: string,
+  provider: LudusaviCloudProviderId,
+  customRemoteId?: string,
+  runCommand?: LudusaviCommandRunner
+): Promise<LudusaviCloudOpResult> {
+  let argv: string[]
+  try {
+    argv = buildCloudSetArgv(provider, customRemoteId)
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : String(err) }
+  }
+  const runner = resolveLudusaviRunner(exe, runCommand)
+  const result = await runner(argv)
+  if (result.code !== 0) {
+    return {
+      ok: false,
+      error: result.stderr.trim() || result.stdout.trim() || `Ludusavi exited with code ${result.code}.`
+    }
+  }
+  return { ok: true }
+}
+
+/**
+ * Runs `ludusavi cloud upload --force --api`.
+ *
+ * @param exe - Absolute path to ludusavi.exe.
+ * @param runCommand - Optional injectable runner (tests).
+ */
+export async function cloudUpload(
+  exe: string,
+  runCommand?: LudusaviCommandRunner
+): Promise<LudusaviCloudOpResult> {
+  const runner = resolveLudusaviRunner(exe, runCommand)
+  const result = await runner(buildCloudUploadArgv())
+  const parsed = parseLudusaviApiJson(result.stdout)
+  const soft = parsed ? ludusaviCloudSoftNoteFromApi(parsed) : ''
+  if (result.code !== 0) {
+    return {
+      ok: false,
+      error:
+        soft ||
+        result.stderr.trim() ||
+        result.stdout.trim() ||
+        `Ludusavi exited with code ${result.code}.`,
+      softNote: soft || undefined
+    }
+  }
+  if (soft) {
+    return { ok: false, error: soft, softNote: soft }
+  }
+  return { ok: true }
+}
+
+/**
+ * Runs `ludusavi cloud download --force --api`.
+ *
+ * @param exe - Absolute path to ludusavi.exe.
+ * @param runCommand - Optional injectable runner (tests).
+ */
+export async function cloudDownload(
+  exe: string,
+  runCommand?: LudusaviCommandRunner
+): Promise<LudusaviCloudOpResult> {
+  const runner = resolveLudusaviRunner(exe, runCommand)
+  const result = await runner(buildCloudDownloadArgv())
+  const parsed = parseLudusaviApiJson(result.stdout)
+  const soft = parsed ? ludusaviCloudSoftNoteFromApi(parsed) : ''
+  if (result.code !== 0) {
+    return {
+      ok: false,
+      error:
+        soft ||
+        result.stderr.trim() ||
+        result.stdout.trim() ||
+        `Ludusavi exited with code ${result.code}.`,
+      softNote: soft || undefined
+    }
+  }
+  if (soft) {
+    return { ok: false, error: soft, softNote: soft }
+  }
+  return { ok: true }
+}
+
+export interface LudusaviCloudStatus {
+  connected: boolean
+  label: string | null
+  configDir: string
+}
+
+/**
+ * Reads cloud remote status from the AchieveMe-owned config.yaml.
+ */
+export function readLudusaviCloudStatus(): LudusaviCloudStatus {
+  const configDir = isolatedConfigDir
+  if (!configDir) {
+    return { connected: false, label: null, configDir: '' }
+  }
+  const file = ludusaviConfigYamlPath(configDir)
+  if (!fs.existsSync(file)) {
+    return { connected: false, label: null, configDir }
+  }
+  try {
+    const text = fs.readFileSync(file, 'utf8')
+    const label = parseCloudRemoteLabelFromConfigYaml(text)
+    return { connected: Boolean(label), label, configDir }
+  } catch {
+    return { connected: false, label: null, configDir }
+  }
 }

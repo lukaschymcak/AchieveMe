@@ -133,6 +133,53 @@ test('backupGame reports change Same', async () => {
   assert.equal(result.change, 'Same')
 })
 
+test('backupGame uses --cloud-sync when enabled', async () => {
+  const calls = []
+  await backupGame(
+    'C:\\fake\\ludusavi.exe',
+    'Dota 2',
+    async (argv) => {
+      calls.push(argv)
+      return {
+        code: 0,
+        stdout: JSON.stringify({
+          games: {
+            'Dota 2': {
+              decision: 'Processed',
+              change: 'Different',
+              files: { a: { bytes: 1, failed: false } },
+              registry: {}
+            }
+          }
+        }),
+        stderr: ''
+      }
+    },
+    { cloudSync: true }
+  )
+  assert.ok(calls[0].includes('--cloud-sync'))
+  assert.ok(!calls[0].includes('--no-cloud-sync'))
+})
+
+test('cloudSetProvider builds argv', async () => {
+  const { cloudSetProvider, setAchieveMeLudusaviConfigDir } = await import(
+    pathToFileURL(path.join(rootDir, '../src/main/achievement/ludusaviService.ts')).href
+  )
+  setAchieveMeLudusaviConfigDir('')
+  const calls = []
+  const result = await cloudSetProvider(
+    'C:\\fake\\ludusavi.exe',
+    'google-drive',
+    undefined,
+    async (argv) => {
+      calls.push(argv)
+      return { code: 0, stdout: '', stderr: '' }
+    }
+  )
+  assert.equal(result.ok, true)
+  assert.deepEqual(calls[0], ['cloud', 'set', 'google-drive'])
+})
+
 test('backupGame fails when stdout is blank', async () => {
   const result = await backupGame('C:\\fake\\ludusavi.exe', 'X', async () => ({
     code: 1,

@@ -69,13 +69,27 @@ import {
 } from '../achievement/steamlessService'
 import {
   backupGame,
+  cloudDownload,
+  cloudSetProvider,
+  cloudUpload,
+  ensureLudusaviConfigDir,
   findTitleBySteamId,
   listGameBackups,
+  readLudusaviCloudStatus,
   restoreGame,
+  setAchieveMeLudusaviConfigDir,
   validateLudusaviPath,
   validateRclonePath
 } from '../achievement/ludusaviService'
 import type { LudusaviSnapshot } from '../../shared/ludusaviApiUtils'
+import {
+  getAchieveMeLudusaviConfigDir,
+  type LudusaviCloudProviderId
+} from '../../shared/ludusaviCloudUtils'
+import {
+  writeCloudSynchronizeToLudusaviConfig,
+  writeRclonePathToLudusaviConfig
+} from '../achievement/ludusaviConfigPatch'
 import {
   configureLudusaviBackupQueue,
   getBackupQueueSnapshot,
@@ -117,6 +131,8 @@ function resolveDepotOutputDir(installPath: string, gameName: string): string {
 }
 
 export function registerIpcHandlers(): void {
+  setAchieveMeLudusaviConfigDir(getAchieveMeLudusaviConfigDir(app.getPath('userData')))
+
   configureLudusaviBackupQueue({
     loadSettings,
     getAllGames: () => getAllGames(getDb()),
@@ -222,6 +238,16 @@ export function registerIpcHandlers(): void {
       normalized.rclonePath = ''
     }
     saveSettings(normalized)
+    // Keep AchieveMe-owned Ludusavi config in sync (never the GUI config).
+    try {
+      const configDir = getAchieveMeLudusaviConfigDir(app.getPath('userData'))
+      if (normalized.ludusaviPath.trim() && normalized.rclonePath.trim()) {
+        writeRclonePathToLudusaviConfig(configDir, normalized.rclonePath)
+      }
+      writeCloudSynchronizeToLudusaviConfig(configDir, Boolean(normalized.ludusaviCloudSync))
+    } catch {
+      // Ignore patch failures; cloud Connect will surface errors.
+    }
     syncLoginItemSettings(normalized)
     if (normalized.playtimeTrackingEnabled) {
       startPlaytimeTracker()
@@ -470,6 +496,97 @@ export function registerIpcHandlers(): void {
     if (canceled || filePaths.length === 0) return null
     return validateRclonePath(filePaths[0])
   })
+
+  ipcMain.handle('ludusavi:cloud-status', () => readLudusaviCloudStatus())
+
+  ipcMain.handle(
+    'ludusavi:cloud-set',
+    async (
+      _event,
+      provider: string,
+      customRemoteId?: string
+    ): Promise<{ ok: boolean; error?: string }> => {
+      const settings = loadSettings()
+      const ludusaviRaw = String(settings.ludusaviPath || '').trim()
+      const rcloneRaw = String(settings.rclonePath || '').trim()
+      if (!ludusaviRaw) return { ok: false, error: 'Set ludusavi.exe in Settings first.' }
+      if (!rcloneRaw && provider !== 'none') {
+        return { ok: false, error: 'Set rclone.exe in Settings first.' }
+      }
+
+      let exe: string
+      try {
+        exe = validateLudusaviPath(ludusaviRaw)
+      } catch (err) {
+        return { ok: false, error: err instanceof Error ? err.message : String(err) }
+      }
+
+      const configDir = getAchieveMeLudusaviConfigDir(app.getPath('userData'))
+      setAchieveMeLudusaviConfigDir(configDir)
+
+      try {
+        if (rcloneRaw) {
+          const rcloneExe = validateRclonePath(rcloneRaw)
+          writeRclonePathToLudusaviConfig(configDir, rcloneExe)
+        }
+        writeCloudSynchronizeToLudusaviConfig(configDir, Boolean(settings.ludusaviCloudSync))
+      } catch (err) {
+        return { ok: false, error: err instanceof Error ? err.message : String(err) }
+      }
+
+      const boot = await ensureLudusaviConfigDir(exe)
+      if (!boot.ok) return boot
+
+      const allowed: LudusaviCloudProviderId[] = [
+        'google-drive',
+        'onedrive',
+        'dropbox',
+        'box',
+        'custom',
+        'none'
+      ]
+      const cleanProvider = String(provider || '').trim() as LudusaviCloudProviderId
+      if (!allowed.includes(cleanProvider)) {
+        return { ok: false, error: 'Unknown cloud provider.' }
+      }
+
+      return cloudSetProvider(exe, cleanProvider, customRemoteId)
+    }
+  )
+
+  ipcMain.handle(
+    'ludusavi:cloud-upload',
+    async (): Promise<{ ok: boolean; error?: string }> => {
+      const settings = loadSettings()
+      const ludusaviRaw = String(settings.ludusaviPath || '').trim()
+      if (!ludusaviRaw) return { ok: false, error: 'Set ludusavi.exe in Settings first.' }
+      let exe: string
+      try {
+        exe = validateLudusaviPath(ludusaviRaw)
+      } catch (err) {
+        return { ok: false, error: err instanceof Error ? err.message : String(err) }
+      }
+      setAchieveMeLudusaviConfigDir(getAchieveMeLudusaviConfigDir(app.getPath('userData')))
+      return cloudUpload(exe)
+    }
+  )
+
+  ipcMain.handle(
+    'ludusavi:cloud-download',
+    async (): Promise<{ ok: boolean; error?: string }> => {
+      const settings = loadSettings()
+      const ludusaviRaw = String(settings.ludusaviPath || '').trim()
+      if (!ludusaviRaw) return { ok: false, error: 'Set ludusavi.exe in Settings first.' }
+      let exe: string
+      try {
+        exe = validateLudusaviPath(ludusaviRaw)
+      } catch (err) {
+        return { ok: false, error: err instanceof Error ? err.message : String(err) }
+      }
+      setAchieveMeLudusaviConfigDir(getAchieveMeLudusaviConfigDir(app.getPath('userData')))
+      return cloudDownload(exe)
+    }
+  )
 
   ipcMain.handle('ludusavi:backup-game', (_event, appid: string): void => {
     scheduleGameBackup(String(appid || ''), 'manual')

@@ -148,6 +148,24 @@ contextBridge.exposeInMainWorld('api', {
   browseRclonePath: (): Promise<string | null> =>
     ipcRenderer.invoke('browse-rclone-path'),
 
+  ludusaviCloudStatus: (): Promise<{
+    connected: boolean
+    label: string | null
+    configDir: string
+  }> => ipcRenderer.invoke('ludusavi:cloud-status'),
+
+  ludusaviCloudSet: (
+    provider: string,
+    customRemoteId?: string
+  ): Promise<{ ok: boolean; error?: string }> =>
+    ipcRenderer.invoke('ludusavi:cloud-set', provider, customRemoteId),
+
+  ludusaviCloudUpload: (): Promise<{ ok: boolean; error?: string }> =>
+    ipcRenderer.invoke('ludusavi:cloud-upload'),
+
+  ludusaviCloudDownload: (): Promise<{ ok: boolean; error?: string }> =>
+    ipcRenderer.invoke('ludusavi:cloud-download'),
+
   ludusaviBackupGame: (appid: string): Promise<void> =>
     ipcRenderer.invoke('ludusavi:backup-game', appid),
 

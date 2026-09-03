@@ -57,6 +57,17 @@ declare global {
       runSteamless(exePath: string): Promise<SteamlessRunResult>
       browseLudusaviPath(): Promise<string | null>
       browseRclonePath(): Promise<string | null>
+      ludusaviCloudStatus(): Promise<{
+        connected: boolean
+        label: string | null
+        configDir: string
+      }>
+      ludusaviCloudSet(
+        provider: string,
+        customRemoteId?: string
+      ): Promise<{ ok: boolean; error?: string }>
+      ludusaviCloudUpload(): Promise<{ ok: boolean; error?: string }>
+      ludusaviCloudDownload(): Promise<{ ok: boolean; error?: string }>
       ludusaviBackupGame(appid: string): Promise<void>
       ludusaviListBackups(
         appid: string
