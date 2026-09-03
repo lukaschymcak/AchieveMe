@@ -15,7 +15,8 @@ const {
   TOOLTIPS,
   EMPTY_STATES,
   getEmptyAchievementsMessage,
-  DELETE_CONFIRM
+  DELETE_CONFIRM,
+  SETTINGS_HINTS
 } = helpContent
 
 describe('helpContent', () => {
@@ -99,5 +100,12 @@ describe('helpContent', () => {
       EMPTY_STATES.noAchievementsFetchFailed
     )
     assert.match(EMPTY_STATES.noAchievementsFromSteam, /not published|unreleased|later/i)
+  })
+
+  it('documents Ludusavi save backup settings', () => {
+    assert.match(SETTINGS_HINTS.ludusaviPath, /ludusavi\.exe/i)
+    assert.match(SETTINGS_HINTS.ludusaviAutoBackup, /library/i)
+    assert.match(TOOLTIPS.settingsLudusavi, /library/i)
+    assert.match(TOOLTIPS.settingsLudusavi, /Restore/i)
   })
 })

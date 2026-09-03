@@ -78,6 +78,8 @@ export const TOOLTIPS = {
     'Extra roots scanned for every enabled source. Use for non-standard install paths.',
   settingsSteamless:
     'Link a Steamless release folder that contains Steamless.CLI.exe and Plugins. Used from Tools → Steamless. Not bundled with AchieveMe.',
+  settingsLudusavi:
+    'Link ludusavi.exe to back up emulator save files for library games only. Auto-backup is off by default. Status appears on Game Detail. Restore is not in AchieveMe yet — use Ludusavi itself.',
   settingsDepotDownloader:
     'Hubcap API key authenticates manifest downloads. Default download folder is used when starting a Depot Downloader run from Tools. Import existing folder only needs the Hubcap fetch — it does not download game files.',
   settingsNotifications:
@@ -177,6 +179,12 @@ export const SETTINGS_HINTS = {
     'Opens a demo session recap for a random library game (fake duration and recent unlocks). Works even when session recap is disabled.',
   steamlessFolder:
     'Point to an extracted Steamless release (must include Steamless.CLI.exe and a Plugins folder). Configure here, then unpack games from Tools.',
+  ludusaviPath:
+    'Point to ludusavi.exe (or a folder that contains it). AchieveMe backs up saves only for games in your library — it does not invent save paths.',
+  ludusaviAutoBackup:
+    'When enabled, AchieveMe queues Ludusavi backups for library games on the triggers below. Manual Backup always works when a path is set.',
+  ludusaviBackupNow:
+    'Queues a backup for every game currently in your library. One Ludusavi process runs at a time; status updates on each game detail page.',
   hubcapApiKey:
     'Bearer token from hubcapmanifest.com. Required for private / rate-limited manifest downloads. Leave empty only if your Hubcap account allows unauthenticated access.',
   depotDownloadPath:

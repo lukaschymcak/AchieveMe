@@ -436,6 +436,100 @@ export default function SettingsPage({ page, onNavigate }: Props): React.ReactEl
           </div>
         </section>
 
+        <section className="settings-page__section" aria-labelledby="settings-save-backups">
+          <h2 id="settings-save-backups" className="settings-page__section-title">
+            Save backups
+            <HelpTip content={TOOLTIPS.settingsLudusavi} label="Save backups help" />
+          </h2>
+          <p className="settings-page__lead">{SETTINGS_HINTS.ludusaviPath}</p>
+          <div className="settings-page__folder-add settings-page__folder-add--sound">
+            <AppSearchInput
+              type="text"
+              value={settings.ludusaviPath}
+              onChange={(e) => toggleSetting('ludusaviPath', e.target.value)}
+              placeholder="Path to ludusavi.exe"
+              className="settings-page__input--nested"
+              spellCheck={false}
+            />
+            <Chip
+              onClick={() => {
+                void window.api
+                  .browseLudusaviPath()
+                  .then((picked) => {
+                    if (!picked) return
+                    setSettings((s) => s && { ...s, ludusaviPath: picked })
+                  })
+                  .catch((err: unknown) => {
+                    window.alert(err instanceof Error ? err.message : String(err))
+                  })
+              }}
+            >
+              Browse
+            </Chip>
+            {settings.ludusaviPath.trim() !== '' && (
+              <Chip onClick={() => toggleSetting('ludusaviPath', '')}>Clear</Chip>
+            )}
+          </div>
+          <p className="settings-page__lead" style={{ marginTop: 16 }}>
+            {SETTINGS_HINTS.ludusaviAutoBackup}
+          </p>
+          <div className="settings-page__panel settings-page__sources-grid">
+            <label className="settings-page__source-label">
+              <input
+                type="checkbox"
+                checked={settings.ludusaviAutoBackup}
+                onChange={(e) => toggleSetting('ludusaviAutoBackup', e.target.checked)}
+                className="settings-page__checkbox"
+              />
+              <span className="settings-page__source-name">Auto-backup library saves</span>
+            </label>
+            <label className="settings-page__source-label">
+              <input
+                type="checkbox"
+                checked={settings.ludusaviBackupOnStartup}
+                disabled={!settings.ludusaviAutoBackup}
+                onChange={(e) => toggleSetting('ludusaviBackupOnStartup', e.target.checked)}
+                className="settings-page__checkbox"
+              />
+              <span className="settings-page__source-name">On startup</span>
+            </label>
+            <label className="settings-page__source-label">
+              <input
+                type="checkbox"
+                checked={settings.ludusaviBackupOnSessionEnd}
+                disabled={!settings.ludusaviAutoBackup}
+                onChange={(e) => toggleSetting('ludusaviBackupOnSessionEnd', e.target.checked)}
+                className="settings-page__checkbox"
+              />
+              <span className="settings-page__source-name">After play session</span>
+            </label>
+            <label className="settings-page__source-label">
+              <input
+                type="checkbox"
+                checked={settings.ludusaviBackupOnAddGame}
+                disabled={!settings.ludusaviAutoBackup}
+                onChange={(e) => toggleSetting('ludusaviBackupOnAddGame', e.target.checked)}
+                className="settings-page__checkbox"
+              />
+              <span className="settings-page__source-name">When adding a game</span>
+            </label>
+          </div>
+          <p className="settings-page__note" style={{ marginTop: 12 }}>
+            {SETTINGS_HINTS.ludusaviBackupNow}
+          </p>
+          <Chip
+            onClick={() => {
+              if (!settings.ludusaviPath.trim()) {
+                window.alert('Set the Ludusavi path first, then Save.')
+                return
+              }
+              void window.api.ludusaviBackupLibrary()
+            }}
+          >
+            Backup all library games now
+          </Chip>
+        </section>
+
         <section className="settings-page__section" aria-labelledby="settings-depot">
           <h2 id="settings-depot" className="settings-page__section-title">
             Depot Downloader
