@@ -79,7 +79,7 @@ export const TOOLTIPS = {
   settingsSteamless:
     'Link a Steamless release folder that contains Steamless.CLI.exe and Plugins. Used from Tools → Steamless. Not bundled with AchieveMe.',
   settingsLudusavi:
-    'Link ludusavi.exe to back up or restore emulator save files for library games only. Auto-backup is off by default. On Game Detail, the floppy icon opens Back up saves (keeps up to 5 full snapshots when saves change) or Install backup (pick a snapshot; restore overwrites current saves). Bulk Settings backup is backup-only.',
+    'Link ludusavi.exe to back up or restore emulator save files for library games only. Auto-backup is off by default. On Game Detail, the floppy icon opens Back up saves (keeps up to 5 full snapshots when saves change) or Install backup (pick a snapshot; restore overwrites current saves). Optional rclone cloud: AchieveMe uses its own Ludusavi config under app userData (not your Ludusavi GUI). Connect a provider, toggle Upload after backup, and resolve conflicts only with Upload / Download. Bulk Settings backup is backup-only.',
   settingsDepotDownloader:
     'Hubcap API key authenticates manifest downloads. Default download folder is used when starting a Depot Downloader run from Tools. Import existing folder only needs the Hubcap fetch — it does not download game files.',
   settingsNotifications:
@@ -181,6 +181,14 @@ export const SETTINGS_HINTS = {
     'Point to an extracted Steamless release (must include Steamless.CLI.exe and a Plugins folder). Configure here, then unpack games from Tools.',
   ludusaviPath:
     'Point to ludusavi.exe (or a folder that contains it). AchieveMe backs up saves only for games in your library — it does not invent save paths.',
+  rclonePath:
+    'Point to rclone.exe for Ludusavi cloud remotes. AchieveMe writes rclone’s path only into its isolated Ludusavi config under app userData — your Ludusavi GUI config is never rewritten.',
+  ludusaviCloudProvider:
+    'Pick Google Drive, OneDrive, Dropbox, Box, a custom rclone remote, or None. Connect runs ludusavi cloud set (browser OAuth for common providers).',
+  ludusaviCloudSync:
+    'Upload after backup — when on, AchieveMe backups use --cloud-sync; when off, --no-cloud-sync. Restore and Install picker stay local-only.',
+  ludusaviCloudManual:
+    'Upload to cloud / Download from cloud overwrite the other side. Use them to resolve conflicts — AchieveMe never auto-resolves.',
   ludusaviAutoBackup:
     'When enabled, AchieveMe queues Ludusavi backups for library games on the triggers below. Manual Backup always works when a path is set.',
   ludusaviBackupNow:
@@ -363,7 +371,8 @@ export const HELP_SECTIONS: HelpSection[] = [
     paragraphs: [
       'Link ludusavi.exe under Settings → Save backups (not bundled with AchieveMe). AchieveMe backs up only games already in your library — it never invents save paths.',
       'Optional auto-backup runs on startup, after a tracked play session, or when adding a game. Use Backup all library games now for a full library backup only. On Game Detail, the floppy icon opens a choice: Back up saves (AchieveMe passes --full-limit 5 so Ludusavi keeps up to five full snapshots when save files change; identical saves do not create a new snapshot) or Install backup (lists up to five newest snapshots from Ludusavi; restore overwrites current saves with the one you pick).',
-      'Matching uses Ludusavi find --steam-id, then backup or restore with --force --api --no-cloud-sync (and --backup <id> when installing a chosen snapshot). One Ludusavi backup/restore process at a time. Retention and folders stay with Ludusavi; AchieveMe only stores status timestamps in SQLite.'
+      'Matching uses Ludusavi find --steam-id, then backup or restore with --force --api. Backups use --cloud-sync only when Upload after backup is enabled; otherwise --no-cloud-sync. Restore and Install backup stay local (--no-cloud-sync and --backup <id> when installing a chosen snapshot). One Ludusavi backup/restore process at a time. Retention and folders stay with Ludusavi; AchieveMe only stores status timestamps in SQLite.',
+      'Cloud (optional): link rclone.exe, pick a provider, and Connect. AchieveMe keeps a separate Ludusavi config under its app userData folder — it does not rewrite your Ludusavi GUI config.yaml. If local and cloud disagree, AchieveMe shows a conflict note and never auto-picks a side; use Upload to cloud or Download from cloud in Settings (with overwrite confirm).'
     ]
   },
   {
