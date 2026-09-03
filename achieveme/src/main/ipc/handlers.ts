@@ -51,7 +51,8 @@ import type {
   ManifestCheckResult,
   ManifestCheckGameResult,
   NewsPayload,
-  GetNewsOptions
+  GetNewsOptions,
+  ImportExistingInstallRequest
 } from '../../shared/types'
 import { getNews } from '../achievement/steamNewsService'
 import {
@@ -75,6 +76,7 @@ import {
   startDownload
 } from '../achievement/depotRunnerService'
 import { scanSteamApiDll } from '../achievement/depotScanUtils'
+import { importExistingInstall } from '../achievement/libraryImportService'
 import {
   checkGameUpdate,
   runManifestChecker,
@@ -605,6 +607,13 @@ export function registerIpcHandlers(): void {
 
       // Repair only — do not change manifest_gids or update_status
       notifyLibraryUpdated(clean)
+    }
+  )
+
+  ipcMain.handle(
+    'library:import-install',
+    (_event, request: ImportExistingInstallRequest): void => {
+      importExistingInstall(getDb(), request)
     }
   )
 }

@@ -20,7 +20,8 @@ import type {
   ManifestCheckResult,
   ManifestCheckGameResult,
   NewsPayload,
-  GetNewsOptions
+  GetNewsOptions,
+  ImportExistingInstallRequest
 } from '../../shared/types'
 
 declare global {
@@ -67,6 +68,7 @@ declare global {
         gameName?: string,
         installPath?: string
       ): Promise<void>
+      importExistingInstall(request: ImportExistingInstallRequest): Promise<void>
       manifestCheckGame(appid: string): Promise<ManifestCheckGameResult>
       manifestGetGameData(appid: string, forceRefresh: boolean): Promise<GameData>
       manifestUpdateGame(

@@ -1,5 +1,29 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
-import type { ProfileStats, GameSummary, GameDetail, AppSettings, SteamSearchResult, GoldbergApplyRequest, SteamApiDllInfo, LibraryUpdatedPayload, SessionRecapPayload, GameExecutable, ResolveGameExecutablesResult, SetGameLaunchConfigRequest, SteamlessRunResult, DepotSearchResponse, GameData, DepotDownloadStartRequest, DepotCancelMode, DepotProgressEvent, ManifestCheckResult, ManifestCheckGameResult, NewsPayload, GetNewsOptions } from '../shared/types'
+import type {
+  ProfileStats,
+  GameSummary,
+  GameDetail,
+  AppSettings,
+  SteamSearchResult,
+  GoldbergApplyRequest,
+  SteamApiDllInfo,
+  LibraryUpdatedPayload,
+  SessionRecapPayload,
+  GameExecutable,
+  ResolveGameExecutablesResult,
+  SetGameLaunchConfigRequest,
+  SteamlessRunResult,
+  DepotSearchResponse,
+  GameData,
+  DepotDownloadStartRequest,
+  DepotCancelMode,
+  DepotProgressEvent,
+  ManifestCheckResult,
+  ManifestCheckGameResult,
+  NewsPayload,
+  GetNewsOptions,
+  ImportExistingInstallRequest
+} from '../shared/types'
 
 const libraryUpdatedCallbacks = new Set<(payload: LibraryUpdatedPayload) => void>()
 
@@ -148,6 +172,9 @@ contextBridge.exposeInMainWorld('api', {
     installPath?: string
   ): Promise<void> =>
     ipcRenderer.invoke('manifest:save-gids', appid, gids, gameName, installPath),
+
+  importExistingInstall: (request: ImportExistingInstallRequest): Promise<void> =>
+    ipcRenderer.invoke('library:import-install', request),
 
   manifestCheckGame: (appid: string): Promise<ManifestCheckGameResult> =>
     ipcRenderer.invoke('manifest:check-game', appid),
