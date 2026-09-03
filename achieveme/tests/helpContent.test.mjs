@@ -8,8 +8,15 @@ const helpContent = await import(
   pathToFileURL(path.join(rootDir, '../src/renderer/src/lib/helpContent.ts')).href
 )
 
-const { EMULATOR_SOURCES, HELP_SECTIONS, getSourceHelp, TOOLTIPS, EMPTY_STATES, getEmptyAchievementsMessage } =
-  helpContent
+const {
+  EMULATOR_SOURCES,
+  HELP_SECTIONS,
+  getSourceHelp,
+  TOOLTIPS,
+  EMPTY_STATES,
+  getEmptyAchievementsMessage,
+  DELETE_CONFIRM
+} = helpContent
 
 describe('helpContent', () => {
   it('lists every emulator source with path and file', () => {
@@ -42,6 +49,20 @@ describe('helpContent', () => {
     assert.ok(ids.includes('play-sessions'))
     assert.ok(ids.includes('news'))
     assert.ok(ids.includes('faq'))
+    assert.ok(ids.includes('delete'))
+  })
+
+  it('DELETE_CONFIRM mentions ignore list for leftover CODEX/RUNE', () => {
+    assert.match(DELETE_CONFIRM, /ignored/i)
+    assert.match(DELETE_CONFIRM, /CODEX|RUNE/i)
+  })
+
+  it('Removing games section documents ignore list', () => {
+    const section = HELP_SECTIONS.find((s) => s.id === 'delete')
+    assert.ok(section)
+    const body = (section.paragraphs ?? []).join(' ')
+    assert.match(body, /ignore/i)
+    assert.match(body, /CODEX|RUNE/i)
   })
 
   it('defines news refresh tooltip and empty states', () => {

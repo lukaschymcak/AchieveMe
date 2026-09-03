@@ -3,7 +3,7 @@ import path from 'node:path'
 import type { AppSettings } from '../../shared/types'
 import { shouldPruneLibraryGame } from '../../shared/libraryRetentionUtils'
 import { getDb } from '../db/database'
-import { deleteGame, getAllGames } from '../db/repository'
+import { deleteGame, getAllGames, getIgnoredAppids, isAppidIgnored } from '../db/repository'
 import { getWatchRoots, scanAllSources } from './discoveryService'
 import { processAppId } from './processAppId'
 import { regenerateProfileStats } from './profileStatsService'
@@ -25,6 +25,8 @@ function extractAppId(filePath: string, root: string): string | null {
 }
 
 function scheduleProcess(appid: string, settings: AppSettings): void {
+  if (isAppidIgnored(getDb(), appid)) return
+
   const existing = debounceTimers.get(appid)
   if (existing) clearTimeout(existing)
 
@@ -68,8 +70,9 @@ export function pruneOrphanedGames(settings: AppSettings): void {
 async function runInitialScan(settings: AppSettings): Promise<void> {
   pruneOrphanedGames(settings)
 
+  const ignored = new Set(getIgnoredAppids(getDb()))
   const discovered = scanAllSources(settings)
-  const appids = [...new Set(discovered.map((d) => d.appid))]
+  const appids = [...new Set(discovered.map((d) => d.appid))].filter((id) => !ignored.has(id))
 
   for (const appid of appids) {
     await processAppId(appid, settings)

@@ -12,7 +12,9 @@ import {
   deleteGame,
   saveManifestGids,
   saveUpdateStatus,
-  deleteCacheEntry
+  deleteCacheEntry,
+  ignoreAppid,
+  getIgnoredAppids
 } from '../db/repository'
 import { parseManifestGidsJson, pickManifestGids } from '../../shared/manifestUpdateUtils'
 import { getStoreCoverUrl } from '../achievement/steamApiClient'
@@ -184,17 +186,20 @@ export function registerIpcHandlers(): void {
   ipcMain.handle('refresh', async (): Promise<void> => {
     const settings = loadSettings()
     const db = getDb()
+    const ignored = new Set(getIgnoredAppids(db))
 
     pruneOrphanedGames(settings)
 
     const discovered = scanAllSources(settings)
-    const appids = [...new Set(discovered.map((d) => d.appid))]
+    const appids = [...new Set(discovered.map((d) => d.appid))].filter(
+      (id) => !ignored.has(id)
+    )
     for (const appid of appids) {
       await processAppId(appid, settings, true, true)
     }
     const dbGames = getAllGames(db)
     for (const game of dbGames) {
-      if (!appids.includes(game.appid)) {
+      if (!appids.includes(game.appid) && !ignored.has(game.appid)) {
         await processAppId(game.appid, settings, true, true)
       }
     }
@@ -219,6 +224,7 @@ export function registerIpcHandlers(): void {
     }
 
     deleteGame(db, appid)
+    ignoreAppid(db, appid)
     pruneAppImages(appid)
     deleteCacheEntry(db, '__steam_news__', `news:${appid}`)
     regenerateProfileStats(db)

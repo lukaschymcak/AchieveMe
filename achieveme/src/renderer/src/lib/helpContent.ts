@@ -153,7 +153,7 @@ export const LONG_PRESS_HINT = {
 } as const
 
 export const DELETE_CONFIRM =
-  'Permanently removes this game from the library and deletes its Goldberg/GSE save folder from disk. CODEX and other read-only sources are not deleted.'
+  'Removes this game from the library and deletes its Goldberg/GSE save folder. The AppID is ignored so leftover CODEX/RUNE saves do not re-add it. Those read-only files are not deleted.'
 
 export const SETTINGS_HINTS = {
   apiKey:
@@ -353,8 +353,10 @@ export const HELP_SECTIONS: HelpSection[] = [
     title: 'Removing games',
     paragraphs: [
       'Long-press → Delete removes the library entry and deletes Goldberg/GSE save folders from disk.',
+      'The AppID is added to an ignore list so leftover CODEX/RUNE (or other) saves do not re-add the game on Refresh. Those read-only files are not deleted.',
+      'Add Game, Depot Downloader, or Import existing clears the ignore so the title can return.',
       'If you delete save files externally and Refresh, the game disappears from the library but no extra disk delete runs.',
-      'Disabling a source and Refreshing removes games only found via that source.'
+      'Disabling a source and Refreshing removes games only found via that source (unless they have depot GIDs or an install path).'
     ]
   },
   {

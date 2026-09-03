@@ -139,6 +139,7 @@ export function saveManifestGids(
         ELSE games.install_path
       END
   `).run(cleanAppid, name, json, iPath)
+  unignoreAppid(db, cleanAppid)
 }
 
 /**
