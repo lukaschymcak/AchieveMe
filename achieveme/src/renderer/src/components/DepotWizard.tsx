@@ -31,7 +31,17 @@ const STEP_TITLES: Partial<Record<DepotPhase, string>> = {
   apply: 'Depot Downloader — Apply Goldberg',
   complete: 'Depot Downloader — Done',
   canceled: 'Depot Downloader — Canceled',
-  failed: 'Depot Downloader — Failed'
+  failed: 'Depot Downloader — Failed',
+  importing: 'Import existing — Adding'
+}
+
+const IMPORT_STEP_TITLES: Partial<Record<DepotPhase, string>> = {
+  search: 'Import existing — Search',
+  fetching: 'Import existing — Manifest',
+  depots: 'Import existing — Folder & depots',
+  importing: 'Import existing — Adding',
+  complete: 'Import existing — Done',
+  failed: 'Import existing — Failed'
 }
 
 function formatBytes(bytes: number): string {
@@ -169,13 +179,15 @@ export default function DepotWizard({
     setErrorMsg('')
     setFetchPct(0)
     const manifestChannel = `manifest:${crypto.randomUUID()}`
+    const importMode = Boolean(local.importMode)
     const nextSession = createEmptySession({
       channelId: `download:${crypto.randomUUID()}`,
       appId: result.gameId,
       gameName: result.gameName,
       headerImageUrl: result.headerImageUrl,
       phase: 'fetching',
-      status: 'Fetching manifest…'
+      status: 'Fetching manifest…',
+      importMode
     })
     onSessionChange(nextSession)
 
@@ -188,9 +200,12 @@ export default function DepotWizard({
       const gameData = await window.api.depotProcessZip(zipPath)
       gameData.headerImageUrl = result.headerImageUrl
       const settings = await window.api.getSettings()
-      const defaultOut = settings.depotDownloadPath.trim()
+      const defaultOut = importMode ? '' : settings.depotDownloadPath.trim()
       const nextSelected: Record<string, boolean> = {}
-      for (const id of Object.keys(gameData.depots)) nextSelected[id] = true
+      for (const id of Object.keys(gameData.depots)) {
+        // Import: user must tick depots they actually have. Download: pre-select all.
+        nextSelected[id] = !importMode
+      }
       setSelected(nextSelected)
       setOutputPath(defaultOut)
       onSessionChange({
@@ -198,9 +213,10 @@ export default function DepotWizard({
         phase: 'depots',
         gameData,
         zipPath,
-        selectedDepots: Object.keys(gameData.depots),
+        selectedDepots: Object.keys(nextSelected).filter((id) => nextSelected[id]),
         outputPath: defaultOut,
-        status: 'Select depots'
+        status: importMode ? 'Select folder and depots' : 'Select depots',
+        importMode
       })
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err)
@@ -209,7 +225,8 @@ export default function DepotWizard({
         ...nextSession,
         phase: 'failed',
         error: message,
-        status: 'Failed'
+        status: 'Failed',
+        importMode
       })
     } finally {
       window.api.offDepotLog(manifestChannel)
@@ -281,9 +298,8 @@ export default function DepotWizard({
         selectedDepots: depotIds,
         outputPath: out,
         pct: 100,
-        status: 'Complete',
-        speedBps: null,
-        etaSec: null
+        status: 'Download complete',
+        error: undefined
       })
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err)
@@ -305,6 +321,64 @@ export default function DepotWizard({
           error: message
         })
       }
+    }
+  }
+
+  async function handleImportExisting(): Promise<void> {
+    if (!local.gameData) return
+    const depotIds = Object.keys(selected).filter((id) => selected[id])
+    if (depotIds.length === 0) {
+      setErrorMsg('Select at least one depot.')
+      return
+    }
+    const out = outputPath.trim()
+    if (!out) {
+      setErrorMsg('Select the existing install folder.')
+      return
+    }
+
+    const selectedGids = pickManifestGids(local.gameData.manifests ?? {}, depotIds)
+    if (Object.keys(selectedGids).length === 0) {
+      setErrorMsg('Select at least one depot with a manifest GID.')
+      return
+    }
+
+    setErrorMsg('')
+    onSessionChange({
+      ...local,
+      phase: 'importing',
+      selectedDepots: depotIds,
+      outputPath: out,
+      status: 'Adding to library…',
+      error: undefined,
+      importMode: true
+    })
+
+    try {
+      await window.api.importExistingInstall({
+        appid: local.appId || local.gameData.appId,
+        gameName: local.gameName || local.gameData.gameName,
+        installPath: out,
+        gids: selectedGids
+      })
+      onSessionChange({
+        ...local,
+        phase: 'complete',
+        selectedDepots: depotIds,
+        outputPath: out,
+        status: 'Game added',
+        importMode: true
+      })
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err)
+      setErrorMsg(message)
+      onSessionChange({
+        ...local,
+        phase: 'failed',
+        status: 'Failed',
+        error: message,
+        importMode: true
+      })
     }
   }
 
@@ -373,7 +447,10 @@ export default function DepotWizard({
   }
 
   function handleDone(): void {
-    onGameAdded?.()
+    // Import already notified via library:import-install — do not full-refresh.
+    if (!local.importMode) {
+      onGameAdded?.()
+    }
     onSessionChange(null)
     onClose()
   }
@@ -397,7 +474,9 @@ export default function DepotWizard({
     )
   }, [local.gameData, selectedDepotIds])
 
-  const title = STEP_TITLES[phase] ?? 'Depot Downloader'
+  const importMode = Boolean(local.importMode)
+  const titleMap = importMode ? IMPORT_STEP_TITLES : STEP_TITLES
+  const title = titleMap[phase] ?? STEP_TITLES[phase] ?? (importMode ? 'Import existing' : 'Depot Downloader')
 
   return (
     <div className="depot-wizard-backdrop" role="presentation">
@@ -435,6 +514,7 @@ export default function DepotWizard({
               results={results}
               selected={selectedResult}
               onSelect={(r) => void handleSelectGame(r)}
+              importMode={importMode}
             />
           )}
 
@@ -462,7 +542,29 @@ export default function DepotWizard({
               outputPath={outputPath}
               onBrowseOutput={() => void handleBrowseOutput()}
               selectedSize={selectedSize}
+              importMode={importMode}
             />
+          )}
+
+          {phase === 'importing' && (
+            <div className="depot-wizard__panel">
+              <p className="depot-wizard__help">Adding {local.gameName} to the library…</p>
+            </div>
+          )}
+
+          {phase === 'complete' && importMode && (
+            <div className="depot-wizard__panel">
+              <p className="depot-wizard__ok">Game added to library.</p>
+              <p className="depot-wizard__help">
+                Version checks use the selected depot GIDs. Set up achievements from Game Detail if
+                needed.
+              </p>
+              {local.outputPath && (
+                <p className="depot-wizard__path" title={local.outputPath}>
+                  {local.outputPath}
+                </p>
+              )}
+            </div>
           )}
 
           {(phase === 'downloading' || phase === 'canceled' || phase === 'failed') && (
@@ -533,7 +635,7 @@ export default function DepotWizard({
             <>
               <Chip
                 onClick={() => {
-                  onSessionChange(createEmptySession())
+                  onSessionChange(createEmptySession({ importMode: local.importMode }))
                   setResults([])
                   setSelectedResult(null)
                   setQuery('')
@@ -541,15 +643,27 @@ export default function DepotWizard({
               >
                 Back
               </Chip>
-              <Chip
-                variant="action"
-                disabled={selectedDepotIds.length === 0}
-                onClick={() => void handleStartDownload()}
-              >
-                Start download
-              </Chip>
+              {importMode ? (
+                <Chip
+                  variant="action"
+                  disabled={selectedDepotIds.length === 0 || !outputPath.trim()}
+                  onClick={() => void handleImportExisting()}
+                >
+                  Add to library
+                </Chip>
+              ) : (
+                <Chip
+                  variant="action"
+                  disabled={selectedDepotIds.length === 0}
+                  onClick={() => void handleStartDownload()}
+                >
+                  Start download
+                </Chip>
+              )}
             </>
           )}
+
+          {phase === 'importing' && <Chip disabled>Adding…</Chip>}
 
           {phase === 'prompt' && (
             <>
@@ -611,7 +725,7 @@ export default function DepotWizard({
             <>
               <Chip
                 onClick={() => {
-                  onSessionChange(createEmptySession())
+                  onSessionChange(createEmptySession({ importMode: local.importMode }))
                   setErrorMsg('')
                 }}
               >
@@ -634,7 +748,8 @@ function SearchStep({
   searching,
   results,
   selected,
-  onSelect
+  onSelect,
+  importMode = false
 }: {
   query: string
   onQueryChange: (v: string) => void
@@ -642,12 +757,14 @@ function SearchStep({
   results: DepotSearchResult[]
   selected: DepotSearchResult | null
   onSelect: (r: DepotSearchResult) => void
+  importMode?: boolean
 }): React.ReactElement {
   return (
     <div className="depot-wizard__panel depot-wizard__panel--fill">
       <p className="depot-wizard__help">
-        Search Steam for a game, then AchieveMe fetches its Hubcap manifest and downloads the
-        selected depots with DepotDownloader.
+        {importMode
+          ? 'Search Steam for a game already on disk. AchieveMe fetches its Hubcap manifest only (no download), then you pick the install folder and depots.'
+          : 'Search Steam for a game, then AchieveMe fetches its Hubcap manifest and downloads the selected depots with DepotDownloader.'}
       </p>
       <div className="depot-wizard__search-wrap">
         <AppSearchInput
@@ -700,7 +817,8 @@ function DepotsStep({
   onToggle,
   outputPath,
   onBrowseOutput,
-  selectedSize
+  selectedSize,
+  importMode = false
 }: {
   gameData: GameData
   headerImageUrl?: string
@@ -709,6 +827,7 @@ function DepotsStep({
   outputPath: string
   onBrowseOutput: () => void
   selectedSize: number
+  importMode?: boolean
 }): React.ReactElement {
   const depotIds = Object.keys(gameData.depots)
   return (
@@ -724,7 +843,11 @@ function DepotsStep({
           <div className="depot-wizard__game-meta">AppID {gameData.appId}</div>
         </div>
       </div>
-      <p className="depot-wizard__help">Select depots to download ({depotIds.length} available).</p>
+      <p className="depot-wizard__help">
+        {importMode
+          ? `Select the install folder on disk and tick the depots you have (${depotIds.length} available). No files are downloaded.`
+          : `Select depots to download (${depotIds.length} available).`}
+      </p>
       <ul className="depot-wizard__depot-list">
         {depotIds.map((id) => {
           const depot = gameData.depots[id]
@@ -754,8 +877,12 @@ function DepotsStep({
           className="depot-wizard__output-input"
           readOnly
           value={outputPath}
-          placeholder="Output folder (browse to choose)"
-          aria-label="Output folder"
+          placeholder={
+            importMode
+              ? 'Existing install folder (required)'
+              : 'Output folder (browse to choose)'
+          }
+          aria-label={importMode ? 'Install folder' : 'Output folder'}
         />
         <Chip onClick={onBrowseOutput}>Browse…</Chip>
       </div>

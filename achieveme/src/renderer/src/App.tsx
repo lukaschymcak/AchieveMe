@@ -369,6 +369,24 @@ export default function App(): React.ReactElement {
               page={page}
               onNavigate={setPage}
               onOpenDepotWizard={() => setDepotWizardOpen(true)}
+              onOpenImportWizard={() => {
+                handleDepotSessionChange({
+                  channelId: `download:${crypto.randomUUID()}`,
+                  appId: '',
+                  gameName: '',
+                  phase: 'search',
+                  importMode: true,
+                  gameData: null,
+                  selectedDepots: [],
+                  outputPath: '',
+                  logs: [],
+                  pct: 0,
+                  speedBps: null,
+                  etaSec: null,
+                  status: ''
+                })
+                setDepotWizardOpen(true)
+              }}
               depotSession={activeDepotSession}
             />
           </main>

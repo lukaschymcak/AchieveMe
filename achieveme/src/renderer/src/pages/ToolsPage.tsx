@@ -8,6 +8,7 @@ interface Props {
   page: AppPage
   onNavigate: (page: AppPage) => void
   onOpenDepotWizard: () => void
+  onOpenImportWizard: () => void
   depotSession: ActiveDepotSession | null
 }
 
@@ -15,6 +16,7 @@ export default function ToolsPage({
   page,
   onNavigate,
   onOpenDepotWizard,
+  onOpenImportWizard,
   depotSession
 }: Props): React.ReactElement {
   const [settings, setSettings] = useState<AppSettings | null>(null)
@@ -101,6 +103,7 @@ export default function ToolsPage({
               <Chip variant="action" onClick={onOpenDepotWizard}>
                 {depotActive ? 'Reopen wizard' : 'Open wizard'}
               </Chip>
+              <Chip onClick={onOpenImportWizard}>Import existing folder</Chip>
               <Chip onClick={() => onNavigate('settings')}>Open Settings</Chip>
             </div>
           </article>
