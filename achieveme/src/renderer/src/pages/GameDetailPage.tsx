@@ -13,6 +13,10 @@ import { parseManifestGidsJson } from '../../../shared/manifestUpdateUtils'
 import { formatPlaytimePlayed } from '../../../shared/playtimeUtils'
 import { cacheHeroUrl } from '../../../shared/imageCacheUrls'
 import { formatBackupStatusLabel } from '../../../shared/backupStatusUtils.ts'
+import {
+  formatBackupRelativeTime,
+  type LudusaviSnapshot
+} from '../../../shared/ludusaviApiUtils.ts'
 import HelpTip from '../components/HelpTip'
 import { TOOLTIPS, getEmptyAchievementsMessage } from '../lib/helpContent'
 import {
@@ -78,6 +82,54 @@ function formatUnlockDate(unixSeconds: number): string | null {
     day: 'numeric',
     year: 'numeric'
   })
+}
+
+/**
+ * Modal line for last Ludusavi backup time from stored game fields.
+ *
+ * @param status - `backup_status` from the game row.
+ * @param backupAt - Unix seconds of last attempt.
+ */
+function formatLastBackupModalLine(status: string, backupAt: number): string {
+  const clean = String(status || '').trim().toLowerCase()
+  const at = Number(backupAt) || 0
+  if (clean === 'ok' && at > 0) {
+    const absolute = formatUnlockDate(at)
+    const relative = formatBackupRelativeTime(at, Math.floor(Date.now() / 1000))
+    return `Last backup: ${absolute}${relative ? ` · ${relative}` : ''}`
+  }
+  if (clean === 'running') return 'Backup in progress…'
+  if (clean === 'failed' && at > 0) {
+    const absolute = formatUnlockDate(at)
+    return `Last attempt failed${absolute ? ` · ${absolute}` : ''}`
+  }
+  if (clean === 'missing') return 'Not in Ludusavi — no backup on record.'
+  return 'No backup on record yet.'
+}
+
+/**
+ * Formats a Ludusavi snapshot row for the Install picker.
+ *
+ * @param snap - Snapshot from `ludusaviListBackups`.
+ */
+function formatSnapshotPickerLabel(snap: LudusaviSnapshot): string {
+  const ms =
+    snap.whenMs > 0
+      ? snap.whenMs
+      : (() => {
+          const parsed = Date.parse(snap.when)
+          return Number.isFinite(parsed) ? parsed : 0
+        })()
+  if (ms <= 0) return snap.when.trim() || snap.id
+  const absolute = new Date(ms).toLocaleString(undefined, {
+    dateStyle: 'medium',
+    timeStyle: 'short'
+  })
+  const relative = formatBackupRelativeTime(
+    Math.floor(ms / 1000),
+    Math.floor(Date.now() / 1000)
+  )
+  return relative ? `${absolute} · ${relative}` : absolute
 }
 
 function CompletionRing({
@@ -471,7 +523,47 @@ export default function GameDetailPage({
   const [depotPickerLoading, setDepotPickerLoading] = useState(false)
   const [depotPickerSelected, setDepotPickerSelected] = useState<Record<string, boolean>>({})
   const [saveModalOpen, setSaveModalOpen] = useState(false)
+  const [saveModalStep, setSaveModalStep] = useState<'main' | 'pick'>('main')
+  const [saveSnapshots, setSaveSnapshots] = useState<LudusaviSnapshot[]>([])
+  const [saveSnapshotsLoading, setSaveSnapshotsLoading] = useState(false)
+  const [saveSnapshotsError, setSaveSnapshotsError] = useState('')
+  const [selectedBackupId, setSelectedBackupId] = useState('')
   const [ludusaviPathLinked, setLudusaviPathLinked] = useState(false)
+
+  const closeSaveModal = (): void => {
+    setSaveModalOpen(false)
+    setSaveModalStep('main')
+    setSaveSnapshots([])
+    setSaveSnapshotsLoading(false)
+    setSaveSnapshotsError('')
+    setSelectedBackupId('')
+  }
+
+  const openSaveSnapshotPicker = (): void => {
+    setSaveModalStep('pick')
+    setSaveSnapshots([])
+    setSaveSnapshotsError('')
+    setSelectedBackupId('')
+    setSaveSnapshotsLoading(true)
+    void window.api
+      .ludusaviListBackups(appid)
+      .then((result) => {
+        if (typeof result === 'string') {
+          setSaveSnapshotsError(result)
+          setSaveSnapshots([])
+          return
+        }
+        setSaveSnapshots(result.snapshots)
+        setSelectedBackupId(result.snapshots[0]?.id ?? '')
+      })
+      .catch((err) => {
+        setSaveSnapshotsError(err instanceof Error ? err.message : String(err))
+        setSaveSnapshots([])
+      })
+      .finally(() => {
+        setSaveSnapshotsLoading(false)
+      })
+  }
 
   const sessionForGame =
     activeUpdateSession?.appid === appid ? activeUpdateSession : null
@@ -810,7 +902,7 @@ export default function GameDetailPage({
     setUpdateStatus('')
     setUpdateBuildId(undefined)
     setUpdateError('')
-    setSaveModalOpen(false)
+    closeSaveModal()
     window.api
       .getSettings()
       .then((settings) => {
@@ -1000,7 +1092,14 @@ export default function GameDetailPage({
                       <button
                         type="button"
                         className="game-detail__pill game-detail__save-btn"
-                        onClick={() => setSaveModalOpen(true)}
+                        onClick={() => {
+                          setSaveModalStep('main')
+                          setSaveSnapshots([])
+                          setSaveSnapshotsError('')
+                          setSelectedBackupId('')
+                          setSaveSnapshotsLoading(false)
+                          setSaveModalOpen(true)
+                        }}
                         disabled={game?.backup_status === 'running'}
                         aria-label={
                           game?.backup_status === 'running'
@@ -1289,7 +1388,7 @@ export default function GameDetailPage({
         <div
           className="game-detail__exe-modal-backdrop"
           onClick={(e) => {
-            if (e.target === e.currentTarget) setSaveModalOpen(false)
+            if (e.target === e.currentTarget) closeSaveModal()
           }}
         >
           <div
@@ -1300,60 +1399,143 @@ export default function GameDetailPage({
           >
             <div className="game-detail__exe-modal-header">
               <h3 id="game-detail-save-modal-title" className="game-detail__exe-modal-title">
-                Save backup
+                {saveModalStep === 'pick' ? 'Choose snapshot' : 'Save backup'}
               </h3>
               <button
                 type="button"
                 className="game-detail__pill"
-                onClick={() => setSaveModalOpen(false)}
+                onClick={closeSaveModal}
                 aria-label="Close"
               >
                 ×
               </button>
             </div>
-            <p className="game-detail__exe-modal-help">
-              Back up copies this game&apos;s saves into Ludusavi. Install backup restores the
-              latest Ludusavi backup onto disk and overwrites current save files.
-            </p>
-            <div className="game-detail__exe-confirm-actions">
-              <button
-                type="button"
-                className="game-detail__pill game-detail__play"
-                disabled={!ludusaviPathLinked || game?.backup_status === 'running'}
-                onClick={() => {
-                  setSaveModalOpen(false)
-                  void window.api.ludusaviBackupGame(appid)
-                }}
-              >
-                Back up saves
-              </button>
-              <button
-                type="button"
-                className="game-detail__pill"
-                disabled={
-                  !ludusaviPathLinked ||
-                  game?.backup_status === 'running' ||
-                  game?.backup_status === 'missing'
-                }
-                onClick={() => {
-                  setSaveModalOpen(false)
-                  void window.api.ludusaviRestoreGame(appid)
-                }}
-              >
-                Install backup
-              </button>
-              <button
-                type="button"
-                className="game-detail__pill"
-                onClick={() => setSaveModalOpen(false)}
-              >
-                Cancel
-              </button>
-            </div>
-            {!ludusaviPathLinked && (
-              <p className="game-detail__exe-modal-help" role="status">
-                Link ludusavi.exe in Settings → Save backups first.
-              </p>
+            {saveModalStep === 'main' ? (
+              <>
+                <p className="game-detail__exe-modal-help">
+                  Back up copies this game&apos;s saves into Ludusavi (keeps up to 5 full
+                  snapshots). Install backup lets you pick a snapshot and overwrites current save
+                  files with that point in time.
+                </p>
+                <p className="game-detail__exe-modal-help" role="status">
+                  {formatLastBackupModalLine(game?.backup_status ?? '', game?.backup_at ?? 0)}
+                </p>
+                <div className="game-detail__exe-confirm-actions">
+                  <button
+                    type="button"
+                    className="game-detail__pill game-detail__play"
+                    disabled={!ludusaviPathLinked || game?.backup_status === 'running'}
+                    onClick={() => {
+                      closeSaveModal()
+                      void window.api.ludusaviBackupGame(appid)
+                    }}
+                  >
+                    Back up saves
+                  </button>
+                  <button
+                    type="button"
+                    className="game-detail__pill"
+                    disabled={
+                      !ludusaviPathLinked ||
+                      game?.backup_status === 'running' ||
+                      game?.backup_status === 'missing'
+                    }
+                    onClick={openSaveSnapshotPicker}
+                  >
+                    Install backup
+                  </button>
+                  <button type="button" className="game-detail__pill" onClick={closeSaveModal}>
+                    Cancel
+                  </button>
+                </div>
+                {!ludusaviPathLinked && (
+                  <p className="game-detail__exe-modal-help" role="status">
+                    Link ludusavi.exe in Settings → Save backups first.
+                  </p>
+                )}
+              </>
+            ) : (
+              <>
+                <p className="game-detail__exe-modal-help">
+                  Install overwrites current saves with the selected Ludusavi snapshot (newest
+                  first, up to 5).
+                </p>
+                {saveSnapshotsLoading ? (
+                  <p className="game-detail__exe-modal-help" role="status">
+                    Loading snapshots…
+                  </p>
+                ) : saveSnapshotsError ? (
+                  <p className="game-detail__exe-modal-error" role="alert">
+                    {saveSnapshotsError}
+                  </p>
+                ) : saveSnapshots.length === 0 ? (
+                  <p className="game-detail__exe-modal-help" role="status">
+                    No Ludusavi snapshots found for this game.
+                  </p>
+                ) : (
+                  <ul className="game-detail__save-snapshot-list" role="listbox" aria-label="Snapshots">
+                    {saveSnapshots.map((snap) => {
+                      const selected = selectedBackupId === snap.id
+                      return (
+                        <li key={snap.id}>
+                          <label
+                            className={
+                              selected
+                                ? 'game-detail__save-snapshot-option is-selected'
+                                : 'game-detail__save-snapshot-option'
+                            }
+                          >
+                            <input
+                              type="radio"
+                              name="ludusavi-snapshot"
+                              value={snap.id}
+                              checked={selected}
+                              onChange={() => setSelectedBackupId(snap.id)}
+                            />
+                            <span>{formatSnapshotPickerLabel(snap)}</span>
+                          </label>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                )}
+                <div className="game-detail__exe-confirm-actions">
+                  <button
+                    type="button"
+                    className="game-detail__pill game-detail__play"
+                    disabled={
+                      saveSnapshotsLoading ||
+                      !selectedBackupId ||
+                      saveSnapshots.length === 0 ||
+                      Boolean(saveSnapshotsError)
+                    }
+                    onClick={() => {
+                      const id = selectedBackupId
+                      if (!id) return
+                      closeSaveModal()
+                      void window.api.ludusaviRestoreGame(appid, id)
+                    }}
+                  >
+                    Confirm install
+                  </button>
+                  <button
+                    type="button"
+                    className="game-detail__pill"
+                    onClick={() => {
+                      setSaveModalStep('main')
+                      setSaveSnapshots([])
+                      setSaveSnapshotsError('')
+                      setSelectedBackupId('')
+                      setSaveSnapshotsLoading(false)
+                    }}
+                  >
+                    Back
+                  </button>
+                  <button type="button" className="game-detail__pill" onClick={closeSaveModal}>
+                    Cancel
+                  </button>
+                </div>
+              </>
             )}
           </div>
         </div>

@@ -647,6 +647,42 @@ button:focus-visible {
   padding: 12px 16px 16px;
 }
 
+.game-detail__save-snapshot-list {
+  list-style: none;
+  margin: 10px 16px 0;
+  padding: 0;
+  overflow: auto;
+  max-height: 220px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.game-detail__save-snapshot-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid oklch(20% 0.016 275);
+  background: oklch(12% 0.012 275);
+  font-size: 12px;
+  line-height: 1.4;
+  color: oklch(78% 0.01 275);
+  cursor: pointer;
+}
+
+.game-detail__save-snapshot-option.is-selected {
+  border-color: oklch(48% 0.08 145);
+  background: oklch(16% 0.03 145);
+}
+
+.game-detail__save-snapshot-option input {
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
 .game-detail__exe-list {
   list-style: none;
   margin: 0;
