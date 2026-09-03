@@ -12,6 +12,7 @@ import { LAUNCH_NEEDS_EXE } from '../../../shared/types'
 import { parseManifestGidsJson } from '../../../shared/manifestUpdateUtils'
 import { formatPlaytimePlayed } from '../../../shared/playtimeUtils'
 import { cacheHeroUrl } from '../../../shared/imageCacheUrls'
+import { formatBackupStatusLabel } from '../../../shared/backupStatusUtils.ts'
 import HelpTip from '../components/HelpTip'
 import { TOOLTIPS, getEmptyAchievementsMessage } from '../lib/helpContent'
 import {
@@ -1006,6 +1007,27 @@ export default function GameDetailPage({
                                 ? `✓ Up to date${updateBuildId ? ` — Build ${updateBuildId}` : ''}`
                                 : 'Build: —'}
                         </span>
+                        <span
+                          className="game-detail__backup-status"
+                          aria-live="polite"
+                          title={game?.backup_error || undefined}
+                        >
+                          {formatBackupStatusLabel(
+                            game?.backup_status ?? '',
+                            game?.backup_at ?? 0
+                          )}
+                        </span>
+                        <button
+                          type="button"
+                          className="game-detail__pill game-detail__update-btn"
+                          onClick={() => {
+                            void window.api.ludusaviBackupGame(appid)
+                          }}
+                          disabled={game?.backup_status === 'running'}
+                          aria-label="Backup saves now"
+                        >
+                          {game?.backup_status === 'running' ? 'Backing up…' : 'Backup now'}
+                        </button>
                         {updateStatus === 'update_available' && hasInstallPath && (
                           <button
                             type="button"

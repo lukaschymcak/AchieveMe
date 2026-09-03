@@ -1250,6 +1250,15 @@ button:focus-visible {
   color: var(--ink-muted);
 }
 
+.game-detail__backup-status {
+  font-size: 12px;
+  color: var(--ink-muted);
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--ink-muted) 35%, transparent);
+  background: color-mix(in srgb, var(--ink-muted) 10%, transparent);
+}
+
 .game-detail__update-btn {
   font-size: 11px;
   padding: 4px 10px;
