@@ -59,6 +59,7 @@ test('two schedule calls for same appid run once', async () => {
       backupCalls.push(title)
       return { ok: true, decision: 'Processed', bytes: 1 }
     },
+    restoreGame: async () => ({ ok: false, error: 'unexpected restore' }),
     nowSeconds: () => 100
   })
 
@@ -84,6 +85,7 @@ test('missing title sets missing status', async () => {
     validateLudusaviPath: (p) => p,
     findTitleBySteamId: async () => null,
     backupGame: async () => ({ ok: true }),
+    restoreGame: async () => ({ ok: true }),
     nowSeconds: () => 50
   })
 
@@ -108,7 +110,8 @@ test('auto backup off skips non-manual reasons', async () => {
     backupGame: async () => {
       backupCalls += 1
       return { ok: true }
-    }
+    },
+    restoreGame: async () => ({ ok: false, error: 'unexpected restore' })
   })
 
   queue.scheduleGameBackup('570', 'session')
@@ -134,10 +137,67 @@ test('empty ludusaviPath is a no-op even for manual', async () => {
     backupGame: async () => {
       backupCalls += 1
       return { ok: true }
+    },
+    restoreGame: async () => {
+      backupCalls += 1
+      return { ok: true }
     }
   })
 
   queue.scheduleGameBackup('570', 'manual')
+  queue.scheduleGameRestore('570')
   await queue.drain()
   assert.equal(backupCalls, 0)
+})
+
+test('scheduleGameRestore calls restoreGame', async () => {
+  const restoreCalls = []
+  const statuses = []
+  const queue = createLudusaviBackupQueue({
+    loadSettings: () => baseSettings(),
+    getAllGames: () => [],
+    getGame: () => makeGame('570', { ludusavi_title: 'Dota 2' }),
+    updateGameBackupStatus: (appid, update) => {
+      statuses.push({ appid, ...update })
+    },
+    notifyLibraryUpdated: () => undefined,
+    validateLudusaviPath: (p) => p,
+    findTitleBySteamId: async () => 'Dota 2',
+    backupGame: async () => ({ ok: false, error: 'unexpected backup' }),
+    restoreGame: async (_exe, title) => {
+      restoreCalls.push(title)
+      return { ok: true, decision: 'Processed', bytes: 2 }
+    },
+    nowSeconds: () => 200
+  })
+
+  queue.scheduleGameRestore('570')
+  await queue.drain()
+
+  assert.deepEqual(restoreCalls, ['Dota 2'])
+  assert.ok(statuses.some((s) => s.status === 'ok'))
+})
+
+test('restore missing title sets missing status', async () => {
+  const statuses = []
+  const queue = createLudusaviBackupQueue({
+    loadSettings: () => baseSettings(),
+    getAllGames: () => [],
+    getGame: () => makeGame('111'),
+    updateGameBackupStatus: (appid, update) => {
+      statuses.push({ appid, ...update })
+    },
+    notifyLibraryUpdated: () => undefined,
+    validateLudusaviPath: (p) => p,
+    findTitleBySteamId: async () => null,
+    backupGame: async () => ({ ok: true }),
+    restoreGame: async () => ({ ok: true }),
+    nowSeconds: () => 10
+  })
+
+  queue.scheduleGameRestore('111')
+  await queue.drain()
+
+  const last = statuses[statuses.length - 1]
+  assert.equal(last.status, 'missing')
 })

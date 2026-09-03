@@ -147,6 +147,9 @@ contextBridge.exposeInMainWorld('api', {
   ludusaviBackupGame: (appid: string): Promise<void> =>
     ipcRenderer.invoke('ludusavi:backup-game', appid),
 
+  ludusaviRestoreGame: (appid: string): Promise<void> =>
+    ipcRenderer.invoke('ludusavi:restore-game', appid),
+
   ludusaviBackupLibrary: (): Promise<void> =>
     ipcRenderer.invoke('ludusavi:backup-library'),
 

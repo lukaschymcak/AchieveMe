@@ -70,12 +70,14 @@ import {
 import {
   backupGame,
   findTitleBySteamId,
+  restoreGame,
   validateLudusaviPath
 } from '../achievement/ludusaviService'
 import {
   configureLudusaviBackupQueue,
   getBackupQueueSnapshot,
   scheduleGameBackup,
+  scheduleGameRestore,
   scheduleLibraryBackup
 } from '../achievement/ludusaviBackupQueue'
 import { notifyLibraryUpdated } from '../achievement/libraryNotifyService'
@@ -120,7 +122,8 @@ export function registerIpcHandlers(): void {
     notifyLibraryUpdated,
     validateLudusaviPath,
     findTitleBySteamId,
-    backupGame
+    backupGame,
+    restoreGame
   })
 
   ipcMain.handle(
@@ -448,6 +451,10 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle('ludusavi:backup-game', (_event, appid: string): void => {
     scheduleGameBackup(String(appid || ''), 'manual')
+  })
+
+  ipcMain.handle('ludusavi:restore-game', (_event, appid: string): void => {
+    scheduleGameRestore(String(appid || ''))
   })
 
   ipcMain.handle('ludusavi:backup-library', (): void => {

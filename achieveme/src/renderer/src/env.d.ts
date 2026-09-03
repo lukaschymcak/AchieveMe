@@ -56,6 +56,7 @@ declare global {
       runSteamless(exePath: string): Promise<SteamlessRunResult>
       browseLudusaviPath(): Promise<string | null>
       ludusaviBackupGame(appid: string): Promise<void>
+      ludusaviRestoreGame(appid: string): Promise<void>
       ludusaviBackupLibrary(): Promise<void>
       ludusaviGetQueue(): Promise<{ runningAppid: string | null; pending: string[] }>
       depotSearch(query: string, mode?: 'games' | 'dlc'): Promise<DepotSearchResponse>
