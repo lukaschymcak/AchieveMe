@@ -137,14 +137,34 @@ function CompletionRing({
   )
 }
 
+function FloppySaveIcon(): React.ReactElement {
+  return (
+    <svg
+      className="game-detail__save-icon"
+      viewBox="0 0 24 24"
+      width="16"
+      height="16"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path
+        fill="currentColor"
+        d="M17 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7l-4-4zm-5 16a3 3 0 1 1 0-6 3 3 0 0 1 0 6zm3-10H5V5h10v4z"
+      />
+    </svg>
+  )
+}
+
 function GameDetailHeroBar({
   onBack,
   onRefresh,
-  refreshing
+  refreshing,
+  actions
 }: {
   onBack: () => void
   onRefresh: () => void
   refreshing: boolean
+  actions?: React.ReactNode
 }): React.ReactElement {
   return (
     <div className="game-detail__hero-bar">
@@ -154,17 +174,20 @@ function GameDetailHeroBar({
         </span>
         Library
       </button>
-      <span className="game-detail__refresh-wrap">
-      <button
-        type="button"
-        className="game-detail__pill game-detail__hero-action"
-        onClick={onRefresh}
-        disabled={refreshing}
-      >
-        {refreshing ? 'Refreshing…' : 'Refresh all'}
-      </button>
-      <HelpTip content={TOOLTIPS.refreshGameDetail} label="Refresh library help" />
-      </span>
+      <div className="game-detail__hero-bar-right">
+        {actions}
+        <span className="game-detail__refresh-wrap">
+          <button
+            type="button"
+            className="game-detail__pill game-detail__hero-action"
+            onClick={onRefresh}
+            disabled={refreshing}
+          >
+            {refreshing ? 'Refreshing…' : 'Refresh all'}
+          </button>
+          <HelpTip content={TOOLTIPS.refreshGameDetail} label="Refresh library help" />
+        </span>
+      </div>
     </div>
   )
 }
@@ -447,6 +470,8 @@ export default function GameDetailPage({
   const [depotPickerData, setDepotPickerData] = useState<GameData | null>(null)
   const [depotPickerLoading, setDepotPickerLoading] = useState(false)
   const [depotPickerSelected, setDepotPickerSelected] = useState<Record<string, boolean>>({})
+  const [saveModalOpen, setSaveModalOpen] = useState(false)
+  const [ludusaviPathLinked, setLudusaviPathLinked] = useState(false)
 
   const sessionForGame =
     activeUpdateSession?.appid === appid ? activeUpdateSession : null
@@ -785,15 +810,18 @@ export default function GameDetailPage({
     setUpdateStatus('')
     setUpdateBuildId(undefined)
     setUpdateError('')
+    setSaveModalOpen(false)
     window.api
       .getSettings()
       .then((settings) => {
         setPlayGamesFromLauncher(settings.playGamesFromLauncher)
         setHasApiKey(settings.steamApiKey.trim().length > 0)
+        setLudusaviPathLinked(Boolean(settings.ludusaviPath?.trim()))
       })
       .catch(() => {
         setPlayGamesFromLauncher(true)
         setHasApiKey(false)
+        setLudusaviPathLinked(false)
       })
     window.api
       .getGameDetail(appid)
@@ -952,7 +980,102 @@ export default function GameDetailPage({
           ) : (
             <>
               <header className="game-detail__hero">
-                <GameDetailHeroBar onBack={onBack} onRefresh={onRefresh} refreshing={refreshing} />
+                <GameDetailHeroBar
+                  onBack={onBack}
+                  onRefresh={onRefresh}
+                  refreshing={refreshing}
+                  actions={
+                    <div className="game-detail__update-row game-detail__update-row--hero">
+                      <span className="game-detail__update-status" aria-live="polite">
+                        {updateBusy
+                          ? `${updateProgressLabel || (sessionForGame?.mode === 'validate' ? 'Validating…' : 'Updating…')}${
+                              updatePct > 0 ? ` — ${Math.round(updatePct)}%` : ''
+                            }`
+                          : updateStatus === 'update_available'
+                            ? `↑ Update available${updateBuildId ? ` — Build ${updateBuildId}` : ''}`
+                            : updateStatus === 'up_to_date'
+                              ? `✓ Up to date${updateBuildId ? ` — Build ${updateBuildId}` : ''}`
+                              : 'Build: —'}
+                      </span>
+                      <button
+                        type="button"
+                        className="game-detail__pill game-detail__save-btn"
+                        onClick={() => setSaveModalOpen(true)}
+                        disabled={game?.backup_status === 'running'}
+                        aria-label={
+                          game?.backup_status === 'running'
+                            ? 'Save backup in progress'
+                            : formatBackupStatusLabel(
+                                game?.backup_status ?? '',
+                                game?.backup_at ?? 0
+                              )
+                        }
+                        title={
+                          game?.backup_error ||
+                          formatBackupStatusLabel(
+                            game?.backup_status ?? '',
+                            game?.backup_at ?? 0
+                          )
+                        }
+                      >
+                        {game?.backup_status === 'running' ? (
+                          <span className="game-detail__save-spinner" aria-hidden />
+                        ) : (
+                          <FloppySaveIcon />
+                        )}
+                      </button>
+                      {updateStatus === 'update_available' && hasInstallPath && (
+                        <button
+                          type="button"
+                          className="game-detail__pill game-detail__update-btn game-detail__update-btn--primary"
+                          onClick={() => void openDepotPicker('update')}
+                          disabled={jobLocked || updateChecking || depotPickerLoading}
+                          aria-label="Update game"
+                        >
+                          {updateBusy && sessionForGame?.mode === 'update'
+                            ? 'Updating…'
+                            : depotPickerLoading && depotPickerMode === null
+                              ? 'Loading…'
+                              : 'Update'}
+                        </button>
+                      )}
+                      {hasStoredGids && (
+                        <button
+                          type="button"
+                          className="game-detail__pill game-detail__update-btn game-detail__update-btn--validate"
+                          onClick={() => void openDepotPicker('validate')}
+                          disabled={jobLocked || updateChecking || depotPickerLoading}
+                          aria-label="Validate game files"
+                        >
+                          {updateBusy && sessionForGame?.mode === 'validate'
+                            ? 'Validating…'
+                            : 'Validate'}
+                        </button>
+                      )}
+                      {game?.total_achievements === 0 && (
+                        <button
+                          type="button"
+                          className="game-detail__pill game-detail__update-btn"
+                          onClick={() =>
+                            onSetupAchievements(game.name, game.install_path || undefined)
+                          }
+                          aria-label="Set up achievements for this game"
+                        >
+                          Set up achievements
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        className="game-detail__pill game-detail__update-btn"
+                        onClick={() => void handleCheckForUpdate()}
+                        disabled={updateChecking || jobLocked}
+                        aria-label="Check for update"
+                      >
+                        {updateChecking ? 'Checking…' : 'Check for update'}
+                      </button>
+                    </div>
+                  }
+                />
                 <div className="game-detail__hero-content">
                   <div className="game-detail__hero-left">
                     <h2 className="game-detail__title">{game!.name}</h2>
@@ -995,89 +1118,6 @@ export default function GameDetailPage({
                           </div>
                         </div>
                       )}
-                      <div className="game-detail__update-row">
-                        <span className="game-detail__update-status" aria-live="polite">
-                          {updateBusy
-                            ? `${updateProgressLabel || (sessionForGame?.mode === 'validate' ? 'Validating…' : 'Updating…')}${
-                                updatePct > 0 ? ` — ${Math.round(updatePct)}%` : ''
-                              }`
-                            : updateStatus === 'update_available'
-                              ? `↑ Update available${updateBuildId ? ` — Build ${updateBuildId}` : ''}`
-                              : updateStatus === 'up_to_date'
-                                ? `✓ Up to date${updateBuildId ? ` — Build ${updateBuildId}` : ''}`
-                                : 'Build: —'}
-                        </span>
-                        <span
-                          className="game-detail__backup-status"
-                          aria-live="polite"
-                          title={game?.backup_error || undefined}
-                        >
-                          {formatBackupStatusLabel(
-                            game?.backup_status ?? '',
-                            game?.backup_at ?? 0
-                          )}
-                        </span>
-                        <button
-                          type="button"
-                          className="game-detail__pill game-detail__update-btn"
-                          onClick={() => {
-                            void window.api.ludusaviBackupGame(appid)
-                          }}
-                          disabled={game?.backup_status === 'running'}
-                          aria-label="Backup saves now"
-                        >
-                          {game?.backup_status === 'running' ? 'Backing up…' : 'Backup now'}
-                        </button>
-                        {updateStatus === 'update_available' && hasInstallPath && (
-                          <button
-                            type="button"
-                            className="game-detail__pill game-detail__update-btn game-detail__update-btn--primary"
-                            onClick={() => void openDepotPicker('update')}
-                            disabled={jobLocked || updateChecking || depotPickerLoading}
-                            aria-label="Update game"
-                          >
-                            {updateBusy && sessionForGame?.mode === 'update'
-                              ? 'Updating…'
-                              : depotPickerLoading && depotPickerMode === null
-                                ? 'Loading…'
-                                : 'Update'}
-                          </button>
-                        )}
-                        {hasStoredGids && (
-                          <button
-                            type="button"
-                            className="game-detail__pill game-detail__update-btn game-detail__update-btn--validate"
-                            onClick={() => void openDepotPicker('validate')}
-                            disabled={jobLocked || updateChecking || depotPickerLoading}
-                            aria-label="Validate game files"
-                          >
-                            {updateBusy && sessionForGame?.mode === 'validate'
-                              ? 'Validating…'
-                              : 'Validate'}
-                          </button>
-                        )}
-                        {game?.total_achievements === 0 && (
-                          <button
-                            type="button"
-                            className="game-detail__pill game-detail__update-btn"
-                            onClick={() =>
-                              onSetupAchievements(game.name, game.install_path || undefined)
-                            }
-                            aria-label="Set up achievements for this game"
-                          >
-                            Set up achievements
-                          </button>
-                        )}
-                        <button
-                          type="button"
-                          className="game-detail__pill game-detail__update-btn"
-                          onClick={() => void handleCheckForUpdate()}
-                          disabled={updateChecking || jobLocked}
-                          aria-label="Check for update"
-                        >
-                          {updateChecking ? 'Checking…' : 'Check for update'}
-                        </button>
-                      </div>
                       {depotPickerLoading && (
                         <p className="game-detail__depot-picker-loading">Loading depots…</p>
                       )}
@@ -1244,6 +1284,80 @@ export default function GameDetailPage({
           )}
         </div>
       </div>
+
+      {saveModalOpen && (
+        <div
+          className="game-detail__exe-modal-backdrop"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setSaveModalOpen(false)
+          }}
+        >
+          <div
+            className="game-detail__exe-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="game-detail-save-modal-title"
+          >
+            <div className="game-detail__exe-modal-header">
+              <h3 id="game-detail-save-modal-title" className="game-detail__exe-modal-title">
+                Save backup
+              </h3>
+              <button
+                type="button"
+                className="game-detail__pill"
+                onClick={() => setSaveModalOpen(false)}
+                aria-label="Close"
+              >
+                ×
+              </button>
+            </div>
+            <p className="game-detail__exe-modal-help">
+              Back up copies this game&apos;s saves into Ludusavi. Install backup restores the
+              latest Ludusavi backup onto disk and overwrites current save files.
+            </p>
+            <div className="game-detail__exe-confirm-actions">
+              <button
+                type="button"
+                className="game-detail__pill game-detail__play"
+                disabled={!ludusaviPathLinked || game?.backup_status === 'running'}
+                onClick={() => {
+                  setSaveModalOpen(false)
+                  void window.api.ludusaviBackupGame(appid)
+                }}
+              >
+                Back up saves
+              </button>
+              <button
+                type="button"
+                className="game-detail__pill"
+                disabled={
+                  !ludusaviPathLinked ||
+                  game?.backup_status === 'running' ||
+                  game?.backup_status === 'missing'
+                }
+                onClick={() => {
+                  setSaveModalOpen(false)
+                  void window.api.ludusaviRestoreGame(appid)
+                }}
+              >
+                Install backup
+              </button>
+              <button
+                type="button"
+                className="game-detail__pill"
+                onClick={() => setSaveModalOpen(false)}
+              >
+                Cancel
+              </button>
+            </div>
+            {!ludusaviPathLinked && (
+              <p className="game-detail__exe-modal-help" role="status">
+                Link ludusavi.exe in Settings → Save backups first.
+              </p>
+            )}
+          </div>
+        </div>
+      )}
 
       {playGamesFromLauncher && rootConfirmPath && (
         <div

@@ -369,6 +369,19 @@ button:focus-visible {
   padding: var(--space-4) clamp(var(--space-5), 5vw, 48px) var(--space-3);
 }
 
+.game-detail__hero-bar-right {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.game-detail__update-row--hero {
+  margin-top: 0;
+}
+
 .game-detail__pill {
   display: inline-flex;
   align-items: center;
@@ -1257,6 +1270,32 @@ button:focus-visible {
   border-radius: 999px;
   border: 1px solid color-mix(in srgb, var(--ink-muted) 35%, transparent);
   background: color-mix(in srgb, var(--ink-muted) 10%, transparent);
+}
+
+.game-detail__save-btn {
+  width: 32px;
+  min-width: 32px;
+  padding: 0;
+  justify-content: center;
+}
+
+.game-detail__save-icon {
+  display: block;
+}
+
+.game-detail__save-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid color-mix(in srgb, var(--ink-muted) 35%, transparent);
+  border-top-color: var(--ink);
+  border-radius: 50%;
+  animation: game-detail-save-spin 0.7s linear infinite;
+}
+
+@keyframes game-detail-save-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .game-detail__update-btn {

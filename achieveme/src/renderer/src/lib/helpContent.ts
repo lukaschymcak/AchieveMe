@@ -79,7 +79,7 @@ export const TOOLTIPS = {
   settingsSteamless:
     'Link a Steamless release folder that contains Steamless.CLI.exe and Plugins. Used from Tools → Steamless. Not bundled with AchieveMe.',
   settingsLudusavi:
-    'Link ludusavi.exe to back up emulator save files for library games only. Auto-backup is off by default. Status appears on Game Detail. Restore is not in AchieveMe yet — use Ludusavi itself.',
+    'Link ludusavi.exe to back up or restore emulator save files for library games only. Auto-backup is off by default. On Game Detail, the floppy icon opens Back up saves or Install backup (restore overwrites current saves). Bulk Settings backup is backup-only.',
   settingsDepotDownloader:
     'Hubcap API key authenticates manifest downloads. Default download folder is used when starting a Depot Downloader run from Tools. Import existing folder only needs the Hubcap fetch — it does not download game files.',
   settingsNotifications:
@@ -362,8 +362,8 @@ export const HELP_SECTIONS: HelpSection[] = [
     title: 'Save backups (Ludusavi)',
     paragraphs: [
       'Link ludusavi.exe under Settings → Save backups (not bundled with AchieveMe). AchieveMe backs up only games already in your library — it never invents save paths.',
-      'Optional auto-backup runs on startup, after a tracked play session, or when adding a game. Use Backup all library games now, or Backup now on Game Detail. Status shows Backing up…, Saves backed up, Not in Ludusavi, or Backup failed.',
-      'Matching uses Ludusavi find --steam-id, then backup --force --api --no-cloud-sync. One Ludusavi process at a time. Backups are Ludusavi’s folders, not AchieveMe SQLite. Restore is not in AchieveMe yet — use Ludusavi itself.'
+      'Optional auto-backup runs on startup, after a tracked play session, or when adding a game. Use Backup all library games now for a full library backup only. On Game Detail, the floppy icon opens a choice: Back up saves or Install backup (Ludusavi restore, overwrites current saves).',
+      'Matching uses Ludusavi find --steam-id, then backup or restore with --force --api --no-cloud-sync. One Ludusavi process at a time. Backups are Ludusavi’s folders, not AchieveMe SQLite.'
     ]
   },
   {
@@ -394,7 +394,7 @@ export const HELP_SECTIONS: HelpSection[] = [
       'Empty achievement list? Need a Steam API key; or Steam has not published schema yet (try Refresh later); or the game has no achievements.',
       'Deleted game keeps coming back? Delete ignores the AppID; leftover CODEX/RUNE files are not removed. Re-add via Add Game or Import existing to clear the ignore.',
       'Game on disk missing from library? Tools → Import existing folder (Hubcap GIDs, no re-download).',
-      'Save backups? Link Ludusavi in Settings → Save backups. Library titles only; Not in Ludusavi means Ludusavi has no matching Steam AppID. Restore with Ludusavi — not in AchieveMe yet.',
+      'Save backups? Link Ludusavi in Settings → Save backups. Library titles only; floppy on Game Detail chooses Back up or Install backup. Not in Ludusavi means no matching Steam AppID. Install overwrites current saves.',
       'Live updates? Save file edits propagate in ~1s via the file watcher.',
       'Keyboard: Enter/Space on a focused card opens it; Escape closes the long-press menu.',
       'Privacy: data stays local (SQLite + userData, including cached cover/hero/icon images). API key in settings.json. Hidden descriptions may fetch from SteamDB.'
