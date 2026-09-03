@@ -125,6 +125,14 @@ export function extractBackupGameResult(
 }
 
 /**
+ * Alias for backup/restore `--api` game-entry parsing (same schema).
+ *
+ * @param apiJson - Parsed `--api` JSON.
+ * @param title - Exact Ludusavi game title key.
+ */
+export const extractOperationGameResult = extractBackupGameResult
+
+/**
  * Formats a unix backup timestamp as a short relative label.
  *
  * @param unixSeconds - Backup time, or 0 when never.

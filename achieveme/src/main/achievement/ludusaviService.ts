@@ -150,3 +150,44 @@ export async function backupGame(
 
   return extractBackupGameResult(parsed, cleanTitle)
 }
+
+/**
+ * Runs `ludusavi restore --force --api --no-cloud-sync` for one title.
+ *
+ * @param exe - Absolute path to ludusavi.exe.
+ * @param title - Exact Ludusavi game title.
+ * @param runCommand - Optional injectable runner (tests).
+ */
+export async function restoreGame(
+  exe: string,
+  title: string,
+  runCommand: LudusaviCommandRunner = createDefaultLudusaviRunner(exe)
+): Promise<LudusaviBackupResult> {
+  const cleanTitle = String(title || '').trim()
+  if (!cleanTitle) {
+    return { ok: false, error: 'Game title is required.' }
+  }
+
+  const result = await runCommand([
+    'restore',
+    '--force',
+    '--api',
+    '--no-cloud-sync',
+    cleanTitle
+  ])
+
+  const parsed = parseLudusaviApiJson(result.stdout)
+  if (!parsed) {
+    const stderr = result.stderr.trim()
+    return {
+      ok: false,
+      error:
+        stderr ||
+        (result.code !== 0
+          ? `Ludusavi exited with code ${result.code}.`
+          : 'Ludusavi returned no API JSON.')
+    }
+  }
+
+  return extractBackupGameResult(parsed, cleanTitle)
+}

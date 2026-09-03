@@ -6,7 +6,7 @@ import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 
 const rootDir = path.dirname(fileURLToPath(import.meta.url))
-const { validateLudusaviPath, findTitleBySteamId, backupGame } = await import(
+const { validateLudusaviPath, findTitleBySteamId, backupGame, restoreGame } = await import(
   pathToFileURL(path.join(rootDir, '../src/main/achievement/ludusaviService.ts')).href
 )
 
@@ -86,4 +86,35 @@ test('backupGame fails when stdout is blank', async () => {
   }))
   assert.equal(result.ok, false)
   assert.match(result.error ?? '', /boom/)
+})
+
+test('restoreGame parses Processed result', async () => {
+  const result = await restoreGame('C:\\fake\\ludusavi.exe', 'Dota 2', async (argv) => {
+    assert.deepEqual(argv, ['restore', '--force', '--api', '--no-cloud-sync', 'Dota 2'])
+    return {
+      code: 0,
+      stdout: JSON.stringify({
+        games: {
+          'Dota 2': {
+            decision: 'Processed',
+            files: { a: { bytes: 5, failed: false } },
+            registry: {}
+          }
+        }
+      }),
+      stderr: ''
+    }
+  })
+  assert.equal(result.ok, true)
+  assert.equal(result.bytes, 5)
+})
+
+test('restoreGame fails when stdout is blank', async () => {
+  const result = await restoreGame('C:\\fake\\ludusavi.exe', 'X', async () => ({
+    code: 1,
+    stdout: '',
+    stderr: 'restore failed'
+  }))
+  assert.equal(result.ok, false)
+  assert.match(result.error ?? '', /restore failed/)
 })
