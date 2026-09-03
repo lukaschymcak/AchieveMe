@@ -29,6 +29,11 @@ test('normalizeAppSettings applies defaults for legacy settings files', () => {
   assert.equal(normalized.steamlessFolder, DEFAULT_APP_SETTINGS.steamlessFolder)
   assert.equal(normalized.hubcapApiKey, '')
   assert.equal(normalized.depotDownloadPath, '')
+  assert.equal(normalized.ludusaviPath, '')
+  assert.equal(normalized.ludusaviAutoBackup, false)
+  assert.equal(normalized.ludusaviBackupOnStartup, true)
+  assert.equal(normalized.ludusaviBackupOnSessionEnd, true)
+  assert.equal(normalized.ludusaviBackupOnAddGame, true)
 })
 
 test('normalizeAppSettings preserves soundVolume when set', () => {
@@ -69,4 +74,21 @@ test('normalizeAppSettings preserves openAtLogin and startMinimizedToTray when s
   })
   assert.equal(normalized.openAtLogin, true)
   assert.equal(normalized.startMinimizedToTray, true)
+})
+
+test('normalizeAppSettings preserves ludusavi backup fields when set', () => {
+  const normalized = normalizeAppSettings({
+    steamApiKey: 'abc',
+    enabledSources: ['goldberg'],
+    ludusaviPath: 'C:\\Tools\\ludusavi.exe',
+    ludusaviAutoBackup: true,
+    ludusaviBackupOnStartup: false,
+    ludusaviBackupOnSessionEnd: false,
+    ludusaviBackupOnAddGame: false
+  })
+  assert.equal(normalized.ludusaviPath, 'C:\\Tools\\ludusavi.exe')
+  assert.equal(normalized.ludusaviAutoBackup, true)
+  assert.equal(normalized.ludusaviBackupOnStartup, false)
+  assert.equal(normalized.ludusaviBackupOnSessionEnd, false)
+  assert.equal(normalized.ludusaviBackupOnAddGame, false)
 })

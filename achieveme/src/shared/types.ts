@@ -50,6 +50,16 @@ export interface AppSettings {
   hubcapApiKey: string
   /** Default folder for DepotDownloader output, or empty to ask each time. */
   depotDownloadPath: string
+  /** Absolute path to user-linked ludusavi.exe, or empty. */
+  ludusaviPath: string
+  /** Master switch for automatic library save backups via Ludusavi. */
+  ludusaviAutoBackup: boolean
+  /** When auto-backup is on, enqueue the library on app startup. */
+  ludusaviBackupOnStartup: boolean
+  /** When auto-backup is on, enqueue after a tracked play session ends. */
+  ludusaviBackupOnSessionEnd: boolean
+  /** When auto-backup is on, enqueue after a game is added to the library. */
+  ludusaviBackupOnAddGame: boolean
 }
 
 export interface UnlockChange {
