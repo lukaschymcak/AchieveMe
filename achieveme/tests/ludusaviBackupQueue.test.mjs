@@ -145,12 +145,12 @@ test('empty ludusaviPath is a no-op even for manual', async () => {
   })
 
   queue.scheduleGameBackup('570', 'manual')
-  queue.scheduleGameRestore('570')
+  queue.scheduleGameRestore('570', 'snap-1')
   await queue.drain()
   assert.equal(backupCalls, 0)
 })
 
-test('scheduleGameRestore calls restoreGame', async () => {
+test('scheduleGameRestore calls restoreGame with backup id', async () => {
   const restoreCalls = []
   const statuses = []
   const queue = createLudusaviBackupQueue({
@@ -164,18 +164,41 @@ test('scheduleGameRestore calls restoreGame', async () => {
     validateLudusaviPath: (p) => p,
     findTitleBySteamId: async () => 'Dota 2',
     backupGame: async () => ({ ok: false, error: 'unexpected backup' }),
-    restoreGame: async (_exe, title) => {
-      restoreCalls.push(title)
+    restoreGame: async (_exe, title, backupId) => {
+      restoreCalls.push({ title, backupId })
       return { ok: true, decision: 'Processed', bytes: 2 }
     },
     nowSeconds: () => 200
   })
 
-  queue.scheduleGameRestore('570')
+  queue.scheduleGameRestore('570', 'snap-9')
   await queue.drain()
 
-  assert.deepEqual(restoreCalls, ['Dota 2'])
+  assert.deepEqual(restoreCalls, [{ title: 'Dota 2', backupId: 'snap-9' }])
   assert.ok(statuses.some((s) => s.status === 'ok'))
+})
+
+test('invalid restore backup id never calls CLI', async () => {
+  let restoreCalls = 0
+  const queue = createLudusaviBackupQueue({
+    loadSettings: () => baseSettings(),
+    getAllGames: () => [],
+    getGame: () => makeGame('570', { ludusavi_title: 'Dota 2' }),
+    updateGameBackupStatus: () => undefined,
+    notifyLibraryUpdated: () => undefined,
+    validateLudusaviPath: (p) => p,
+    findTitleBySteamId: async () => 'Dota 2',
+    backupGame: async () => ({ ok: true }),
+    restoreGame: async () => {
+      restoreCalls += 1
+      return { ok: true }
+    }
+  })
+
+  queue.scheduleGameRestore('570', '../evil')
+  queue.scheduleGameRestore('570', '')
+  await queue.drain()
+  assert.equal(restoreCalls, 0)
 })
 
 test('restore missing title sets missing status', async () => {
@@ -195,7 +218,7 @@ test('restore missing title sets missing status', async () => {
     nowSeconds: () => 10
   })
 
-  queue.scheduleGameRestore('111')
+  queue.scheduleGameRestore('111', 'snap-1')
   await queue.drain()
 
   const last = statuses[statuses.length - 1]

@@ -1,5 +1,6 @@
 import type { AppSettings, Game } from '../../shared/types'
 import type { LudusaviBackupResult } from './ludusaviService'
+import { isSafeLudusaviBackupId } from '../../shared/ludusaviApiUtils.ts'
 
 export type LudusaviBackupReason = 'startup' | 'session' | 'add' | 'manual'
 export type LudusaviQueueOp = 'backup' | 'restore'
@@ -16,7 +17,11 @@ export interface LudusaviBackupQueueDeps {
   validateLudusaviPath: (ludusaviPath: string) => string
   findTitleBySteamId: (exe: string, appid: string) => Promise<string | null>
   backupGame: (exe: string, title: string) => Promise<LudusaviBackupResult>
-  restoreGame: (exe: string, title: string) => Promise<LudusaviBackupResult>
+  restoreGame: (
+    exe: string,
+    title: string,
+    backupId?: string
+  ) => Promise<LudusaviBackupResult>
   nowSeconds?: () => number
 }
 
@@ -27,7 +32,7 @@ export interface LudusaviBackupQueueSnapshot {
 
 export interface LudusaviBackupQueue {
   scheduleGameBackup: (appid: string, reason: LudusaviBackupReason) => void
-  scheduleGameRestore: (appid: string) => void
+  scheduleGameRestore: (appid: string, backupId: string) => void
   scheduleLibraryBackup: (reason: 'startup' | 'manual') => void
   getBackupQueueSnapshot: () => LudusaviBackupQueueSnapshot
   /** Drains the queue (tests). */
@@ -38,6 +43,7 @@ export interface LudusaviBackupQueue {
 interface PendingJob {
   appid: string
   op: LudusaviQueueOp
+  backupId?: string
 }
 
 function shouldRunForReason(settings: AppSettings, reason: LudusaviBackupReason): boolean {
@@ -65,12 +71,12 @@ export function createLudusaviBackupQueue(deps: LudusaviBackupQueueDeps): Ludusa
   const nowSeconds = (): number =>
     deps.nowSeconds ? deps.nowSeconds() : Math.floor(Date.now() / 1000)
 
-  const enqueue = (appid: string, op: LudusaviQueueOp): void => {
+  const enqueue = (appid: string, op: LudusaviQueueOp, backupId?: string): void => {
     const clean = String(appid || '').trim()
     if (!/^\d+$/.test(clean)) return
     if (pendingSet.has(clean) || runningAppid === clean) return
     pendingSet.add(clean)
-    pending.push({ appid: clean, op })
+    pending.push({ appid: clean, op, backupId })
   }
 
   const pump = async (): Promise<void> => {
@@ -81,7 +87,7 @@ export function createLudusaviBackupQueue(deps: LudusaviBackupQueueDeps): Ludusa
         const job = pending.shift()!
         pendingSet.delete(job.appid)
         runningAppid = job.appid
-        await runOne(job.appid, job.op)
+        await runOne(job)
         runningAppid = null
       }
     } finally {
@@ -93,7 +99,8 @@ export function createLudusaviBackupQueue(deps: LudusaviBackupQueueDeps): Ludusa
     }
   }
 
-  const runOne = async (appid: string, op: LudusaviQueueOp): Promise<void> => {
+  const runOne = async (job: PendingJob): Promise<void> => {
+    const { appid, op, backupId } = job
     try {
       const settings = deps.loadSettings()
       const path = String(settings.ludusaviPath || '').trim()
@@ -138,7 +145,7 @@ export function createLudusaviBackupQueue(deps: LudusaviBackupQueueDeps): Ludusa
 
       const result =
         op === 'restore'
-          ? await deps.restoreGame(exe, title)
+          ? await deps.restoreGame(exe, title, backupId)
           : await deps.backupGame(exe, title)
 
       if (result.ok) {
@@ -189,11 +196,13 @@ export function createLudusaviBackupQueue(deps: LudusaviBackupQueueDeps): Ludusa
         // Never throw to callers
       }
     },
-    scheduleGameRestore(appid) {
+    scheduleGameRestore(appid, backupId) {
       try {
         const settings = deps.loadSettings()
         if (!String(settings.ludusaviPath || '').trim()) return
-        enqueue(appid, 'restore')
+        const id = String(backupId || '').trim()
+        if (!isSafeLudusaviBackupId(id)) return
+        enqueue(appid, 'restore', id)
         kick()
       } catch {
         // Never throw to callers
@@ -246,7 +255,6 @@ export function configureLudusaviBackupQueue(deps: LudusaviBackupQueueDeps): voi
 
 function requireQueue(): LudusaviBackupQueue {
   if (!singleton) {
-    // Safe no-op queue before configure (tests / early calls)
     return createLudusaviBackupQueue({
       loadSettings: () =>
         ({
@@ -270,8 +278,8 @@ export function scheduleGameBackup(appid: string, reason: LudusaviBackupReason):
   requireQueue().scheduleGameBackup(appid, reason)
 }
 
-export function scheduleGameRestore(appid: string): void {
-  requireQueue().scheduleGameRestore(appid)
+export function scheduleGameRestore(appid: string, backupId: string): void {
+  requireQueue().scheduleGameRestore(appid, backupId)
 }
 
 export function scheduleLibraryBackup(reason: 'startup' | 'manual'): void {
