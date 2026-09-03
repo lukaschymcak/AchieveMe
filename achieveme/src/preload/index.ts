@@ -24,6 +24,7 @@ import type {
   GetNewsOptions,
   ImportExistingInstallRequest
 } from '../shared/types'
+import type { LudusaviSnapshot } from '../shared/ludusaviApiUtils'
 
 const libraryUpdatedCallbacks = new Set<(payload: LibraryUpdatedPayload) => void>()
 
@@ -147,8 +148,13 @@ contextBridge.exposeInMainWorld('api', {
   ludusaviBackupGame: (appid: string): Promise<void> =>
     ipcRenderer.invoke('ludusavi:backup-game', appid),
 
-  ludusaviRestoreGame: (appid: string): Promise<void> =>
-    ipcRenderer.invoke('ludusavi:restore-game', appid),
+  ludusaviListBackups: (
+    appid: string
+  ): Promise<{ title: string; snapshots: LudusaviSnapshot[] } | string> =>
+    ipcRenderer.invoke('ludusavi:list-backups', appid),
+
+  ludusaviRestoreGame: (appid: string, backupId: string): Promise<void> =>
+    ipcRenderer.invoke('ludusavi:restore-game', appid, backupId),
 
   ludusaviBackupLibrary: (): Promise<void> =>
     ipcRenderer.invoke('ludusavi:backup-library'),

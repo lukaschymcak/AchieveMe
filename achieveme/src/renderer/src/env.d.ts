@@ -23,6 +23,7 @@ import type {
   GetNewsOptions,
   ImportExistingInstallRequest
 } from '../../shared/types'
+import type { LudusaviSnapshot } from '../../shared/ludusaviApiUtils'
 
 declare global {
   interface Window {
@@ -56,7 +57,10 @@ declare global {
       runSteamless(exePath: string): Promise<SteamlessRunResult>
       browseLudusaviPath(): Promise<string | null>
       ludusaviBackupGame(appid: string): Promise<void>
-      ludusaviRestoreGame(appid: string): Promise<void>
+      ludusaviListBackups(
+        appid: string
+      ): Promise<{ title: string; snapshots: LudusaviSnapshot[] } | string>
+      ludusaviRestoreGame(appid: string, backupId: string): Promise<void>
       ludusaviBackupLibrary(): Promise<void>
       ludusaviGetQueue(): Promise<{ runningAppid: string | null; pending: string[] }>
       depotSearch(query: string, mode?: 'games' | 'dlc'): Promise<DepotSearchResponse>

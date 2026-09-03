@@ -70,9 +70,11 @@ import {
 import {
   backupGame,
   findTitleBySteamId,
+  listGameBackups,
   restoreGame,
   validateLudusaviPath
 } from '../achievement/ludusaviService'
+import type { LudusaviSnapshot } from '../../shared/ludusaviApiUtils'
 import {
   configureLudusaviBackupQueue,
   getBackupQueueSnapshot,
@@ -453,9 +455,48 @@ export function registerIpcHandlers(): void {
     scheduleGameBackup(String(appid || ''), 'manual')
   })
 
-  ipcMain.handle('ludusavi:restore-game', (_event, appid: string): void => {
-    scheduleGameRestore(String(appid || ''))
-  })
+  ipcMain.handle(
+    'ludusavi:list-backups',
+    async (
+      _event,
+      appid: string
+    ): Promise<{ title: string; snapshots: LudusaviSnapshot[] } | string> => {
+      const clean = String(appid || '').trim()
+      if (!/^\d+$/.test(clean)) return 'Invalid AppID.'
+
+      const settings = loadSettings()
+      const pathRaw = String(settings.ludusaviPath || '').trim()
+      if (!pathRaw) return 'Set Ludusavi path in Settings first.'
+
+      let exe: string
+      try {
+        exe = validateLudusaviPath(pathRaw)
+      } catch (err) {
+        return err instanceof Error ? err.message : String(err)
+      }
+
+      const game = getGame(getDb(), clean)
+      let title = String(game?.ludusavi_title || '').trim()
+      if (!title) {
+        title = (await findTitleBySteamId(exe, clean))?.trim() || ''
+      }
+      if (!title) return 'Not in Ludusavi'
+
+      try {
+        const snapshots = await listGameBackups(exe, title)
+        return { title, snapshots }
+      } catch (err) {
+        return err instanceof Error ? err.message : String(err)
+      }
+    }
+  )
+
+  ipcMain.handle(
+    'ludusavi:restore-game',
+    (_event, appid: string, backupId: string): void => {
+      scheduleGameRestore(String(appid || ''), String(backupId || ''))
+    }
+  )
 
   ipcMain.handle('ludusavi:backup-library', (): void => {
     scheduleLibraryBackup('manual')
