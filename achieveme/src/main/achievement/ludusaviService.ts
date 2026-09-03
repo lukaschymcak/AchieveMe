@@ -24,6 +24,8 @@ export type LudusaviCommandRunner = (argv: string[]) => Promise<LudusaviCommandR
 export interface LudusaviBackupResult {
   ok: boolean
   decision?: string
+  /** Game-level ScanChange from Ludusavi (`New` / `Different` / `Same` / …). */
+  change?: string
   bytes?: number
   error?: string
 }

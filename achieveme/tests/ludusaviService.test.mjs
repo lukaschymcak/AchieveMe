@@ -80,6 +80,7 @@ test('backupGame parses Processed result', async () => {
         games: {
           'Dota 2': {
             decision: 'Processed',
+            change: 'Different',
             files: { a: { bytes: 10, failed: false } },
             registry: {}
           }
@@ -90,6 +91,26 @@ test('backupGame parses Processed result', async () => {
   })
   assert.equal(result.ok, true)
   assert.equal(result.bytes, 10)
+  assert.equal(result.change, 'Different')
+})
+
+test('backupGame reports change Same', async () => {
+  const result = await backupGame('C:\\fake\\ludusavi.exe', 'Dota 2', async () => ({
+    code: 0,
+    stdout: JSON.stringify({
+      games: {
+        'Dota 2': {
+          decision: 'Processed',
+          change: 'Same',
+          files: { a: { bytes: 10, failed: false } },
+          registry: {}
+        }
+      }
+    }),
+    stderr: ''
+  }))
+  assert.equal(result.ok, true)
+  assert.equal(result.change, 'Same')
 })
 
 test('backupGame fails when stdout is blank', async () => {

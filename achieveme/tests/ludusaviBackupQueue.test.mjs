@@ -57,7 +57,7 @@ test('two schedule calls for same appid run once', async () => {
     findTitleBySteamId: async () => 'Dota 2',
     backupGame: async (_exe, title) => {
       backupCalls.push(title)
-      return { ok: true, decision: 'Processed', bytes: 1 }
+      return { ok: true, decision: 'Processed', change: 'Different', bytes: 1 }
     },
     restoreGame: async () => ({ ok: false, error: 'unexpected restore' }),
     nowSeconds: () => 100
@@ -69,7 +69,72 @@ test('two schedule calls for same appid run once', async () => {
 
   assert.equal(backupCalls.length, 1)
   assert.ok(statuses.some((s) => s.status === 'running'))
-  assert.ok(statuses.some((s) => s.status === 'ok'))
+  const ok = statuses.find((s) => s.status === 'ok')
+  assert.ok(ok)
+  assert.equal(ok.error, '')
+})
+
+test('unchanged Same backup stores soft note with ok status', async () => {
+  const { LUDUSAVI_UNCHANGED_SNAPSHOT_NOTE } = await import(
+    pathToFileURL(path.join(rootDir, '../src/shared/ludusaviApiUtils.ts')).href
+  )
+  const statuses = []
+  const queue = createLudusaviBackupQueue({
+    loadSettings: () => baseSettings(),
+    getAllGames: () => [],
+    getGame: () => makeGame('570', { ludusavi_title: 'Dota 2' }),
+    updateGameBackupStatus: (appid, update) => {
+      statuses.push({ appid, ...update })
+    },
+    notifyLibraryUpdated: () => undefined,
+    validateLudusaviPath: (p) => p,
+    findTitleBySteamId: async () => 'Dota 2',
+    backupGame: async () => ({
+      ok: true,
+      decision: 'Processed',
+      change: 'Same',
+      bytes: 1
+    }),
+    restoreGame: async () => ({ ok: false, error: 'unexpected restore' }),
+    nowSeconds: () => 100
+  })
+
+  queue.scheduleGameBackup('570', 'manual')
+  await queue.drain()
+
+  const last = statuses[statuses.length - 1]
+  assert.equal(last.status, 'ok')
+  assert.equal(last.error, LUDUSAVI_UNCHANGED_SNAPSHOT_NOTE)
+})
+
+test('successful restore clears soft note and does not use Same note', async () => {
+  const statuses = []
+  const queue = createLudusaviBackupQueue({
+    loadSettings: () => baseSettings(),
+    getAllGames: () => [],
+    getGame: () => makeGame('570', { ludusavi_title: 'Dota 2' }),
+    updateGameBackupStatus: (appid, update) => {
+      statuses.push({ appid, ...update })
+    },
+    notifyLibraryUpdated: () => undefined,
+    validateLudusaviPath: (p) => p,
+    findTitleBySteamId: async () => 'Dota 2',
+    backupGame: async () => ({ ok: false, error: 'unexpected backup' }),
+    restoreGame: async () => ({
+      ok: true,
+      decision: 'Processed',
+      change: 'Same',
+      bytes: 2
+    }),
+    nowSeconds: () => 200
+  })
+
+  queue.scheduleGameRestore('570', 'snap-9')
+  await queue.drain()
+
+  const last = statuses[statuses.length - 1]
+  assert.equal(last.status, 'ok')
+  assert.equal(last.error, '')
 })
 
 test('missing title sets missing status', async () => {

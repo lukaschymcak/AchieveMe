@@ -1,6 +1,10 @@
 import type { AppSettings, Game } from '../../shared/types'
 import type { LudusaviBackupResult } from './ludusaviService'
-import { isSafeLudusaviBackupId } from '../../shared/ludusaviApiUtils.ts'
+import {
+  isSafeLudusaviBackupId,
+  isUnchangedLudusaviBackup,
+  LUDUSAVI_UNCHANGED_SNAPSHOT_NOTE
+} from '../../shared/ludusaviApiUtils.ts'
 
 export type LudusaviBackupReason = 'startup' | 'session' | 'add' | 'manual'
 export type LudusaviQueueOp = 'backup' | 'restore'
@@ -149,10 +153,14 @@ export function createLudusaviBackupQueue(deps: LudusaviBackupQueueDeps): Ludusa
           : await deps.backupGame(exe, title)
 
       if (result.ok) {
+        const softNote =
+          op === 'backup' && isUnchangedLudusaviBackup(result)
+            ? LUDUSAVI_UNCHANGED_SNAPSHOT_NOTE
+            : ''
         deps.updateGameBackupStatus(appid, {
           status: 'ok',
           at: nowSeconds(),
-          error: '',
+          error: softNote,
           ludusaviTitle: title
         })
       } else {
