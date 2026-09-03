@@ -15,6 +15,7 @@ import { cacheHeroUrl } from '../../../shared/imageCacheUrls'
 import { formatBackupStatusLabel } from '../../../shared/backupStatusUtils.ts'
 import {
   formatBackupRelativeTime,
+  isLudusaviUnchangedSnapshotNote,
   type LudusaviSnapshot
 } from '../../../shared/ludusaviApiUtils.ts'
 import HelpTip from '../components/HelpTip'
@@ -89,14 +90,23 @@ function formatUnlockDate(unixSeconds: number): string | null {
  *
  * @param status - `backup_status` from the game row.
  * @param backupAt - Unix seconds of last attempt.
+ * @param backupError - Optional soft note or failure message.
  */
-function formatLastBackupModalLine(status: string, backupAt: number): string {
+function formatLastBackupModalLine(
+  status: string,
+  backupAt: number,
+  backupError: string = ''
+): string {
   const clean = String(status || '').trim().toLowerCase()
   const at = Number(backupAt) || 0
   if (clean === 'ok' && at > 0) {
     const absolute = formatUnlockDate(at)
     const relative = formatBackupRelativeTime(at, Math.floor(Date.now() / 1000))
-    return `Last backup: ${absolute}${relative ? ` · ${relative}` : ''}`
+    const base = `Last backup: ${absolute}${relative ? ` · ${relative}` : ''}`
+    if (isLudusaviUnchangedSnapshotNote(backupError)) {
+      return `${base}. ${backupError.trim()}`
+    }
+    return base
   }
   if (clean === 'running') return 'Backup in progress…'
   if (clean === 'failed' && at > 0) {
@@ -1106,15 +1116,24 @@ export default function GameDetailPage({
                             ? 'Save backup in progress'
                             : formatBackupStatusLabel(
                                 game?.backup_status ?? '',
-                                game?.backup_at ?? 0
+                                game?.backup_at ?? 0,
+                                Math.floor(Date.now() / 1000),
+                                game?.backup_error ?? ''
                               )
                         }
                         title={
-                          game?.backup_error ||
-                          formatBackupStatusLabel(
-                            game?.backup_status ?? '',
-                            game?.backup_at ?? 0
-                          )
+                          game?.backup_status === 'failed'
+                            ? game?.backup_error ||
+                              formatBackupStatusLabel(
+                                game?.backup_status ?? '',
+                                game?.backup_at ?? 0
+                              )
+                            : formatBackupStatusLabel(
+                                game?.backup_status ?? '',
+                                game?.backup_at ?? 0,
+                                Math.floor(Date.now() / 1000),
+                                game?.backup_error ?? ''
+                              )
                         }
                       >
                         {game?.backup_status === 'running' ? (
@@ -1414,11 +1433,15 @@ export default function GameDetailPage({
               <>
                 <p className="game-detail__exe-modal-help">
                   Back up copies this game&apos;s saves into Ludusavi (keeps up to 5 full
-                  snapshots). Install backup lets you pick a snapshot and overwrites current save
-                  files with that point in time.
+                  snapshots when saves change). Install backup lets you pick a snapshot and
+                  overwrites current save files with that point in time.
                 </p>
                 <p className="game-detail__exe-modal-help" role="status">
-                  {formatLastBackupModalLine(game?.backup_status ?? '', game?.backup_at ?? 0)}
+                  {formatLastBackupModalLine(
+                    game?.backup_status ?? '',
+                    game?.backup_at ?? 0,
+                    game?.backup_error ?? ''
+                  )}
                 </p>
                 <div className="game-detail__exe-confirm-actions">
                   <button
@@ -1458,7 +1481,7 @@ export default function GameDetailPage({
               <>
                 <p className="game-detail__exe-modal-help">
                   Install overwrites current saves with the selected Ludusavi snapshot (newest
-                  first, up to 5).
+                  first, up to 5). Ludusavi only adds a snapshot when save files change.
                 </p>
                 {saveSnapshotsLoading ? (
                   <p className="game-detail__exe-modal-help" role="status">
