@@ -1,6 +1,10 @@
 import React, { useEffect, useState } from 'react'
 import type { AppSettings, SourceId } from '../../../shared/types'
 import { ALL_SOURCES } from '../../../shared/types'
+import {
+  LUDUSAVI_CLOUD_PROVIDER_OPTIONS,
+  type LudusaviCloudProviderId
+} from '../../../shared/ludusaviCloudUtils'
 import { AppChrome, AppNav, AppSearchInput, AppShell, Chip } from '../components/app'
 import HelpTip from '../components/HelpTip'
 import type { AppPage } from '../lib/appNavigation'
@@ -16,15 +20,33 @@ interface Props {
   onNavigate: (page: AppPage) => void
 }
 
+const CLOUD_OVERWRITE_CONFIRM =
+  'Overwrites the other side. Use this to resolve conflicts; AchieveMe never auto-resolves.'
+
 export default function SettingsPage({ page, onNavigate }: Props): React.ReactElement {
   const [settings, setSettings] = useState<AppSettings | null>(null)
   const [saved, setSaved] = useState(false)
   const [saveHint, setSaveHint] = useState(false)
   const [newFolder, setNewFolder] = useState('')
   const [showSourcesTable, setShowSourcesTable] = useState(false)
+  const [cloudStatus, setCloudStatus] = useState<{
+    connected: boolean
+    label: string | null
+    configDir: string
+  } | null>(null)
+  const [cloudBusy, setCloudBusy] = useState(false)
+  const [cloudMessage, setCloudMessage] = useState('')
+
+  const refreshCloudStatus = (): void => {
+    void window.api
+      .ludusaviCloudStatus()
+      .then(setCloudStatus)
+      .catch(() => setCloudStatus(null))
+  }
 
   useEffect(() => {
     window.api.getSettings().then(setSettings)
+    refreshCloudStatus()
   }, [])
 
   function setApiKey(key: string): void {
@@ -86,6 +108,115 @@ export default function SettingsPage({ page, onNavigate }: Props): React.ReactEl
       setTimeout(() => setSaved(false), 2000)
       setTimeout(() => setSaveHint(false), 6000)
     })
+  }
+
+  async function persistSettings(): Promise<boolean> {
+    if (!settings) return false
+    try {
+      await window.api.saveSettings(settings)
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2000)
+      return true
+    } catch (err) {
+      window.alert(err instanceof Error ? err.message : String(err))
+      return false
+    }
+  }
+
+  async function handleCloudConnect(): Promise<void> {
+    if (!settings) return
+    if (!settings.ludusaviPath.trim()) {
+      window.alert('Set the Ludusavi path first.')
+      return
+    }
+    const provider = String(settings.ludusaviCloudProvider || 'none') as LudusaviCloudProviderId
+    if (provider !== 'none' && !settings.rclonePath.trim()) {
+      window.alert('Set the rclone path first.')
+      return
+    }
+    if (provider === 'custom' && !settings.ludusaviCloudCustomRemote.trim()) {
+      window.alert('Enter a custom rclone remote name.')
+      return
+    }
+    setCloudBusy(true)
+    setCloudMessage('')
+    try {
+      const ok = await persistSettings()
+      if (!ok) return
+      const result = await window.api.ludusaviCloudSet(
+        provider,
+        provider === 'custom' ? settings.ludusaviCloudCustomRemote : undefined
+      )
+      if (!result.ok) {
+        setCloudMessage(result.error || 'Connect failed.')
+        window.alert(result.error || 'Connect failed.')
+        return
+      }
+      setCloudMessage(provider === 'none' ? 'Cloud disconnected.' : 'Provider connected.')
+      refreshCloudStatus()
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err)
+      setCloudMessage(message)
+      window.alert(message)
+    } finally {
+      setCloudBusy(false)
+    }
+  }
+
+  async function handleCloudUpload(): Promise<void> {
+    if (!window.confirm(`Upload local Ludusavi backups to the cloud?\n\n${CLOUD_OVERWRITE_CONFIRM}`)) {
+      return
+    }
+    setCloudBusy(true)
+    setCloudMessage('')
+    try {
+      const ok = await persistSettings()
+      if (!ok) return
+      const result = await window.api.ludusaviCloudUpload()
+      if (!result.ok) {
+        setCloudMessage(result.error || 'Upload failed.')
+        window.alert(result.error || 'Upload failed.')
+        return
+      }
+      setCloudMessage(result.error || 'Uploaded to cloud.')
+      refreshCloudStatus()
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err)
+      setCloudMessage(message)
+      window.alert(message)
+    } finally {
+      setCloudBusy(false)
+    }
+  }
+
+  async function handleCloudDownload(): Promise<void> {
+    if (
+      !window.confirm(
+        `Download cloud Ludusavi backups over local copies?\n\n${CLOUD_OVERWRITE_CONFIRM}`
+      )
+    ) {
+      return
+    }
+    setCloudBusy(true)
+    setCloudMessage('')
+    try {
+      const ok = await persistSettings()
+      if (!ok) return
+      const result = await window.api.ludusaviCloudDownload()
+      if (!result.ok) {
+        setCloudMessage(result.error || 'Download failed.')
+        window.alert(result.error || 'Download failed.')
+        return
+      }
+      setCloudMessage(result.error || 'Downloaded from cloud.')
+      refreshCloudStatus()
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err)
+      setCloudMessage(message)
+      window.alert(message)
+    } finally {
+      setCloudBusy(false)
+    }
   }
 
   if (!settings) {
@@ -469,6 +600,115 @@ export default function SettingsPage({ page, onNavigate }: Props): React.ReactEl
             {settings.ludusaviPath.trim() !== '' && (
               <Chip onClick={() => toggleSetting('ludusaviPath', '')}>Clear</Chip>
             )}
+          </div>
+          <p className="settings-page__lead" style={{ marginTop: 16 }}>
+            {SETTINGS_HINTS.rclonePath}
+          </p>
+          <div className="settings-page__folder-add settings-page__folder-add--sound">
+            <AppSearchInput
+              type="text"
+              value={settings.rclonePath}
+              onChange={(e) => toggleSetting('rclonePath', e.target.value)}
+              placeholder="Path to rclone.exe"
+              className="settings-page__input--nested"
+              spellCheck={false}
+            />
+            <Chip
+              onClick={() => {
+                void window.api
+                  .browseRclonePath()
+                  .then((picked) => {
+                    if (!picked) return
+                    setSettings((s) => s && { ...s, rclonePath: picked })
+                  })
+                  .catch((err: unknown) => {
+                    window.alert(err instanceof Error ? err.message : String(err))
+                  })
+              }}
+            >
+              Browse
+            </Chip>
+            {settings.rclonePath.trim() !== '' && (
+              <Chip onClick={() => toggleSetting('rclonePath', '')}>Clear</Chip>
+            )}
+          </div>
+          <p className="settings-page__lead" style={{ marginTop: 16 }}>
+            {SETTINGS_HINTS.ludusaviCloudProvider}
+          </p>
+          <div className="settings-page__folder-add settings-page__folder-add--sound">
+            <select
+              className="settings-page__input--nested"
+              value={settings.ludusaviCloudProvider || 'none'}
+              aria-label="Cloud provider"
+              disabled={cloudBusy}
+              onChange={(e) =>
+                toggleSetting('ludusaviCloudProvider', e.target.value)
+              }
+            >
+              {LUDUSAVI_CLOUD_PROVIDER_OPTIONS.map((opt) => (
+                <option key={opt.id} value={opt.id}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+            <Chip
+              onClick={() => {
+                void handleCloudConnect()
+              }}
+            >
+              {cloudBusy ? 'Working…' : 'Connect'}
+            </Chip>
+          </div>
+          {settings.ludusaviCloudProvider === 'custom' && (
+            <div className="settings-page__folder-add settings-page__folder-add--sound" style={{ marginTop: 8 }}>
+              <AppSearchInput
+                type="text"
+                value={settings.ludusaviCloudCustomRemote}
+                onChange={(e) => toggleSetting('ludusaviCloudCustomRemote', e.target.value)}
+                placeholder="Existing rclone remote name"
+                className="settings-page__input--nested"
+                spellCheck={false}
+                aria-label="Custom rclone remote"
+              />
+            </div>
+          )}
+          <p className="settings-page__note" style={{ marginTop: 8 }} role="status">
+            {cloudStatus?.connected
+              ? `Connected to ${cloudStatus.label || 'cloud'}.`
+              : 'Not connected.'}
+            {cloudMessage ? ` ${cloudMessage}` : ''}
+          </p>
+          <div className="settings-page__panel settings-page__sources-grid" style={{ marginTop: 12 }}>
+            <label className="settings-page__source-label">
+              <input
+                type="checkbox"
+                checked={Boolean(settings.ludusaviCloudSync)}
+                onChange={(e) => toggleSetting('ludusaviCloudSync', e.target.checked)}
+                className="settings-page__checkbox"
+              />
+              <span className="settings-page__source-name">
+                {SETTINGS_HINTS.ludusaviCloudSync}
+              </span>
+            </label>
+          </div>
+          <p className="settings-page__note" style={{ marginTop: 8 }}>
+            {SETTINGS_HINTS.ludusaviCloudManual}
+          </p>
+          <div className="settings-page__folder-add settings-page__folder-add--sound">
+            <Chip
+              onClick={() => {
+                void handleCloudUpload()
+              }}
+            >
+              Upload to cloud
+            </Chip>
+            <Chip
+              onClick={() => {
+                void handleCloudDownload()
+              }}
+            >
+              Download from cloud
+            </Chip>
           </div>
           <p className="settings-page__lead" style={{ marginTop: 16 }}>
             {SETTINGS_HINTS.ludusaviAutoBackup}

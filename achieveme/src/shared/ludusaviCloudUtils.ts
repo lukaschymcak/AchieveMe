@@ -1,9 +1,8 @@
 /**
  * Pure helpers for AchieveMe’s isolated Ludusavi cloud / rclone wiring.
  * Never touches the user’s Ludusavi GUI config directory.
+ * No Node built-ins — safe for renderer imports.
  */
-
-import path from 'node:path'
 
 /** Soft note when Ludusavi reports a cloud sync conflict (no auto-resolve). */
 export const LUDUSAVI_CLOUD_CONFLICT_NOTE =
@@ -47,7 +46,9 @@ export function getAchieveMeLudusaviConfigDir(userDataPath: string): string {
   if (!root) {
     throw new Error('userData path is required for Ludusavi config.')
   }
-  return path.join(path.resolve(root), 'ludusavi')
+  const normalized = root.replace(/[/\\]+$/, '')
+  const sep = normalized.includes('\\') ? '\\' : '/'
+  return `${normalized}${sep}ludusavi`
 }
 
 /**
