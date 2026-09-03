@@ -8,6 +8,8 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 const rootDir = path.dirname(fileURLToPath(import.meta.url))
 const {
   validateLudusaviPath,
+  validateRclonePath,
+  wrapLudusaviRunnerWithConfig,
   findTitleBySteamId,
   backupGame,
   restoreGame,
@@ -15,6 +17,24 @@ const {
 } = await import(
   pathToFileURL(path.join(rootDir, '../src/main/achievement/ludusaviService.ts')).href
 )
+
+test('validateRclonePath accepts rclone.exe file', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'rclone-svc-'))
+  const exe = path.join(dir, 'rclone.exe')
+  fs.writeFileSync(exe, '')
+  assert.equal(validateRclonePath(exe), path.resolve(exe))
+  fs.rmSync(dir, { recursive: true, force: true })
+})
+
+test('wrapLudusaviRunnerWithConfig prepends --config', async () => {
+  const calls = []
+  const wrapped = wrapLudusaviRunnerWithConfig(async (argv) => {
+    calls.push(argv)
+    return { code: 0, stdout: '{}', stderr: '' }
+  }, 'C:\\achieve\\ludusavi')
+  await wrapped(['find', '--api'])
+  assert.deepEqual(calls[0], ['--config', 'C:\\achieve\\ludusavi', 'find', '--api'])
+})
 
 test('validateLudusaviPath accepts ludusavi.exe file', () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ludusavi-svc-'))

@@ -10,8 +10,11 @@ import {
   takeNewestSnapshots,
   type LudusaviSnapshot
 } from '../../shared/ludusaviApiUtils.ts'
+import { withLudusaviConfig } from '../../shared/ludusaviCloudUtils.ts'
 
 export type { LudusaviSnapshot }
+
+export { withLudusaviConfig }
 
 export interface LudusaviCommandResult {
   code: number
@@ -73,6 +76,45 @@ export function validateLudusaviPath(ludusaviPath: string): string {
 }
 
 /**
+ * Resolves a linked rclone path to an absolute `rclone.exe` file path.
+ * Accepts either the exe itself or a directory that contains it.
+ *
+ * @param rclonePath - User-linked path from settings.
+ * @returns Absolute path to rclone.exe.
+ * @throws If the path is missing or does not point at rclone.exe.
+ */
+export function validateRclonePath(rclonePath: string): string {
+  const trimmed = String(rclonePath || '').trim()
+  if (!trimmed) {
+    throw new Error('rclone path is empty.')
+  }
+
+  const resolved = path.resolve(trimmed)
+  if (!fs.existsSync(resolved)) {
+    throw new Error('rclone path was not found.')
+  }
+
+  const stat = fs.statSync(resolved)
+  if (stat.isDirectory()) {
+    const exe = path.join(resolved, 'rclone.exe')
+    if (!fs.existsSync(exe) || !fs.statSync(exe).isFile()) {
+      throw new Error('rclone.exe was not found in that folder.')
+    }
+    return exe
+  }
+
+  if (!stat.isFile()) {
+    throw new Error('rclone path must be a file or folder.')
+  }
+
+  if (path.basename(resolved).toLowerCase() !== 'rclone.exe') {
+    throw new Error('Select rclone.exe (or a folder that contains it).')
+  }
+
+  return resolved
+}
+
+/**
  * Default spawn-based command runner for Ludusavi CLI.
  *
  * @param exe - Absolute path to ludusavi.exe.
@@ -99,6 +141,21 @@ export function createDefaultLudusaviRunner(exe: string): LudusaviCommandRunner 
         resolve({ code: code ?? 1, stdout, stderr })
       })
     })
+}
+
+/**
+ * Wraps a Ludusavi runner so every argv is prefixed with `--config <dir>`.
+ *
+ * @param runCommand - Base runner.
+ * @param configDir - AchieveMe isolated Ludusavi config directory.
+ */
+export function wrapLudusaviRunnerWithConfig(
+  runCommand: LudusaviCommandRunner,
+  configDir: string
+): LudusaviCommandRunner {
+  const dir = String(configDir || '').trim()
+  if (!dir) return runCommand
+  return (argv) => runCommand(withLudusaviConfig(dir, argv))
 }
 
 /**
