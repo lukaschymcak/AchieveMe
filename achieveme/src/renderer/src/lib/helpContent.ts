@@ -39,7 +39,7 @@ export const EMULATOR_SOURCES: EmulatorSourceHelp[] = [
 
 export const TOOLTIPS = {
   refreshLibrary:
-    'Rescan all emulator folders, re-read save files, refetch Steam metadata, and remove games whose saves are gone. Updates the entire library.',
+    'Rescan all emulator folders, re-read save files, refetch Steam metadata, and remove games whose saves are gone — except depot installs with stored GIDs or an install path, and AppIDs you deleted (ignored). Updates the entire library.',
   refreshGameDetail:
     'Rescan and refresh the entire library (not just this game). Hold a library card for per-game refresh.',
   refreshGameMenu: 'Re-read this game’s save files and refetch Steam metadata for this title only.',
@@ -79,7 +79,7 @@ export const TOOLTIPS = {
   settingsSteamless:
     'Link a Steamless release folder that contains Steamless.CLI.exe and Plugins. Used from Tools → Steamless. Not bundled with AchieveMe.',
   settingsDepotDownloader:
-    'Hubcap API key authenticates manifest downloads. Default download folder is used when starting a Depot Downloader run from Tools.',
+    'Hubcap API key authenticates manifest downloads. Default download folder is used when starting a Depot Downloader run from Tools. Import existing folder only needs the Hubcap fetch — it does not download game files.',
   settingsNotifications:
     'Unlock toasts use a Steam-style layout with bronze/silver/gold accents by rarity, plus a platinum toast when a game first hits 100%. They fire on live save changes only. Optional sound uses the Windows default chime or a custom .wav/.mp3 with adjustable volume.',
   settingsTray:
@@ -345,7 +345,8 @@ export const HELP_SECTIONS: HelpSection[] = [
     paragraphs: [
       'Tools sits between News and Settings. Link a Steamless release folder in Settings → External tools (must include Steamless.CLI.exe and Plugins).',
       'Open the Steamless wizard to pick a library game (uses launch_exe when set, otherwise resolves executables from install_path) or Search for executable on disk, then run Steamless.CLI. Output is typically Game.exe.unpacked.exe beside the original; Play is not changed automatically.',
-      'Depot Downloader searches Steam, fetches a Hubcap manifest ZIP, lets you pick depots, and runs DepotDownloader.dll (dotnet required). Closing the wizard during a download keeps it running — use the floating Downloads badge to reopen. After download you can optionally set up Goldberg achievements (DLL scan, emulator install, Denuvo preserve).'
+      'Depot Downloader searches Steam, fetches a Hubcap manifest ZIP, lets you pick depots, and runs DepotDownloader.dll (dotnet required). Closing the wizard during a download keeps it running — use the floating Downloads badge to reopen. After download you can optionally set up Goldberg achievements (DLL scan, emulator install, Denuvo preserve).',
+      'Import existing folder registers a game already on disk: Hubcap manifest only (no DepotDownloader), pick the install folder and depots you have, then AchieveMe stores GIDs + install_path for version checks. Set up achievements later from Game Detail if needed.'
     ]
   },
   {
@@ -374,6 +375,8 @@ export const HELP_SECTIONS: HelpSection[] = [
     bullets: [
       'Missing icons/names? Add API key and Refresh.',
       'Empty achievement list? Need a Steam API key; or Steam has not published schema yet (try Refresh later); or the game has no achievements.',
+      'Deleted game keeps coming back? Delete ignores the AppID; leftover CODEX/RUNE files are not removed. Re-add via Add Game or Import existing to clear the ignore.',
+      'Game on disk missing from library? Tools → Import existing folder (Hubcap GIDs, no re-download).',
       'Live updates? Save file edits propagate in ~1s via the file watcher.',
       'Keyboard: Enter/Space on a focused card opens it; Escape closes the long-press menu.',
       'Privacy: data stays local (SQLite + userData, including cached cover/hero/icon images). API key in settings.json. Hidden descriptions may fetch from SteamDB.'

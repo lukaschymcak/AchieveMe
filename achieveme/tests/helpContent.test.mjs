@@ -65,6 +65,18 @@ describe('helpContent', () => {
     assert.match(body, /CODEX|RUNE/i)
   })
 
+  it('Tools section documents import existing', () => {
+    const section = HELP_SECTIONS.find((s) => s.id === 'tools')
+    assert.ok(section)
+    const body = (section.paragraphs ?? []).join(' ')
+    assert.match(body, /import existing/i)
+    assert.match(body, /GIDs|manifest/i)
+  })
+
+  it('refresh tooltip mentions ignored and depot retain', () => {
+    assert.match(TOOLTIPS.refreshLibrary, /ignored|GIDs|install path/i)
+  })
+
   it('defines news refresh tooltip and empty states', () => {
     assert.match(TOOLTIPS.refreshNews, /cache/i)
     assert.match(TOOLTIPS.refreshNews, /wishlist/i)
