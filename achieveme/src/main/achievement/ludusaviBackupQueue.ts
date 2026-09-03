@@ -20,7 +20,11 @@ export interface LudusaviBackupQueueDeps {
   notifyLibraryUpdated: (appid?: string) => void
   validateLudusaviPath: (ludusaviPath: string) => string
   findTitleBySteamId: (exe: string, appid: string) => Promise<string | null>
-  backupGame: (exe: string, title: string) => Promise<LudusaviBackupResult>
+  backupGame: (
+    exe: string,
+    title: string,
+    options?: { cloudSync?: boolean }
+  ) => Promise<LudusaviBackupResult>
   restoreGame: (
     exe: string,
     title: string,
@@ -150,13 +154,19 @@ export function createLudusaviBackupQueue(deps: LudusaviBackupQueueDeps): Ludusa
       const result =
         op === 'restore'
           ? await deps.restoreGame(exe, title, backupId)
-          : await deps.backupGame(exe, title)
+          : await deps.backupGame(exe, title, {
+              cloudSync: Boolean(settings.ludusaviCloudSync)
+            })
 
       if (result.ok) {
-        const softNote =
-          op === 'backup' && isUnchangedLudusaviBackup(result)
-            ? LUDUSAVI_UNCHANGED_SNAPSHOT_NOTE
-            : ''
+        let softNote = ''
+        if (op === 'backup') {
+          if (isUnchangedLudusaviBackup(result)) {
+            softNote = LUDUSAVI_UNCHANGED_SNAPSHOT_NOTE
+          } else if (result.error) {
+            softNote = result.error
+          }
+        }
         deps.updateGameBackupStatus(appid, {
           status: 'ok',
           at: nowSeconds(),

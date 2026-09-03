@@ -74,6 +74,62 @@ test('two schedule calls for same appid run once', async () => {
   assert.equal(ok.error, '')
 })
 
+test('backup passes ludusaviCloudSync to backupGame', async () => {
+  const optionsSeen = []
+  const queue = createLudusaviBackupQueue({
+    loadSettings: () => baseSettings({ ludusaviCloudSync: true }),
+    getAllGames: () => [],
+    getGame: () => makeGame('570', { ludusavi_title: 'Dota 2' }),
+    updateGameBackupStatus: () => undefined,
+    notifyLibraryUpdated: () => undefined,
+    validateLudusaviPath: (p) => p,
+    findTitleBySteamId: async () => 'Dota 2',
+    backupGame: async (_exe, _title, options) => {
+      optionsSeen.push(options)
+      return { ok: true, decision: 'Processed', change: 'Different', bytes: 1 }
+    },
+    restoreGame: async () => ({ ok: false, error: 'unexpected restore' })
+  })
+
+  queue.scheduleGameBackup('570', 'manual')
+  await queue.drain()
+  assert.deepEqual(optionsSeen, [{ cloudSync: true }])
+})
+
+test('cloud conflict soft note from backupGame is stored with ok status', async () => {
+  const { LUDUSAVI_CLOUD_CONFLICT_NOTE } = await import(
+    pathToFileURL(path.join(rootDir, '../src/shared/ludusaviCloudUtils.ts')).href
+  )
+  const statuses = []
+  const queue = createLudusaviBackupQueue({
+    loadSettings: () => baseSettings({ ludusaviCloudSync: true }),
+    getAllGames: () => [],
+    getGame: () => makeGame('570', { ludusavi_title: 'Dota 2' }),
+    updateGameBackupStatus: (appid, update) => {
+      statuses.push({ appid, ...update })
+    },
+    notifyLibraryUpdated: () => undefined,
+    validateLudusaviPath: (p) => p,
+    findTitleBySteamId: async () => 'Dota 2',
+    backupGame: async () => ({
+      ok: true,
+      decision: 'Processed',
+      change: 'Different',
+      bytes: 1,
+      error: LUDUSAVI_CLOUD_CONFLICT_NOTE
+    }),
+    restoreGame: async () => ({ ok: false, error: 'unexpected restore' }),
+    nowSeconds: () => 100
+  })
+
+  queue.scheduleGameBackup('570', 'manual')
+  await queue.drain()
+
+  const last = statuses[statuses.length - 1]
+  assert.equal(last.status, 'ok')
+  assert.equal(last.error, LUDUSAVI_CLOUD_CONFLICT_NOTE)
+})
+
 test('unchanged Same backup stores soft note with ok status', async () => {
   const { LUDUSAVI_UNCHANGED_SNAPSHOT_NOTE } = await import(
     pathToFileURL(path.join(rootDir, '../src/shared/ludusaviApiUtils.ts')).href
