@@ -132,6 +132,87 @@ export function extractBackupGameResult(
  */
 export const extractOperationGameResult = extractBackupGameResult
 
+export interface LudusaviSnapshot {
+  /** Ludusavi backup `name` / id for `--backup`. */
+  id: string
+  /** Raw `when` string from the API. */
+  when: string
+  /** Parsed epoch ms for sorting; 0 if unparsable. */
+  whenMs: number
+}
+
+/**
+ * Returns true when a Ludusavi backup id is safe to pass on the CLI.
+ *
+ * @param id - Candidate backup name from `backups --api`.
+ */
+export function isSafeLudusaviBackupId(id: string): boolean {
+  const clean = String(id || '').trim()
+  if (!clean || clean.length > 200) return false
+  if (/[\\/\0\r\n]/.test(clean)) return false
+  if (clean.includes('..')) return false
+  return true
+}
+
+function parseWhenMs(when: unknown): number {
+  if (typeof when !== 'string' || !when.trim()) return 0
+  const ms = Date.parse(when)
+  return Number.isFinite(ms) ? ms : 0
+}
+
+/**
+ * Extracts snapshot rows from a `ludusavi backups --api` payload for one title.
+ *
+ * @param apiJson - Parsed `--api` JSON.
+ * @param title - Exact Ludusavi game title key.
+ */
+export function extractBackupSnapshots(apiJson: unknown, title: string): LudusaviSnapshot[] {
+  const cleanTitle = String(title || '').trim()
+  if (!cleanTitle || !apiJson || typeof apiJson !== 'object') return []
+  const games = (apiJson as { games?: Record<string, unknown> }).games
+  if (!games || typeof games !== 'object' || Array.isArray(games)) return []
+  const entry = games[cleanTitle]
+  if (!entry || typeof entry !== 'object') return []
+  const backups = (entry as { backups?: unknown }).backups
+  if (!Array.isArray(backups)) return []
+
+  const out: LudusaviSnapshot[] = []
+  for (const row of backups) {
+    if (!row || typeof row !== 'object') continue
+    const id = String((row as { name?: unknown }).name ?? '').trim()
+    if (!isSafeLudusaviBackupId(id)) continue
+    const when = String((row as { when?: unknown }).when ?? '').trim()
+    out.push({ id, when, whenMs: parseWhenMs(when) })
+  }
+  return out
+}
+
+/**
+ * Sorts snapshots newest first (stable for equal whenMs by id).
+ *
+ * @param snapshots - Snapshot list.
+ */
+export function sortSnapshotsNewestFirst(snapshots: LudusaviSnapshot[]): LudusaviSnapshot[] {
+  return [...snapshots].sort((a, b) => {
+    if (b.whenMs !== a.whenMs) return b.whenMs - a.whenMs
+    return String(b.id).localeCompare(String(a.id))
+  })
+}
+
+/**
+ * Returns the newest `limit` snapshots after sorting.
+ *
+ * @param snapshots - Snapshot list.
+ * @param limit - Max count (clamped to >= 0).
+ */
+export function takeNewestSnapshots(
+  snapshots: LudusaviSnapshot[],
+  limit: number
+): LudusaviSnapshot[] {
+  const n = Number.isFinite(limit) ? Math.max(0, Math.floor(limit)) : 0
+  return sortSnapshotsNewestFirst(snapshots).slice(0, n)
+}
+
 /**
  * Formats a unix backup timestamp as a short relative label.
  *

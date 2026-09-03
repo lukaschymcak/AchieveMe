@@ -8,7 +8,11 @@ const {
   parseLudusaviApiJson,
   extractFindTitle,
   extractBackupGameResult,
-  formatBackupRelativeTime
+  formatBackupRelativeTime,
+  extractBackupSnapshots,
+  sortSnapshotsNewestFirst,
+  takeNewestSnapshots,
+  isSafeLudusaviBackupId
 } = await import(pathToFileURL(path.join(rootDir, '../src/shared/ludusaviApiUtils.ts')).href)
 
 test('parseLudusaviApiJson returns null for blank or invalid', () => {
@@ -116,4 +120,54 @@ test('formatBackupRelativeTime', () => {
   assert.equal(formatBackupRelativeTime(now - 120, now), '2m ago')
   assert.equal(formatBackupRelativeTime(now - 3600, now), '1h ago')
   assert.equal(formatBackupRelativeTime(now - 86400 * 2, now), '2d ago')
+})
+
+test('isSafeLudusaviBackupId rejects empty and path-like ids', () => {
+  assert.equal(isSafeLudusaviBackupId(''), false)
+  assert.equal(isSafeLudusaviBackupId('../evil'), false)
+  assert.equal(isSafeLudusaviBackupId('a\\b'), false)
+  assert.equal(isSafeLudusaviBackupId('a/b'), false)
+  assert.equal(isSafeLudusaviBackupId('2024-01-02T03-04-05'), true)
+})
+
+test('extractBackupSnapshots parses backups --api fixture', () => {
+  const api = {
+    games: {
+      Dota: {
+        backupPath: '/backups/Dota',
+        backups: [
+          { name: 'old', when: '2024-01-01T00:00:00Z', locked: false },
+          { name: 'new', when: '2024-06-01T12:00:00Z', locked: false }
+        ]
+      }
+    }
+  }
+  const rows = extractBackupSnapshots(api, 'Dota')
+  assert.equal(rows.length, 2)
+  assert.equal(rows[0].id, 'old')
+  assert.ok(rows[1].whenMs > rows[0].whenMs)
+})
+
+test('takeNewestSnapshots sorts and limits to 5', () => {
+  const snaps = [
+    { id: 'a', when: '2024-01-01T00:00:00Z', whenMs: Date.parse('2024-01-01T00:00:00Z') },
+    { id: 'b', when: '2024-05-01T00:00:00Z', whenMs: Date.parse('2024-05-01T00:00:00Z') },
+    { id: 'c', when: '2024-03-01T00:00:00Z', whenMs: Date.parse('2024-03-01T00:00:00Z') },
+    { id: 'd', when: '2024-02-01T00:00:00Z', whenMs: Date.parse('2024-02-01T00:00:00Z') },
+    { id: 'e', when: '2024-04-01T00:00:00Z', whenMs: Date.parse('2024-04-01T00:00:00Z') },
+    { id: 'f', when: '2024-06-01T00:00:00Z', whenMs: Date.parse('2024-06-01T00:00:00Z') }
+  ]
+  const top = takeNewestSnapshots(snaps, 5)
+  assert.deepEqual(
+    top.map((s) => s.id),
+    ['f', 'b', 'e', 'c', 'd']
+  )
+  assert.deepEqual(
+    sortSnapshotsNewestFirst(snaps).map((s) => s.id)[0],
+    'f'
+  )
+})
+
+test('extractBackupSnapshots returns empty for missing title', () => {
+  assert.deepEqual(extractBackupSnapshots({ games: {} }, 'Missing'), [])
 })
