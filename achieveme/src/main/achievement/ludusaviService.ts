@@ -3,9 +3,15 @@ import path from 'node:path'
 import { spawn } from 'node:child_process'
 import {
   extractBackupGameResult,
+  extractBackupSnapshots,
   extractFindTitle,
-  parseLudusaviApiJson
+  isSafeLudusaviBackupId,
+  parseLudusaviApiJson,
+  takeNewestSnapshots,
+  type LudusaviSnapshot
 } from '../../shared/ludusaviApiUtils.ts'
+
+export type { LudusaviSnapshot }
 
 export interface LudusaviCommandResult {
   code: number
@@ -21,6 +27,9 @@ export interface LudusaviBackupResult {
   bytes?: number
   error?: string
 }
+
+/** Full backups retained per game for AchieveMe-initiated backups. */
+export const LUDUSAVI_FULL_BACKUP_LIMIT = 5
 
 /**
  * Resolves a linked Ludusavi path to an absolute `ludusavi.exe` file path.
@@ -111,7 +120,7 @@ export async function findTitleBySteamId(
 }
 
 /**
- * Runs `ludusavi backup --force --api --no-cloud-sync` for one title.
+ * Runs `ludusavi backup --force --api --no-cloud-sync --full-limit 5` for one title.
  *
  * @param exe - Absolute path to ludusavi.exe.
  * @param title - Exact Ludusavi game title.
@@ -132,6 +141,8 @@ export async function backupGame(
     '--force',
     '--api',
     '--no-cloud-sync',
+    '--full-limit',
+    String(LUDUSAVI_FULL_BACKUP_LIMIT),
     cleanTitle
   ])
 
@@ -152,29 +163,69 @@ export async function backupGame(
 }
 
 /**
- * Runs `ludusavi restore --force --api --no-cloud-sync` for one title.
+ * Lists up to five newest Ludusavi snapshots for a title.
  *
  * @param exe - Absolute path to ludusavi.exe.
  * @param title - Exact Ludusavi game title.
  * @param runCommand - Optional injectable runner (tests).
  */
-export async function restoreGame(
+export async function listGameBackups(
   exe: string,
   title: string,
   runCommand: LudusaviCommandRunner = createDefaultLudusaviRunner(exe)
+): Promise<LudusaviSnapshot[]> {
+  const cleanTitle = String(title || '').trim()
+  if (!cleanTitle) return []
+
+  const result = await runCommand(['backups', '--api', cleanTitle])
+  const parsed = parseLudusaviApiJson(result.stdout)
+  if (!parsed) return []
+  return takeNewestSnapshots(
+    extractBackupSnapshots(parsed, cleanTitle),
+    LUDUSAVI_FULL_BACKUP_LIMIT
+  )
+}
+
+/**
+ * Runs `ludusavi restore --force --api --no-cloud-sync` for one title.
+ * When `backupId` is set, adds `--backup <id>` (required for picker restores).
+ *
+ * @param exe - Absolute path to ludusavi.exe.
+ * @param title - Exact Ludusavi game title.
+ * @param backupIdOrRunner - Snapshot id, or injectable runner (legacy tests).
+ * @param maybeRunner - Injectable runner when backupId is a string.
+ */
+export async function restoreGame(
+  exe: string,
+  title: string,
+  backupIdOrRunner?: string | LudusaviCommandRunner,
+  maybeRunner?: LudusaviCommandRunner
 ): Promise<LudusaviBackupResult> {
   const cleanTitle = String(title || '').trim()
   if (!cleanTitle) {
     return { ok: false, error: 'Game title is required.' }
   }
 
-  const result = await runCommand([
-    'restore',
-    '--force',
-    '--api',
-    '--no-cloud-sync',
-    cleanTitle
-  ])
+  let backupId: string | undefined
+  let runCommand: LudusaviCommandRunner
+  if (typeof backupIdOrRunner === 'function') {
+    runCommand = backupIdOrRunner
+  } else {
+    backupId = backupIdOrRunner
+    runCommand = maybeRunner ?? createDefaultLudusaviRunner(exe)
+  }
+
+  const argv = ['restore', '--force', '--api', '--no-cloud-sync']
+  if (backupId !== undefined && String(backupId).trim() !== '') {
+    const id = String(backupId).trim()
+    if (!isSafeLudusaviBackupId(id)) {
+      return { ok: false, error: 'Invalid backup id.' }
+    }
+    argv.push('--backup', id)
+  }
+  argv.push(cleanTitle)
+
+  const result = await runCommand(argv)
 
   const parsed = parseLudusaviApiJson(result.stdout)
   if (!parsed) {
