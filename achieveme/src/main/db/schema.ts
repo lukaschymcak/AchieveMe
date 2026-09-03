@@ -27,6 +27,18 @@ export function migrateSchema(db: Database.Database): void {
   if (!columnExists(db, 'games', 'update_status')) {
     db.exec("ALTER TABLE games ADD COLUMN update_status TEXT NOT NULL DEFAULT ''")
   }
+  if (!columnExists(db, 'games', 'backup_status')) {
+    db.exec("ALTER TABLE games ADD COLUMN backup_status TEXT NOT NULL DEFAULT ''")
+  }
+  if (!columnExists(db, 'games', 'backup_at')) {
+    db.exec('ALTER TABLE games ADD COLUMN backup_at INTEGER NOT NULL DEFAULT 0')
+  }
+  if (!columnExists(db, 'games', 'backup_error')) {
+    db.exec("ALTER TABLE games ADD COLUMN backup_error TEXT NOT NULL DEFAULT ''")
+  }
+  if (!columnExists(db, 'games', 'ludusavi_title')) {
+    db.exec("ALTER TABLE games ADD COLUMN ludusavi_title TEXT NOT NULL DEFAULT ''")
+  }
   db.exec(`
     CREATE TABLE IF NOT EXISTS ignored_appids (
       appid       TEXT    PRIMARY KEY,
@@ -50,7 +62,11 @@ export function createTables(db: Database.Database): void {
       install_path          TEXT    NOT NULL DEFAULT '',
       launch_exe            TEXT    NOT NULL DEFAULT '',
       manifest_gids         TEXT    NOT NULL DEFAULT '',
-      update_status         TEXT    NOT NULL DEFAULT ''
+      update_status         TEXT    NOT NULL DEFAULT '',
+      backup_status         TEXT    NOT NULL DEFAULT '',
+      backup_at             INTEGER NOT NULL DEFAULT 0,
+      backup_error          TEXT    NOT NULL DEFAULT '',
+      ludusavi_title        TEXT    NOT NULL DEFAULT ''
     );
 
     CREATE TABLE IF NOT EXISTS achievements (

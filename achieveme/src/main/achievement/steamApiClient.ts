@@ -246,7 +246,11 @@ function buildGameRecord(
     install_path: existingGame?.install_path ?? '',
     launch_exe: existingGame?.launch_exe ?? '',
     manifest_gids: existingGame?.manifest_gids ?? '',
-    update_status: existingGame?.update_status ?? ''
+    update_status: existingGame?.update_status ?? '',
+    backup_status: existingGame?.backup_status ?? '',
+    backup_at: existingGame?.backup_at ?? 0,
+    backup_error: existingGame?.backup_error ?? '',
+    ludusavi_title: existingGame?.ludusavi_title ?? ''
   }
 }
 

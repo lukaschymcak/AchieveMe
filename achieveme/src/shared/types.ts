@@ -142,6 +142,17 @@ export interface Game {
   manifest_gids: string
   /** Last known Steam update status from PICS check. */
   update_status: UpdateStatus
+  /**
+   * Ludusavi backup status for this library game.
+   * Empty = never attempted; `ok` | `failed` | `missing` | `running`.
+   */
+  backup_status: string
+  /** Unix seconds of last successful or failed backup attempt. */
+  backup_at: number
+  /** Last backup error message, or empty. */
+  backup_error: string
+  /** Cached Ludusavi manifest title resolved via find --steam-id. */
+  ludusavi_title: string
 }
 
 // One row in the `achievements` SQLite table
@@ -207,6 +218,10 @@ export interface GameSummary {
   install_path: string
   launch_exe: string
   update_status: UpdateStatus
+  backup_status: string
+  backup_at: number
+  backup_error: string
+  ludusavi_title: string
 }
 
 // Sent over IPC to renderer for the game detail page

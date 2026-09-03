@@ -2,7 +2,7 @@ import type Database from 'better-sqlite3'
 import type { Game, Achievement, SaveLocation, UpdateStatus } from '../../shared/types'
 
 const GAME_COLUMNS =
-  'appid, name, total_achievements, unlocked_achievements, completion_pct, has_platinum, last_unlocked_at, schema_fetched_at, playtime_seconds, install_path, launch_exe, manifest_gids, update_status'
+  'appid, name, total_achievements, unlocked_achievements, completion_pct, has_platinum, last_unlocked_at, schema_fetched_at, playtime_seconds, install_path, launch_exe, manifest_gids, update_status, backup_status, backup_at, backup_error, ludusavi_title'
 
 function normalizeGameRow(row: Game | undefined): Game | undefined {
   if (!row) return undefined
@@ -12,7 +12,11 @@ function normalizeGameRow(row: Game | undefined): Game | undefined {
     install_path: row.install_path ?? '',
     launch_exe: row.launch_exe ?? '',
     manifest_gids: row.manifest_gids ?? '',
-    update_status: (row.update_status ?? '') as UpdateStatus
+    update_status: (row.update_status ?? '') as UpdateStatus,
+    backup_status: row.backup_status ?? '',
+    backup_at: row.backup_at ?? 0,
+    backup_error: row.backup_error ?? '',
+    ludusavi_title: row.ludusavi_title ?? ''
   }
 }
 
@@ -25,17 +29,23 @@ export function upsertGame(db: Database.Database, game: Game): void {
   const launchExe = game.launch_exe ?? existing?.launch_exe ?? ''
   const manifestGids = game.manifest_gids ?? existing?.manifest_gids ?? ''
   const updateStatus = game.update_status ?? existing?.update_status ?? ''
+  const backupStatus = game.backup_status ?? existing?.backup_status ?? ''
+  const backupAt = game.backup_at ?? existing?.backup_at ?? 0
+  const backupError = game.backup_error ?? existing?.backup_error ?? ''
+  const ludusaviTitle = game.ludusavi_title ?? existing?.ludusavi_title ?? ''
 
   db.prepare(`
     INSERT INTO games (
       appid, name, total_achievements, unlocked_achievements,
       completion_pct, has_platinum, last_unlocked_at, schema_fetched_at,
-      playtime_seconds, install_path, launch_exe, manifest_gids, update_status
+      playtime_seconds, install_path, launch_exe, manifest_gids, update_status,
+      backup_status, backup_at, backup_error, ludusavi_title
     )
     VALUES (
       @appid, @name, @total_achievements, @unlocked_achievements,
       @completion_pct, @has_platinum, @last_unlocked_at, @schema_fetched_at,
-      @playtime_seconds, @install_path, @launch_exe, @manifest_gids, @update_status
+      @playtime_seconds, @install_path, @launch_exe, @manifest_gids, @update_status,
+      @backup_status, @backup_at, @backup_error, @ludusavi_title
     )
     ON CONFLICT(appid) DO UPDATE SET
       name                  = excluded.name,
@@ -65,6 +75,13 @@ export function upsertGame(db: Database.Database, game: Game): void {
       update_status         = CASE
         WHEN excluded.update_status != '' THEN excluded.update_status
         ELSE games.update_status
+      END,
+      backup_status         = games.backup_status,
+      backup_at             = games.backup_at,
+      backup_error          = games.backup_error,
+      ludusavi_title        = CASE
+        WHEN excluded.ludusavi_title != '' THEN excluded.ludusavi_title
+        ELSE games.ludusavi_title
       END
   `).run({
     ...game,
@@ -72,7 +89,11 @@ export function upsertGame(db: Database.Database, game: Game): void {
     install_path: installPath,
     launch_exe: launchExe,
     manifest_gids: manifestGids,
-    update_status: updateStatus
+    update_status: updateStatus,
+    backup_status: backupStatus,
+    backup_at: backupAt,
+    backup_error: backupError,
+    ludusavi_title: ludusaviTitle
   })
 }
 
@@ -170,6 +191,43 @@ export function updateGameInstallPath(db: Database.Database, appid: string, inst
  */
 export function updateGameLaunchExe(db: Database.Database, appid: string, launchExe: string): void {
   db.prepare('UPDATE games SET launch_exe = ? WHERE appid = ?').run(launchExe, appid)
+}
+
+export interface GameBackupStatusUpdate {
+  status: string
+  at: number
+  error?: string
+  ludusaviTitle?: string
+}
+
+/**
+ * Persists Ludusavi backup status fields for a library game.
+ *
+ * @param db - Open SQLite database.
+ * @param appid - Steam AppID.
+ * @param update - Status, timestamp, optional error and cached title.
+ */
+export function updateGameBackupStatus(
+  db: Database.Database,
+  appid: string,
+  update: GameBackupStatusUpdate
+): void {
+  const cleanAppid = String(appid || '').trim()
+  if (!cleanAppid) return
+  const status = String(update.status || '')
+  const at = Number.isFinite(update.at) ? Math.floor(update.at) : 0
+  const error = String(update.error ?? '')
+  const existing = getGame(db, cleanAppid)
+  const ludusaviTitle =
+    update.ludusaviTitle !== undefined
+      ? String(update.ludusaviTitle)
+      : (existing?.ludusavi_title ?? '')
+
+  db.prepare(`
+    UPDATE games
+    SET backup_status = ?, backup_at = ?, backup_error = ?, ludusavi_title = ?
+    WHERE appid = ?
+  `).run(status, at, error, ludusaviTitle, cleanAppid)
 }
 
 export function deleteGame(db: Database.Database, appid: string): void {

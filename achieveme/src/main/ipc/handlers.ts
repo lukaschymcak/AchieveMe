@@ -139,7 +139,11 @@ export function registerIpcHandlers(): void {
         playtime_seconds: g.playtime_seconds ?? 0,
         install_path: g.install_path ?? '',
         launch_exe: g.launch_exe ?? '',
-        update_status: g.update_status ?? ''
+        update_status: g.update_status ?? '',
+        backup_status: g.backup_status ?? '',
+        backup_at: g.backup_at ?? 0,
+        backup_error: g.backup_error ?? '',
+        ludusavi_title: g.ludusavi_title ?? ''
       })
     }
     return summaries
