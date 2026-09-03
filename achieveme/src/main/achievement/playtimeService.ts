@@ -6,6 +6,7 @@ import { listExeBaseNamesForPlaytime } from './gameLaunchUtils'
 import { notifyLibraryUpdated } from './libraryNotifyService'
 import { regenerateProfileStats } from './profileStatsService'
 import { offerSessionRecapIfNeeded } from './sessionRecapService'
+import { scheduleGameBackup } from './ludusaviBackupQueue'
 
 const POLL_INTERVAL_MS = 15_000
 const exeCache = new Map<string, string[]>()
@@ -73,6 +74,7 @@ function tick(): void {
     activeSessions.delete(game.appid)
     updateGamePlaytime(db, game.appid, game.playtime_seconds + elapsedSeconds)
     offerSessionRecapIfNeeded(game.appid, sessionStart, sessionEnd)
+    scheduleGameBackup(game.appid, 'session')
     changed = true
   }
 

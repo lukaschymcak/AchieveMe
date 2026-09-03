@@ -3,6 +3,7 @@ import type Database from 'better-sqlite3'
 import { validateImportExistingInstall } from '../../shared/libraryImportUtils'
 import { saveManifestGids } from '../db/repository'
 import { notifyLibraryUpdated } from './libraryNotifyService'
+import { scheduleGameBackup } from './ludusaviBackupQueue'
 
 export { validateImportExistingInstall }
 
@@ -49,4 +50,5 @@ export function importExistingInstall(
   // saveManifestGids also un-ignores the AppID.
   saveManifestGids(db, appid, gids, gameName, installPath)
   notifyLibraryUpdated(appid)
+  scheduleGameBackup(appid, 'add')
 }

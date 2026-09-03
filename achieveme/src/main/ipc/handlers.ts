@@ -527,6 +527,7 @@ export function registerIpcHandlers(): void {
     ): void => {
       saveManifestGids(getDb(), appid, gids, gameName, installPath)
       notifyLibraryUpdated(appid)
+      scheduleGameBackup(appid, 'add')
     }
   )
 
