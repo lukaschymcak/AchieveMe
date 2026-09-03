@@ -33,6 +33,10 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   hubcapApiKey: '',
   depotDownloadPath: '',
   ludusaviPath: '',
+  rclonePath: '',
+  ludusaviCloudSync: false,
+  ludusaviCloudProvider: 'none',
+  ludusaviCloudCustomRemote: '',
   ludusaviAutoBackup: false,
   ludusaviBackupOnStartup: true,
   ludusaviBackupOnSessionEnd: true,
@@ -71,6 +75,12 @@ export function normalizeAppSettings(
     hubcapApiKey: parsed?.hubcapApiKey ?? DEFAULT_APP_SETTINGS.hubcapApiKey,
     depotDownloadPath: parsed?.depotDownloadPath ?? DEFAULT_APP_SETTINGS.depotDownloadPath,
     ludusaviPath: parsed?.ludusaviPath ?? DEFAULT_APP_SETTINGS.ludusaviPath,
+    rclonePath: parsed?.rclonePath ?? DEFAULT_APP_SETTINGS.rclonePath,
+    ludusaviCloudSync: parsed?.ludusaviCloudSync ?? DEFAULT_APP_SETTINGS.ludusaviCloudSync,
+    ludusaviCloudProvider:
+      parsed?.ludusaviCloudProvider ?? DEFAULT_APP_SETTINGS.ludusaviCloudProvider,
+    ludusaviCloudCustomRemote:
+      parsed?.ludusaviCloudCustomRemote ?? DEFAULT_APP_SETTINGS.ludusaviCloudCustomRemote,
     ludusaviAutoBackup: parsed?.ludusaviAutoBackup ?? DEFAULT_APP_SETTINGS.ludusaviAutoBackup,
     ludusaviBackupOnStartup:
       parsed?.ludusaviBackupOnStartup ?? DEFAULT_APP_SETTINGS.ludusaviBackupOnStartup,

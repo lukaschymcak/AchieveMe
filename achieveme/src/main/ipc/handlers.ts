@@ -72,7 +72,8 @@ import {
   findTitleBySteamId,
   listGameBackups,
   restoreGame,
-  validateLudusaviPath
+  validateLudusaviPath,
+  validateRclonePath
 } from '../achievement/ludusaviService'
 import type { LudusaviSnapshot } from '../../shared/ludusaviApiUtils'
 import {
@@ -210,6 +211,15 @@ export function registerIpcHandlers(): void {
       }
     } else {
       normalized.ludusaviPath = ''
+    }
+    if (normalized.rclonePath.trim()) {
+      try {
+        normalized.rclonePath = validateRclonePath(normalized.rclonePath)
+      } catch {
+        normalized.rclonePath = ''
+      }
+    } else {
+      normalized.rclonePath = ''
     }
     saveSettings(normalized)
     syncLoginItemSettings(normalized)
@@ -449,6 +459,16 @@ export function registerIpcHandlers(): void {
     })
     if (canceled || filePaths.length === 0) return null
     return validateLudusaviPath(filePaths[0])
+  })
+
+  ipcMain.handle('browse-rclone-path', async (): Promise<string | null> => {
+    const { canceled, filePaths } = await dialog.showOpenDialog({
+      title: 'Select rclone.exe',
+      filters: [{ name: 'rclone', extensions: ['exe'] }],
+      properties: ['openFile']
+    })
+    if (canceled || filePaths.length === 0) return null
+    return validateRclonePath(filePaths[0])
   })
 
   ipcMain.handle('ludusavi:backup-game', (_event, appid: string): void => {

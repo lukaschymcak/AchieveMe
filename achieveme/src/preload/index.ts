@@ -145,6 +145,9 @@ contextBridge.exposeInMainWorld('api', {
   browseLudusaviPath: (): Promise<string | null> =>
     ipcRenderer.invoke('browse-ludusavi-path'),
 
+  browseRclonePath: (): Promise<string | null> =>
+    ipcRenderer.invoke('browse-rclone-path'),
+
   ludusaviBackupGame: (appid: string): Promise<void> =>
     ipcRenderer.invoke('ludusavi:backup-game', appid),
 

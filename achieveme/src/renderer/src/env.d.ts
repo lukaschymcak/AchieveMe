@@ -56,6 +56,7 @@ declare global {
       browseSteamlessExe(): Promise<string | null>
       runSteamless(exePath: string): Promise<SteamlessRunResult>
       browseLudusaviPath(): Promise<string | null>
+      browseRclonePath(): Promise<string | null>
       ludusaviBackupGame(appid: string): Promise<void>
       ludusaviListBackups(
         appid: string

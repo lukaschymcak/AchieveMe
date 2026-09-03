@@ -52,6 +52,17 @@ export interface AppSettings {
   depotDownloadPath: string
   /** Absolute path to user-linked ludusavi.exe, or empty. */
   ludusaviPath: string
+  /** Absolute path to user-linked rclone.exe, or empty. */
+  rclonePath: string
+  /** When true, AchieveMe backups pass --cloud-sync (Ludusavi may upload). */
+  ludusaviCloudSync: boolean
+  /**
+   * Last provider chosen in Settings (display/cache).
+   * Live remote still lives in AchieveMe’s isolated Ludusavi config.
+   */
+  ludusaviCloudProvider: string
+  /** Custom rclone remote id when provider is `custom`. */
+  ludusaviCloudCustomRemote: string
   /** Master switch for automatic library save backups via Ludusavi. */
   ludusaviAutoBackup: boolean
   /** When auto-backup is on, enqueue the library on app startup. */

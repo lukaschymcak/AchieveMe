@@ -81,12 +81,20 @@ test('normalizeAppSettings preserves ludusavi backup fields when set', () => {
     steamApiKey: 'abc',
     enabledSources: ['goldberg'],
     ludusaviPath: 'C:\\Tools\\ludusavi.exe',
+    rclonePath: 'C:\\Tools\\rclone.exe',
+    ludusaviCloudSync: true,
+    ludusaviCloudProvider: 'google-drive',
+    ludusaviCloudCustomRemote: 'mydrive',
     ludusaviAutoBackup: true,
     ludusaviBackupOnStartup: false,
     ludusaviBackupOnSessionEnd: false,
     ludusaviBackupOnAddGame: false
   })
   assert.equal(normalized.ludusaviPath, 'C:\\Tools\\ludusavi.exe')
+  assert.equal(normalized.rclonePath, 'C:\\Tools\\rclone.exe')
+  assert.equal(normalized.ludusaviCloudSync, true)
+  assert.equal(normalized.ludusaviCloudProvider, 'google-drive')
+  assert.equal(normalized.ludusaviCloudCustomRemote, 'mydrive')
   assert.equal(normalized.ludusaviAutoBackup, true)
   assert.equal(normalized.ludusaviBackupOnStartup, false)
   assert.equal(normalized.ludusaviBackupOnSessionEnd, false)
