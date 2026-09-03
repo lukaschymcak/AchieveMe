@@ -14,7 +14,8 @@ import {
   saveUpdateStatus,
   deleteCacheEntry,
   ignoreAppid,
-  getIgnoredAppids
+  getIgnoredAppids,
+  updateGameBackupStatus
 } from '../db/repository'
 import { parseManifestGidsJson, pickManifestGids } from '../../shared/manifestUpdateUtils'
 import { getStoreCoverUrl } from '../achievement/steamApiClient'
@@ -67,6 +68,18 @@ import {
   validateSteamlessFolder
 } from '../achievement/steamlessService'
 import {
+  backupGame,
+  findTitleBySteamId,
+  validateLudusaviPath
+} from '../achievement/ludusaviService'
+import {
+  configureLudusaviBackupQueue,
+  getBackupQueueSnapshot,
+  scheduleGameBackup,
+  scheduleLibraryBackup
+} from '../achievement/ludusaviBackupQueue'
+import { notifyLibraryUpdated } from '../achievement/libraryNotifyService'
+import {
   downloadManifest,
   searchDepotGames
 } from '../achievement/hubcapService'
@@ -82,7 +95,6 @@ import {
   runManifestChecker,
   runStartupUpdateCheck
 } from '../achievement/manifestCheckerService'
-import { notifyLibraryUpdated } from '../achievement/libraryNotifyService'
 import { resolveGameRoot } from '../achievement/gameLaunchUtils'
 import { pruneAppImages } from '../achievement/imageCacheProtocol'
 
@@ -100,6 +112,17 @@ function resolveDepotOutputDir(installPath: string, gameName: string): string {
 }
 
 export function registerIpcHandlers(): void {
+  configureLudusaviBackupQueue({
+    loadSettings,
+    getAllGames: () => getAllGames(getDb()),
+    getGame: (appid) => getGame(getDb(), appid),
+    updateGameBackupStatus: (appid, update) => updateGameBackupStatus(getDb(), appid, update),
+    notifyLibraryUpdated,
+    validateLudusaviPath,
+    findTitleBySteamId,
+    backupGame
+  })
+
   ipcMain.handle(
     'get-news',
     async (_event, options?: GetNewsOptions | boolean): Promise<NewsPayload> => {
@@ -173,6 +196,15 @@ export function registerIpcHandlers(): void {
       normalized.steamlessFolder = validateSteamlessFolder(normalized.steamlessFolder)
     } else {
       normalized.steamlessFolder = ''
+    }
+    if (normalized.ludusaviPath.trim()) {
+      try {
+        normalized.ludusaviPath = validateLudusaviPath(normalized.ludusaviPath)
+      } catch {
+        normalized.ludusaviPath = ''
+      }
+    } else {
+      normalized.ludusaviPath = ''
     }
     saveSettings(normalized)
     syncLoginItemSettings(normalized)
@@ -403,6 +435,26 @@ export function registerIpcHandlers(): void {
       })
     }
   )
+
+  ipcMain.handle('browse-ludusavi-path', async (): Promise<string | null> => {
+    const { canceled, filePaths } = await dialog.showOpenDialog({
+      title: 'Select ludusavi.exe',
+      filters: [{ name: 'Ludusavi', extensions: ['exe'] }],
+      properties: ['openFile']
+    })
+    if (canceled || filePaths.length === 0) return null
+    return validateLudusaviPath(filePaths[0])
+  })
+
+  ipcMain.handle('ludusavi:backup-game', (_event, appid: string): void => {
+    scheduleGameBackup(String(appid || ''), 'manual')
+  })
+
+  ipcMain.handle('ludusavi:backup-library', (): void => {
+    scheduleLibraryBackup('manual')
+  })
+
+  ipcMain.handle('ludusavi:get-queue', () => getBackupQueueSnapshot())
 
   ipcMain.handle(
     'depot:search',

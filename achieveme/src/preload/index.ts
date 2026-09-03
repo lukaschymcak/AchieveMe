@@ -141,6 +141,18 @@ contextBridge.exposeInMainWorld('api', {
   runSteamless: (exePath: string): Promise<SteamlessRunResult> =>
     ipcRenderer.invoke('run-steamless', exePath),
 
+  browseLudusaviPath: (): Promise<string | null> =>
+    ipcRenderer.invoke('browse-ludusavi-path'),
+
+  ludusaviBackupGame: (appid: string): Promise<void> =>
+    ipcRenderer.invoke('ludusavi:backup-game', appid),
+
+  ludusaviBackupLibrary: (): Promise<void> =>
+    ipcRenderer.invoke('ludusavi:backup-library'),
+
+  ludusaviGetQueue: (): Promise<{ runningAppid: string | null; pending: string[] }> =>
+    ipcRenderer.invoke('ludusavi:get-queue'),
+
   depotSearch: (query: string, mode: 'games' | 'dlc' = 'games'): Promise<DepotSearchResponse> =>
     ipcRenderer.invoke('depot:search', query, mode),
 
