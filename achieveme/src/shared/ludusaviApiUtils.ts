@@ -34,8 +34,36 @@ export function extractFindTitle(apiJson: unknown): string | null {
 export interface LudusaviBackupGameResult {
   ok: boolean
   decision?: string
+  /** Game-level ScanChange from Ludusavi (`New` / `Different` / `Same` / …). */
+  change?: string
   bytes?: number
   error?: string
+}
+
+/** Soft note stored in `backup_error` when status is still `ok` and saves were Same. */
+export const LUDUSAVI_UNCHANGED_SNAPSHOT_NOTE =
+  'Saves unchanged — Ludusavi did not create a new snapshot.'
+
+/**
+ * Returns true when a successful Ludusavi backup reported `change: Same`
+ * (no new snapshot folder was created).
+ *
+ * @param result - Parsed backup/restore game result.
+ */
+export function isUnchangedLudusaviBackup(
+  result: Pick<LudusaviBackupGameResult, 'ok' | 'change'>
+): boolean {
+  if (!result.ok) return false
+  return String(result.change || '').trim() === 'Same'
+}
+
+/**
+ * Returns true when `backup_error` is the soft unchanged-snapshot note (not a failure).
+ *
+ * @param backupError - Stored `backup_error` column value.
+ */
+export function isLudusaviUnchangedSnapshotNote(backupError: string): boolean {
+  return String(backupError || '').trim() === LUDUSAVI_UNCHANGED_SNAPSHOT_NOTE
 }
 
 function sumFileBytes(files: unknown): number {
@@ -96,20 +124,29 @@ export function extractBackupGameResult(
   }
 
   const decision = String((gameEntry as { decision?: unknown }).decision ?? '').trim()
+  const changeRaw = String((gameEntry as { change?: unknown }).change ?? '').trim()
+  const change = changeRaw || undefined
   const files = (gameEntry as { files?: unknown }).files
   const fileError = firstFileError(files)
   if (fileError) {
-    return { ok: false, decision: decision || undefined, error: fileError, bytes: sumFileBytes(files) }
+    return {
+      ok: false,
+      decision: decision || undefined,
+      change,
+      error: fileError,
+      bytes: sumFileBytes(files)
+    }
   }
 
   if (decision === 'Processed') {
-    return { ok: true, decision, bytes: sumFileBytes(files) }
+    return { ok: true, decision, change, bytes: sumFileBytes(files) }
   }
 
   if (decision === 'Ignored' || decision === 'Cancelled') {
     return {
       ok: false,
       decision,
+      change,
       error: root.errors?.someGamesFailed
         ? `Backup ${decision.toLowerCase()}.`
         : `Backup ${decision.toLowerCase()}.`,
@@ -118,10 +155,15 @@ export function extractBackupGameResult(
   }
 
   if (!decision) {
-    return { ok: false, error: 'Ludusavi did not report a backup decision.' }
+    return { ok: false, change, error: 'Ludusavi did not report a backup decision.' }
   }
 
-  return { ok: false, decision, error: `Unexpected backup decision: ${decision}.` }
+  return {
+    ok: false,
+    decision,
+    change,
+    error: `Unexpected backup decision: ${decision}.`
+  }
 }
 
 /**
@@ -143,6 +185,7 @@ export interface LudusaviSnapshot {
 
 /**
  * Returns true when a Ludusavi backup id is safe to pass on the CLI.
+ * Allows `.` (Ludusavi solo full-backup name when retention full is 1).
  *
  * @param id - Candidate backup name from `backups --api`.
  */

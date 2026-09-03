@@ -12,7 +12,10 @@ const {
   extractBackupSnapshots,
   sortSnapshotsNewestFirst,
   takeNewestSnapshots,
-  isSafeLudusaviBackupId
+  isSafeLudusaviBackupId,
+  isUnchangedLudusaviBackup,
+  isLudusaviUnchangedSnapshotNote,
+  LUDUSAVI_UNCHANGED_SNAPSHOT_NOTE
 } = await import(pathToFileURL(path.join(rootDir, '../src/shared/ludusaviApiUtils.ts')).href)
 
 test('parseLudusaviApiJson returns null for blank or invalid', () => {
@@ -65,6 +68,7 @@ test('extractBackupGameResult ok for Processed', () => {
     games: {
       Dota: {
         decision: 'Processed',
+        change: 'Different',
         files: {
           a: { bytes: 40, failed: false },
           b: { bytes: 60, failed: false }
@@ -76,8 +80,30 @@ test('extractBackupGameResult ok for Processed', () => {
   const result = extractBackupGameResult(api, 'Dota')
   assert.equal(result.ok, true)
   assert.equal(result.decision, 'Processed')
+  assert.equal(result.change, 'Different')
   assert.equal(result.bytes, 100)
   assert.equal(result.error, undefined)
+})
+
+test('extractBackupGameResult includes change Same', () => {
+  const api = {
+    games: {
+      Dota: {
+        decision: 'Processed',
+        change: 'Same',
+        files: { a: { bytes: 10, failed: false } },
+        registry: {}
+      }
+    }
+  }
+  const result = extractBackupGameResult(api, 'Dota')
+  assert.equal(result.ok, true)
+  assert.equal(result.change, 'Same')
+  assert.equal(isUnchangedLudusaviBackup(result), true)
+  assert.equal(isUnchangedLudusaviBackup({ ok: true, change: 'Different' }), false)
+  assert.equal(isUnchangedLudusaviBackup({ ok: false, change: 'Same' }), false)
+  assert.equal(isLudusaviUnchangedSnapshotNote(LUDUSAVI_UNCHANGED_SNAPSHOT_NOTE), true)
+  assert.equal(isLudusaviUnchangedSnapshotNote('real failure'), false)
 })
 
 test('extractBackupGameResult fails for missing title', () => {
@@ -128,6 +154,8 @@ test('isSafeLudusaviBackupId rejects empty and path-like ids', () => {
   assert.equal(isSafeLudusaviBackupId('a\\b'), false)
   assert.equal(isSafeLudusaviBackupId('a/b'), false)
   assert.equal(isSafeLudusaviBackupId('2024-01-02T03-04-05'), true)
+  // Ludusavi solo backup name when full retention is 1
+  assert.equal(isSafeLudusaviBackupId('.'), true)
 })
 
 test('extractBackupSnapshots parses backups --api fixture', () => {
