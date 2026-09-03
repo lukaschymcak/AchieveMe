@@ -358,6 +358,15 @@ export const HELP_SECTIONS: HelpSection[] = [
     ]
   },
   {
+    id: 'ludusavi',
+    title: 'Save backups (Ludusavi)',
+    paragraphs: [
+      'Link ludusavi.exe under Settings → Save backups (not bundled with AchieveMe). AchieveMe backs up only games already in your library — it never invents save paths.',
+      'Optional auto-backup runs on startup, after a tracked play session, or when adding a game. Use Backup all library games now, or Backup now on Game Detail. Status shows Backing up…, Saves backed up, Not in Ludusavi, or Backup failed.',
+      'Matching uses Ludusavi find --steam-id, then backup --force --api --no-cloud-sync. One Ludusavi process at a time. Backups are Ludusavi’s folders, not AchieveMe SQLite. Restore is not in AchieveMe yet — use Ludusavi itself.'
+    ]
+  },
+  {
     id: 'delete',
     title: 'Removing games',
     paragraphs: [
@@ -385,6 +394,7 @@ export const HELP_SECTIONS: HelpSection[] = [
       'Empty achievement list? Need a Steam API key; or Steam has not published schema yet (try Refresh later); or the game has no achievements.',
       'Deleted game keeps coming back? Delete ignores the AppID; leftover CODEX/RUNE files are not removed. Re-add via Add Game or Import existing to clear the ignore.',
       'Game on disk missing from library? Tools → Import existing folder (Hubcap GIDs, no re-download).',
+      'Save backups? Link Ludusavi in Settings → Save backups. Library titles only; Not in Ludusavi means Ludusavi has no matching Steam AppID. Restore with Ludusavi — not in AchieveMe yet.',
       'Live updates? Save file edits propagate in ~1s via the file watcher.',
       'Keyboard: Enter/Space on a focused card opens it; Escape closes the long-press menu.',
       'Privacy: data stays local (SQLite + userData, including cached cover/hero/icon images). API key in settings.json. Hidden descriptions may fetch from SteamDB.'
