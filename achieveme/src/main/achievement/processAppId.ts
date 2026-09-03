@@ -6,7 +6,8 @@ import {
   deleteSaveLocationsForApp,
   deleteGame,
   getAchievementsForGame,
-  getGame
+  getGame,
+  getIgnoredAppids
 } from '../db/repository'
 import { scanAllSources } from './discoveryService'
 import { parseAchievementsBySource } from './parsers/parseBySource'
@@ -22,6 +23,7 @@ import { getSteamLibraryHeroUrl, normalizeSteamIconUrl } from '../../shared/stea
 import { iconFilenameFromSteamValue } from '../../shared/imageCacheUrls'
 import { prefetchGameImages } from './imageCacheService'
 import { getDefaultImageCacheDeps, pruneAppImages } from './imageCacheProtocol'
+import { planProcessAppId } from '../../shared/libraryRetentionUtils'
 import type { AppSettings } from '../../shared/types'
 
 export async function processAppId(
@@ -38,7 +40,24 @@ export async function processAppId(
   // 1. Find all save files on disk for this appid
   const allDiscovered = scanAllSources(settings)
   const forThisApp = allDiscovered.filter((d) => d.appid === appid)
-  if (forThisApp.length === 0) {
+
+  const action = planProcessAppId({
+    appid,
+    ignoredAppids: new Set(getIgnoredAppids(db)),
+    discoveredCount: forThisApp.length,
+    existing: previousGame
+      ? {
+          manifest_gids: previousGame.manifest_gids ?? '',
+          install_path: previousGame.install_path ?? ''
+        }
+      : undefined
+  })
+
+  if (action === 'skip-ignored' || action === 'retain-without-saves') {
+    return
+  }
+
+  if (action === 'delete-orphan') {
     deleteGame(db, appid)
     pruneAppImages(appid)
     regenerateProfileStats(db)
