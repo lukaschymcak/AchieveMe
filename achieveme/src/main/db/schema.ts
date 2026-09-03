@@ -27,6 +27,12 @@ export function migrateSchema(db: Database.Database): void {
   if (!columnExists(db, 'games', 'update_status')) {
     db.exec("ALTER TABLE games ADD COLUMN update_status TEXT NOT NULL DEFAULT ''")
   }
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS ignored_appids (
+      appid       TEXT    PRIMARY KEY,
+      ignored_at  INTEGER NOT NULL DEFAULT 0
+    )
+  `)
 }
 
 export function createTables(db: Database.Database): void {
@@ -82,6 +88,11 @@ export function createTables(db: Database.Database): void {
       relative_path  TEXT    NOT NULL DEFAULT '',
       updated_at     INTEGER NOT NULL DEFAULT 0,
       PRIMARY KEY (appid, source, file_path)
+    );
+
+    CREATE TABLE IF NOT EXISTS ignored_appids (
+      appid       TEXT    PRIMARY KEY,
+      ignored_at  INTEGER NOT NULL DEFAULT 0
     );
   `)
 }

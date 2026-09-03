@@ -178,6 +178,66 @@ export function deleteGame(db: Database.Database, appid: string): void {
   db.prepare('DELETE FROM games WHERE appid = ?').run(appid)
 }
 
+function cleanNumericAppid(appid: string): string | null {
+  const clean = String(appid || '').trim()
+  if (!/^\d+$/.test(clean)) return null
+  return clean
+}
+
+/**
+ * Marks an AppID as ignored so rescans do not re-add it after Delete.
+ *
+ * @param db - Open SQLite database.
+ * @param appid - Steam AppID (digits only).
+ */
+export function ignoreAppid(db: Database.Database, appid: string): void {
+  const clean = cleanNumericAppid(appid)
+  if (!clean) return
+  const ignoredAt = Math.floor(Date.now() / 1000)
+  db.prepare(`
+    INSERT INTO ignored_appids (appid, ignored_at)
+    VALUES (?, ?)
+    ON CONFLICT(appid) DO UPDATE SET ignored_at = excluded.ignored_at
+  `).run(clean, ignoredAt)
+}
+
+/**
+ * Removes an AppID from the ignore list (explicit Add / Import / depot).
+ *
+ * @param db - Open SQLite database.
+ * @param appid - Steam AppID.
+ */
+export function unignoreAppid(db: Database.Database, appid: string): void {
+  const clean = cleanNumericAppid(appid)
+  if (!clean) return
+  db.prepare('DELETE FROM ignored_appids WHERE appid = ?').run(clean)
+}
+
+/**
+ * Returns whether an AppID is currently ignored.
+ *
+ * @param db - Open SQLite database.
+ * @param appid - Steam AppID.
+ */
+export function isAppidIgnored(db: Database.Database, appid: string): boolean {
+  const clean = cleanNumericAppid(appid)
+  if (!clean) return false
+  const row = db.prepare('SELECT 1 FROM ignored_appids WHERE appid = ?').get(clean) as
+    | { 1?: number }
+    | undefined
+  return Boolean(row)
+}
+
+/**
+ * Lists all ignored numeric AppIDs.
+ *
+ * @param db - Open SQLite database.
+ */
+export function getIgnoredAppids(db: Database.Database): string[] {
+  const rows = db.prepare('SELECT appid FROM ignored_appids').all() as Array<{ appid: string }>
+  return rows.map((row) => row.appid).filter((id) => /^\d+$/.test(id))
+}
+
 // ─── Achievements ─────────────────────────────────────────────────────────────
 
 function prepareAchievementUpsert(db: Database.Database): Database.Statement {
