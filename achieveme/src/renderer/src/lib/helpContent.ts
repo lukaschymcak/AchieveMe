@@ -186,7 +186,7 @@ export const SETTINGS_HINTS = {
   ludusaviCloudProvider:
     'Pick Google Drive, OneDrive, Dropbox, Box, a custom rclone remote, or None. Connect runs ludusavi cloud set (browser OAuth for common providers).',
   ludusaviCloudSync:
-    'Upload after backup — when on, AchieveMe backups use --cloud-sync; when off, --no-cloud-sync. Restore and Install picker stay local-only.',
+    'When on, AchieveMe backups use --cloud-sync after a successful local backup. When off, backups stay --no-cloud-sync. Restore and Install picker stay local-only.',
   ludusaviCloudManual:
     'Upload to cloud / Download from cloud overwrite the other side. Use them to resolve conflicts — AchieveMe never auto-resolves.',
   ludusaviAutoBackup:
@@ -323,7 +323,8 @@ export const HELP_SECTIONS: HelpSection[] = [
       'Completion reflects merged save data. The platinum row is earned at 100%. Tier filters show earned counts per rarity band.',
       'Unearned achievements with progress counters show a partial progress bar (Goldberg/GSE saves).',
       'Hidden toggle reveals descriptions for unearned hidden achievements only. Global rarity is Steam-wide, not friends-only.',
-      'Edge arrows move through the library in your current sort/search order.'
+      'Edge arrows move through the library in your current sort/search order.',
+      'Update / Validate / Check for update and build status show only when depot GIDs are stored. After Update, if Steamless or Goldberg was applied before, you can reapply them manually (sequential, stop on failure, Retry).'
     ]
   },
   {
@@ -360,9 +361,10 @@ export const HELP_SECTIONS: HelpSection[] = [
     title: 'Tools (Steamless & Depot Downloader)',
     paragraphs: [
       'Tools sits between News and Settings. Link a Steamless release folder in Settings → External tools (must include Steamless.CLI.exe and Plugins).',
-      'Open the Steamless wizard to pick a library game (uses launch_exe when set, otherwise resolves executables from install_path) or Search for executable on disk, then run Steamless.CLI. Output is typically Game.exe.unpacked.exe beside the original; Play is not changed automatically.',
+      'Open the Steamless wizard to pick a library game, then choose the .exe from the install folder (same list as Select executable — never auto-runs launch_exe or a previous Game.exe.unpacked.exe). Or Search for executable on disk, then run Steamless.CLI. Output is typically Game.exe.unpacked.exe beside the original; Play is not changed automatically.',
       'Depot Downloader searches Steam, fetches a Hubcap manifest ZIP, lets you pick depots, and runs DepotDownloader.dll (dotnet required). Closing the wizard during a download keeps it running — use the floating Downloads badge to reopen. After download you can optionally set up Goldberg achievements (DLL scan, emulator install, Denuvo preserve).',
-      'Import existing folder registers a game already on disk: Hubcap manifest only (no DepotDownloader), pick the install folder and depots you have, then AchieveMe stores GIDs + install_path for version checks. Set up achievements later from Game Detail if needed.'
+      'Import existing folder registers a game already on disk: Hubcap manifest only (no DepotDownloader), pick the install folder and depots you have, then AchieveMe stores GIDs + install_path for version checks. Set up achievements later from Game Detail if needed.',
+      'Update / Validate / Check for update and build status appear on Game Detail only when depot GIDs are stored. Successful Steamless (from Tools, with a library game selected) or Goldberg apply stores flags and last paths. After a successful Update, if either flag is set, AchieveMe asks to reapply — you pick paths and Apply; Steamless runs before Goldberg, stops on failure, and offers Retry. Existing games stay unset until those tools succeed again.'
     ]
   },
   {

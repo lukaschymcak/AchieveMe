@@ -250,7 +250,11 @@ function buildGameRecord(
     backup_status: existingGame?.backup_status ?? '',
     backup_at: existingGame?.backup_at ?? 0,
     backup_error: existingGame?.backup_error ?? '',
-    ludusavi_title: existingGame?.ludusavi_title ?? ''
+    ludusavi_title: existingGame?.ludusavi_title ?? '',
+    steamless_applied: existingGame?.steamless_applied ?? 0,
+    goldberg_applied: existingGame?.goldberg_applied ?? 0,
+    steamless_exe: existingGame?.steamless_exe ?? '',
+    goldberg_dll_path: existingGame?.goldberg_dll_path ?? ''
   }
 }
 

@@ -637,7 +637,7 @@ export default function SettingsPage({ page, onNavigate }: Props): React.ReactEl
           </p>
           <div className="settings-page__folder-add settings-page__folder-add--sound">
             <select
-              className="settings-page__input--nested"
+              className="app-chrome__search library-chrome__search settings-page__input--nested settings-page__select"
               value={settings.ludusaviCloudProvider || 'none'}
               aria-label="Cloud provider"
               disabled={cloudBusy}
@@ -686,11 +686,12 @@ export default function SettingsPage({ page, onNavigate }: Props): React.ReactEl
                 onChange={(e) => toggleSetting('ludusaviCloudSync', e.target.checked)}
                 className="settings-page__checkbox"
               />
-              <span className="settings-page__source-name">
-                {SETTINGS_HINTS.ludusaviCloudSync}
-              </span>
+              <span className="settings-page__source-name">Upload after backup</span>
             </label>
           </div>
+          <p className="settings-page__note" style={{ marginTop: 8 }}>
+            {SETTINGS_HINTS.ludusaviCloudSync}
+          </p>
           <p className="settings-page__note" style={{ marginTop: 8 }}>
             {SETTINGS_HINTS.ludusaviCloudManual}
           </p>

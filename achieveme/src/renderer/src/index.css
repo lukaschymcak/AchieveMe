@@ -3206,6 +3206,33 @@ button:focus-visible {
   min-height: 32px;
 }
 
+.settings-page__select {
+  flex: 1;
+  min-width: 0;
+  color: var(--ink);
+  cursor: pointer;
+  appearance: none;
+  background-color: var(--bg-base);
+  background-image: linear-gradient(45deg, transparent 50%, var(--ink-muted) 50%),
+    linear-gradient(135deg, var(--ink-muted) 50%, transparent 50%);
+  background-position:
+    calc(100% - 14px) calc(50% - 2px),
+    calc(100% - 9px) calc(50% - 2px);
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+  padding-right: var(--space-5);
+}
+
+.settings-page__select option {
+  background: var(--surface-1);
+  color: var(--ink);
+}
+
+.settings-page__select:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
 .settings-page__panel {
   background: var(--surface-1);
   border: 1px solid var(--border-subtle);
@@ -4359,6 +4386,163 @@ button.dashboard-near__row:focus-visible {
 
 .steamless-wizard__result {
   padding-bottom: 4px;
+}
+
+/* Post-update Steamless / Goldberg reapply */
+.post-update-tools-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 95;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+  background: oklch(8% 0.02 275 / 0.72);
+}
+
+.post-update-tools {
+  width: min(560px, 100%);
+  max-height: min(80vh, 720px);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  border-radius: 12px;
+  border: 1px solid oklch(28% 0.02 275 / 0.55);
+  background: oklch(14% 0.014 275);
+  box-shadow: 0 24px 64px oklch(4% 0.02 275 / 0.55);
+}
+
+.post-update-tools__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: 14px 16px;
+  border-bottom: 1px solid oklch(24% 0.016 275 / 0.7);
+}
+
+.post-update-tools__title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.post-update-tools__close {
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink-muted);
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.post-update-tools__close:hover:not(:disabled) {
+  color: var(--ink);
+  background: oklch(20% 0.014 275);
+}
+
+.post-update-tools__close:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.post-update-tools__body {
+  flex: 1;
+  overflow: auto;
+  min-height: 0;
+}
+
+.post-update-tools__panel {
+  padding: 12px 16px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.post-update-tools__help,
+.post-update-tools__muted {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: oklch(60% 0.01 275);
+}
+
+.post-update-tools__help {
+  color: oklch(72% 0.012 275);
+}
+
+.post-update-tools__tool {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: 10px 0;
+  border-top: 1px solid oklch(22% 0.014 275 / 0.6);
+}
+
+.post-update-tools__check {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.post-update-tools__path-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid oklch(28% 0.016 275 / 0.7);
+  background: oklch(11% 0.012 275);
+  color: var(--ink);
+  font-size: 12px;
+}
+
+.post-update-tools__row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.post-update-tools__error {
+  margin: 0;
+  font-size: 12px;
+  color: oklch(68% 0.14 25);
+}
+
+.post-update-tools__ok {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: oklch(72% 0.12 145);
+}
+
+.post-update-tools__log {
+  max-height: 200px;
+  overflow: auto;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid oklch(24% 0.014 275 / 0.7);
+  background: oklch(10% 0.01 275);
+  font-size: 11px;
+  line-height: 1.4;
+  color: oklch(68% 0.01 275);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.post-update-tools__footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  padding: 12px 16px;
+  border-top: 1px solid oklch(24% 0.016 275 / 0.7);
 }
 
 /* Depot Downloader wizard */

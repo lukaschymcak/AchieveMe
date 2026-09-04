@@ -5,7 +5,7 @@ import { app } from 'electron'
 import { loadSettings } from '../settings'
 import { processAppId } from './processAppId'
 import { getDb } from '../db/database'
-import { updateGameInstallPath, unignoreAppid } from '../db/repository'
+import { updateGameInstallPath, unignoreAppid, saveGameToolApply } from '../db/repository'
 import type { GoldbergApplyRequest } from '../../shared/types'
 import { expandEnv } from './savePathUtils'
 import {
@@ -192,6 +192,10 @@ export async function applyGoldberg(
   unignoreAppid(getDb(), appid)
   await processAppId(appid, settings, true, true)
   updateGameInstallPath(getDb(), appid, gameDir)
+  saveGameToolApply(getDb(), appid, {
+    goldbergApplied: true,
+    goldbergDllPath: dllPath
+  })
   scheduleGameBackup(appid, 'add')
   log('Done. Game added to library.')
 }

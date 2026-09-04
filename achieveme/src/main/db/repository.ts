@@ -2,7 +2,7 @@ import type Database from 'better-sqlite3'
 import type { Game, Achievement, SaveLocation, UpdateStatus } from '../../shared/types'
 
 const GAME_COLUMNS =
-  'appid, name, total_achievements, unlocked_achievements, completion_pct, has_platinum, last_unlocked_at, schema_fetched_at, playtime_seconds, install_path, launch_exe, manifest_gids, update_status, backup_status, backup_at, backup_error, ludusavi_title'
+  'appid, name, total_achievements, unlocked_achievements, completion_pct, has_platinum, last_unlocked_at, schema_fetched_at, playtime_seconds, install_path, launch_exe, manifest_gids, update_status, backup_status, backup_at, backup_error, ludusavi_title, steamless_applied, goldberg_applied, steamless_exe, goldberg_dll_path'
 
 function normalizeGameRow(row: Game | undefined): Game | undefined {
   if (!row) return undefined
@@ -16,7 +16,11 @@ function normalizeGameRow(row: Game | undefined): Game | undefined {
     backup_status: row.backup_status ?? '',
     backup_at: row.backup_at ?? 0,
     backup_error: row.backup_error ?? '',
-    ludusavi_title: row.ludusavi_title ?? ''
+    ludusavi_title: row.ludusavi_title ?? '',
+    steamless_applied: row.steamless_applied ?? 0,
+    goldberg_applied: row.goldberg_applied ?? 0,
+    steamless_exe: row.steamless_exe ?? '',
+    goldberg_dll_path: row.goldberg_dll_path ?? ''
   }
 }
 
@@ -33,19 +37,25 @@ export function upsertGame(db: Database.Database, game: Game): void {
   const backupAt = game.backup_at ?? existing?.backup_at ?? 0
   const backupError = game.backup_error ?? existing?.backup_error ?? ''
   const ludusaviTitle = game.ludusavi_title ?? existing?.ludusavi_title ?? ''
+  const steamlessApplied = game.steamless_applied ?? existing?.steamless_applied ?? 0
+  const goldbergApplied = game.goldberg_applied ?? existing?.goldberg_applied ?? 0
+  const steamlessExe = game.steamless_exe ?? existing?.steamless_exe ?? ''
+  const goldbergDllPath = game.goldberg_dll_path ?? existing?.goldberg_dll_path ?? ''
 
   db.prepare(`
     INSERT INTO games (
       appid, name, total_achievements, unlocked_achievements,
       completion_pct, has_platinum, last_unlocked_at, schema_fetched_at,
       playtime_seconds, install_path, launch_exe, manifest_gids, update_status,
-      backup_status, backup_at, backup_error, ludusavi_title
+      backup_status, backup_at, backup_error, ludusavi_title,
+      steamless_applied, goldberg_applied, steamless_exe, goldberg_dll_path
     )
     VALUES (
       @appid, @name, @total_achievements, @unlocked_achievements,
       @completion_pct, @has_platinum, @last_unlocked_at, @schema_fetched_at,
       @playtime_seconds, @install_path, @launch_exe, @manifest_gids, @update_status,
-      @backup_status, @backup_at, @backup_error, @ludusavi_title
+      @backup_status, @backup_at, @backup_error, @ludusavi_title,
+      @steamless_applied, @goldberg_applied, @steamless_exe, @goldberg_dll_path
     )
     ON CONFLICT(appid) DO UPDATE SET
       name                  = excluded.name,
@@ -82,7 +92,11 @@ export function upsertGame(db: Database.Database, game: Game): void {
       ludusavi_title        = CASE
         WHEN excluded.ludusavi_title != '' THEN excluded.ludusavi_title
         ELSE games.ludusavi_title
-      END
+      END,
+      steamless_applied     = games.steamless_applied,
+      goldberg_applied      = games.goldberg_applied,
+      steamless_exe         = games.steamless_exe,
+      goldberg_dll_path     = games.goldberg_dll_path
   `).run({
     ...game,
     playtime_seconds: playtimeSeconds,
@@ -93,7 +107,11 @@ export function upsertGame(db: Database.Database, game: Game): void {
     backup_status: backupStatus,
     backup_at: backupAt,
     backup_error: backupError,
-    ludusavi_title: ludusaviTitle
+    ludusavi_title: ludusaviTitle,
+    steamless_applied: steamlessApplied,
+    goldberg_applied: goldbergApplied,
+    steamless_exe: steamlessExe,
+    goldberg_dll_path: goldbergDllPath
   })
 }
 
@@ -172,6 +190,53 @@ export function saveManifestGids(
  */
 export function saveUpdateStatus(db: Database.Database, appid: string, status: UpdateStatus): void {
   db.prepare('UPDATE games SET update_status = ? WHERE appid = ?').run(status, appid)
+}
+
+/**
+ * Persists Steamless / Goldberg apply flags and last paths for a game.
+ * Only updates keys present on `patch`.
+ *
+ * @param db - Open SQLite database.
+ * @param appid - Steam AppID.
+ * @param patch - Partial tool-apply fields to write.
+ */
+export function saveGameToolApply(
+  db: Database.Database,
+  appid: string,
+  patch: {
+    steamlessApplied?: boolean
+    goldbergApplied?: boolean
+    steamlessExe?: string
+    goldbergDllPath?: string
+  }
+): void {
+  const clean = String(appid || '').trim()
+  if (!clean) throw new Error('Invalid AppID for tool apply flags.')
+
+  const sets: string[] = []
+  const values: Array<string | number> = []
+
+  if (patch.steamlessApplied !== undefined) {
+    sets.push('steamless_applied = ?')
+    values.push(patch.steamlessApplied ? 1 : 0)
+  }
+  if (patch.goldbergApplied !== undefined) {
+    sets.push('goldberg_applied = ?')
+    values.push(patch.goldbergApplied ? 1 : 0)
+  }
+  if (patch.steamlessExe !== undefined) {
+    sets.push('steamless_exe = ?')
+    values.push(String(patch.steamlessExe).trim())
+  }
+  if (patch.goldbergDllPath !== undefined) {
+    sets.push('goldberg_dll_path = ?')
+    values.push(String(patch.goldbergDllPath).trim())
+  }
+
+  if (!sets.length) return
+
+  values.push(clean)
+  db.prepare(`UPDATE games SET ${sets.join(', ')} WHERE appid = ?`).run(...values)
 }
 
 export function updateGamePlaytime(db: Database.Database, appid: string, seconds: number): void {

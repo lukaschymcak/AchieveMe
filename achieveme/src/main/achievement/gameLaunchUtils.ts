@@ -259,11 +259,18 @@ export function listExeBaseNamesForPlaytime(installPath: string, gameName?: stri
 
 /**
  * Spawns a game executable detached from the AchieveMe process.
+ * Prefers ShellExecute (`openPath`) so Windows can show UAC for
+ * "Run as administrator" executables. Falls back to `spawn` with an
+ * error listener so EACCES never becomes an uncaught main-process crash.
  *
  * @param absolutePath - Absolute path to a `.exe` file.
- * @throws If the file is missing or is not an `.exe`.
+ * @param openPath - Optional ShellExecute-style opener (Electron `shell.openPath`).
+ * @throws If the file is missing, is not an `.exe`, or launch fails.
  */
-export function launchGameExe(absolutePath: string): void {
+export async function launchGameExe(
+  absolutePath: string,
+  openPath?: (filePath: string) => Promise<string>
+): Promise<void> {
   const resolved = path.resolve(absolutePath)
   const lower = resolved.toLowerCase()
   if (!lower.endsWith('.exe')) {
@@ -273,11 +280,53 @@ export function launchGameExe(absolutePath: string): void {
     throw new Error(`Executable was not found: ${resolved}`)
   }
 
-  const child = spawn(resolved, [], {
-    cwd: path.dirname(resolved),
-    detached: true,
-    stdio: 'ignore',
-    windowsHide: false
+  if (openPath) {
+    const shellError = await openPath(resolved)
+    if (shellError?.trim()) {
+      throw new Error(shellError.trim())
+    }
+    return
+  }
+
+  await new Promise<void>((resolve, reject) => {
+    const child = spawn(resolved, [], {
+      cwd: path.dirname(resolved),
+      detached: true,
+      stdio: 'ignore',
+      windowsHide: false
+    })
+
+    child.on('error', (err) => {
+      reject(new Error(formatSpawnLaunchError(resolved, err)))
+    })
+
+    child.on('spawn', () => {
+      child.unref()
+      resolve()
+    })
   })
-  child.unref()
+}
+
+/**
+ * Maps spawn failures (especially EACCES for admin-required exes) to a clear message.
+ *
+ * @param exePath - Absolute path that failed to launch.
+ * @param err - Error from the child process `error` event.
+ */
+export function formatSpawnLaunchError(exePath: string, err: unknown): string {
+  const code =
+    err && typeof err === 'object' && 'code' in err
+      ? String((err as { code?: unknown }).code ?? '')
+      : ''
+  const message = err instanceof Error ? err.message : String(err)
+
+  if (code === 'EACCES' || /\bEACCES\b/i.test(message)) {
+    return (
+      `Cannot launch "${path.basename(exePath)}" — Windows denied access (EACCES). ` +
+      `This often means the executable is set to "Run as administrator". ` +
+      `Approve the UAC prompt if shown, or clear that compatibility flag on the .exe, then try again.`
+    )
+  }
+
+  return message || `Failed to launch ${exePath}`
 }

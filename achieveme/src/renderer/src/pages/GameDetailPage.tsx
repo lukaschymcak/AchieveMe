@@ -10,6 +10,7 @@ import type {
 } from '../../../shared/types'
 import { LAUNCH_NEEDS_EXE } from '../../../shared/types'
 import { parseManifestGidsJson } from '../../../shared/manifestUpdateUtils'
+import { hasStoredManifestGids } from '../../../shared/libraryRetentionUtils'
 import { formatPlaytimePlayed } from '../../../shared/playtimeUtils'
 import { cacheHeroUrl } from '../../../shared/imageCacheUrls'
 import { formatBackupStatusLabel } from '../../../shared/backupStatusUtils.ts'
@@ -19,6 +20,7 @@ import {
   type LudusaviSnapshot
 } from '../../../shared/ludusaviApiUtils.ts'
 import HelpTip from '../components/HelpTip'
+import PostUpdateToolsModal from '../components/PostUpdateToolsModal'
 import { TOOLTIPS, getEmptyAchievementsMessage } from '../lib/helpContent'
 import {
   type ActiveFilter,
@@ -539,6 +541,7 @@ export default function GameDetailPage({
   const [saveSnapshotsError, setSaveSnapshotsError] = useState('')
   const [selectedBackupId, setSelectedBackupId] = useState('')
   const [ludusaviPathLinked, setLudusaviPathLinked] = useState(false)
+  const [postUpdateToolsGame, setPostUpdateToolsGame] = useState<GameDetail['game'] | null>(null)
 
   const closeSaveModal = (): void => {
     setSaveModalOpen(false)
@@ -794,10 +797,18 @@ export default function GameDetailPage({
       finished = true
       sessionRef.current = null
       onUpdateSessionChange(null)
+      const gameBeforeReload = detail?.game
       try {
         await reloadDetail()
       } catch {
         // reload failure should not re-lock UI
+      }
+      if (
+        mode === 'update' &&
+        gameBeforeReload &&
+        (gameBeforeReload.steamless_applied === 1 || gameBeforeReload.goldberg_applied === 1)
+      ) {
+        setPostUpdateToolsGame(gameBeforeReload)
       }
     } catch (err) {
       finished = true
@@ -1006,9 +1017,8 @@ export default function GameDetailPage({
   const hasPlatinum = game?.has_platinum === 1
   const playtimeLabel = game ? formatPlaytimePlayed(game.playtime_seconds ?? 0) : null
   const hasInstallPath = Boolean(game?.install_path?.trim())
-  const hasStoredGids = Boolean(
-    game?.manifest_gids?.trim() && game.manifest_gids.trim() !== '{}'
-  )
+  const showDepotUpdateUi = hasStoredManifestGids(game?.manifest_gids)
+  const hasStoredGids = showDepotUpdateUi
   const hasLaunchExe = Boolean(game?.launch_exe?.trim())
   const playLabel = isLaunching
     ? 'Starting…'
@@ -1088,17 +1098,19 @@ export default function GameDetailPage({
                   refreshing={refreshing}
                   actions={
                     <div className="game-detail__update-row game-detail__update-row--hero">
-                      <span className="game-detail__update-status" aria-live="polite">
-                        {updateBusy
-                          ? `${updateProgressLabel || (sessionForGame?.mode === 'validate' ? 'Validating…' : 'Updating…')}${
-                              updatePct > 0 ? ` — ${Math.round(updatePct)}%` : ''
-                            }`
-                          : updateStatus === 'update_available'
-                            ? `↑ Update available${updateBuildId ? ` — Build ${updateBuildId}` : ''}`
-                            : updateStatus === 'up_to_date'
-                              ? `✓ Up to date${updateBuildId ? ` — Build ${updateBuildId}` : ''}`
-                              : 'Build: —'}
-                      </span>
+                      {showDepotUpdateUi && (
+                        <span className="game-detail__update-status" aria-live="polite">
+                          {updateBusy
+                            ? `${updateProgressLabel || (sessionForGame?.mode === 'validate' ? 'Validating…' : 'Updating…')}${
+                                updatePct > 0 ? ` — ${Math.round(updatePct)}%` : ''
+                              }`
+                            : updateStatus === 'update_available'
+                              ? `↑ Update available${updateBuildId ? ` — Build ${updateBuildId}` : ''}`
+                              : updateStatus === 'up_to_date'
+                                ? `✓ Up to date${updateBuildId ? ` — Build ${updateBuildId}` : ''}`
+                                : 'Build: —'}
+                        </span>
+                      )}
                       <button
                         type="button"
                         className="game-detail__pill game-detail__save-btn"
@@ -1142,7 +1154,7 @@ export default function GameDetailPage({
                           <FloppySaveIcon />
                         )}
                       </button>
-                      {updateStatus === 'update_available' && hasInstallPath && (
+                      {showDepotUpdateUi && updateStatus === 'update_available' && hasInstallPath && (
                         <button
                           type="button"
                           className="game-detail__pill game-detail__update-btn game-detail__update-btn--primary"
@@ -1157,7 +1169,7 @@ export default function GameDetailPage({
                               : 'Update'}
                         </button>
                       )}
-                      {hasStoredGids && (
+                      {showDepotUpdateUi && hasStoredGids && (
                         <button
                           type="button"
                           className="game-detail__pill game-detail__update-btn game-detail__update-btn--validate"
@@ -1182,15 +1194,17 @@ export default function GameDetailPage({
                           Set up achievements
                         </button>
                       )}
-                      <button
-                        type="button"
-                        className="game-detail__pill game-detail__update-btn"
-                        onClick={() => void handleCheckForUpdate()}
-                        disabled={updateChecking || jobLocked}
-                        aria-label="Check for update"
-                      >
-                        {updateChecking ? 'Checking…' : 'Check for update'}
-                      </button>
+                      {showDepotUpdateUi && (
+                        <button
+                          type="button"
+                          className="game-detail__pill game-detail__update-btn"
+                          onClick={() => void handleCheckForUpdate()}
+                          disabled={updateChecking || jobLocked}
+                          aria-label="Check for update"
+                        >
+                          {updateChecking ? 'Checking…' : 'Check for update'}
+                        </button>
+                      )}
                     </div>
                   }
                 />
@@ -1239,7 +1253,7 @@ export default function GameDetailPage({
                       {depotPickerLoading && (
                         <p className="game-detail__depot-picker-loading">Loading depots…</p>
                       )}
-                      {updateBusy && (
+                      {showDepotUpdateUi && updateBusy && (
                         <div
                           className="game-detail__update-progress-track"
                           role="progressbar"
@@ -1258,7 +1272,7 @@ export default function GameDetailPage({
                           />
                         </div>
                       )}
-                      {displayUpdateError && (
+                      {showDepotUpdateUi && displayUpdateError && (
                         <p className="game-detail__update-error" role="alert">
                           {displayUpdateError}
                         </p>
@@ -1756,6 +1770,16 @@ export default function GameDetailPage({
             </div>
           </div>
         </div>
+      )}
+
+      {postUpdateToolsGame && (
+        <PostUpdateToolsModal
+          game={postUpdateToolsGame}
+          onClose={() => {
+            setPostUpdateToolsGame(null)
+            void reloadDetail().catch(() => undefined)
+          }}
+        />
       )}
     </div>
   )

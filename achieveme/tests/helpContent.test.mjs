@@ -73,6 +73,17 @@ describe('helpContent', () => {
     const body = (section.paragraphs ?? []).join(' ')
     assert.match(body, /import existing/i)
     assert.match(body, /GIDs|manifest/i)
+    assert.match(body, /reapply/i)
+    assert.match(body, /Steamless/i)
+    assert.match(body, /Goldberg/i)
+  })
+
+  it('Tools section documents depot update chrome gated by GIDs', () => {
+    const section = HELP_SECTIONS.find((s) => s.id === 'tools')
+    assert.ok(section)
+    const body = (section.paragraphs ?? []).join(' ')
+    assert.match(body, /only when depot GIDs are stored/i)
+    assert.match(body, /stops on failure|Retry/i)
   })
 
   it('refresh tooltip mentions ignored and depot retain', () => {
@@ -109,7 +120,8 @@ describe('helpContent', () => {
     assert.match(SETTINGS_HINTS.rclonePath, /rclone\.exe/i)
     assert.match(SETTINGS_HINTS.rclonePath, /userData|isolated|GUI/i)
     assert.match(SETTINGS_HINTS.ludusaviCloudProvider, /Connect|cloud set/i)
-    assert.match(SETTINGS_HINTS.ludusaviCloudSync, /cloud-sync|Upload after backup/i)
+    assert.match(SETTINGS_HINTS.ludusaviCloudSync, /cloud-sync/i)
+    assert.match(SETTINGS_HINTS.ludusaviCloudSync, /local-only|Install picker/i)
     assert.match(SETTINGS_HINTS.ludusaviCloudManual, /never auto-resolves|Upload to cloud/i)
     assert.match(TOOLTIPS.settingsLudusavi, /library/i)
     assert.match(TOOLTIPS.settingsLudusavi, /Install backup|restore/i)

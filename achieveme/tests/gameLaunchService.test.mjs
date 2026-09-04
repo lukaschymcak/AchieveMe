@@ -10,6 +10,7 @@ const {
   listInstallExecutables,
   listExeBaseNamesForPlaytime,
   launchGameExe,
+  formatSpawnLaunchError,
   LAUNCH_NEEDS_EXE,
   classifyFolderNameMatch,
   resolveGameRoot,
@@ -83,22 +84,61 @@ test('listExeBaseNamesForPlaytime climbs to confident game root', () => {
   }
 })
 
-test('launchGameExe throws when file is missing', () => {
-  assert.throws(
+test('launchGameExe throws when file is missing', async () => {
+  await assert.rejects(
     () => launchGameExe(path.join(os.tmpdir(), 'missing-game-xyz.exe')),
     /not found/
   )
 })
 
-test('launchGameExe throws when path is not an exe', () => {
+test('launchGameExe throws when path is not an exe', async () => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'achieveme-launch-'))
   try {
     const file = path.join(tmp, 'note.txt')
     fs.writeFileSync(file, 'x')
-    assert.throws(() => launchGameExe(file), /\.exe/)
+    await assert.rejects(() => launchGameExe(file), /\.exe/)
   } finally {
     fs.rmSync(tmp, { recursive: true, force: true })
   }
+})
+
+test('launchGameExe uses openPath when provided', async () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'achieveme-launch-'))
+  try {
+    const exe = path.join(tmp, 'Game.exe')
+    fs.writeFileSync(exe, 'x')
+    let seen = ''
+    await launchGameExe(exe, async (p) => {
+      seen = p
+      return ''
+    })
+    assert.equal(seen, path.resolve(exe))
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true })
+  }
+})
+
+test('launchGameExe rejects when openPath returns an error string', async () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'achieveme-launch-'))
+  try {
+    const exe = path.join(tmp, 'Game.exe')
+    fs.writeFileSync(exe, 'x')
+    await assert.rejects(
+      () => launchGameExe(exe, async () => 'Failed to open'),
+      /Failed to open/
+    )
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true })
+  }
+})
+
+test('formatSpawnLaunchError explains EACCES / run as administrator', () => {
+  const msg = formatSpawnLaunchError(
+    'F:\\Games\\START_ONIMUSHA.exe',
+    Object.assign(new Error('spawn EACCES'), { code: 'EACCES' })
+  )
+  assert.match(msg, /EACCES|administrator/i)
+  assert.match(msg, /START_ONIMUSHA\.exe/)
 })
 
 test('LAUNCH_NEEDS_EXE code is stable for UI handling', () => {

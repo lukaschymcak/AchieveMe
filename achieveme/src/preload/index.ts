@@ -139,8 +139,8 @@ contextBridge.exposeInMainWorld('api', {
   browseSteamlessExe: (): Promise<string | null> =>
     ipcRenderer.invoke('browse-steamless-exe'),
 
-  runSteamless: (exePath: string): Promise<SteamlessRunResult> =>
-    ipcRenderer.invoke('run-steamless', exePath),
+  runSteamless: (exePath: string, appid?: string): Promise<SteamlessRunResult> =>
+    ipcRenderer.invoke('run-steamless', exePath, appid),
 
   browseLudusaviPath: (): Promise<string | null> =>
     ipcRenderer.invoke('browse-ludusavi-path'),

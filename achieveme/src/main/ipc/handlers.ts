@@ -12,12 +12,14 @@ import {
   deleteGame,
   saveManifestGids,
   saveUpdateStatus,
+  saveGameToolApply,
   deleteCacheEntry,
   ignoreAppid,
   getIgnoredAppids,
   updateGameBackupStatus
 } from '../db/repository'
 import { parseManifestGidsJson, pickManifestGids } from '../../shared/manifestUpdateUtils'
+import { hasStoredManifestGids } from '../../shared/libraryRetentionUtils'
 import { getStoreCoverUrl } from '../achievement/steamApiClient'
 import { cacheCoverUrl, cacheHeroUrl } from '../../shared/imageCacheUrls'
 import { loadSettings, saveSettings, normalizeSettings } from '../settings'
@@ -188,7 +190,8 @@ export function registerIpcHandlers(): void {
         backup_status: g.backup_status ?? '',
         backup_at: g.backup_at ?? 0,
         backup_error: g.backup_error ?? '',
-        ludusavi_title: g.ludusavi_title ?? ''
+        ludusavi_title: g.ludusavi_title ?? '',
+        has_depot_gids: hasStoredManifestGids(g.manifest_gids)
       })
     }
     return summaries
@@ -434,7 +437,7 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle('launch-game', async (_event, appid: string): Promise<void> => {
     try {
-      launchGame(getDb(), appid)
+      await launchGame(getDb(), appid)
     } catch (err) {
       const code = (err as Error & { code?: string }).code
       if (code === LAUNCH_NEEDS_EXE) {
@@ -465,15 +468,23 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle(
     'run-steamless',
-    async (event, exePath: string): Promise<SteamlessRunResult> => {
+    async (event, exePath: string, appid?: string): Promise<SteamlessRunResult> => {
       const settings = loadSettings()
       const folder = settings.steamlessFolder?.trim() ?? ''
       if (!folder) {
         throw new Error('Set the Steamless folder in Settings first.')
       }
-      return runSteamlessUnpack(folder, exePath, (line) => {
+      const result = await runSteamlessUnpack(folder, exePath, (line) => {
         event.sender.send('steamless-log', line)
       })
+      const cleanAppid = String(appid || '').trim()
+      if (result.ok && /^\d+$/.test(cleanAppid)) {
+        saveGameToolApply(getDb(), cleanAppid, {
+          steamlessApplied: true,
+          steamlessExe: path.resolve(exePath)
+        })
+      }
+      return result
     }
   )
 

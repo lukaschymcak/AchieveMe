@@ -39,6 +39,18 @@ export function migrateSchema(db: Database.Database): void {
   if (!columnExists(db, 'games', 'ludusavi_title')) {
     db.exec("ALTER TABLE games ADD COLUMN ludusavi_title TEXT NOT NULL DEFAULT ''")
   }
+  if (!columnExists(db, 'games', 'steamless_applied')) {
+    db.exec('ALTER TABLE games ADD COLUMN steamless_applied INTEGER NOT NULL DEFAULT 0')
+  }
+  if (!columnExists(db, 'games', 'goldberg_applied')) {
+    db.exec('ALTER TABLE games ADD COLUMN goldberg_applied INTEGER NOT NULL DEFAULT 0')
+  }
+  if (!columnExists(db, 'games', 'steamless_exe')) {
+    db.exec("ALTER TABLE games ADD COLUMN steamless_exe TEXT NOT NULL DEFAULT ''")
+  }
+  if (!columnExists(db, 'games', 'goldberg_dll_path')) {
+    db.exec("ALTER TABLE games ADD COLUMN goldberg_dll_path TEXT NOT NULL DEFAULT ''")
+  }
   db.exec(`
     CREATE TABLE IF NOT EXISTS ignored_appids (
       appid       TEXT    PRIMARY KEY,
@@ -66,7 +78,11 @@ export function createTables(db: Database.Database): void {
       backup_status         TEXT    NOT NULL DEFAULT '',
       backup_at             INTEGER NOT NULL DEFAULT 0,
       backup_error          TEXT    NOT NULL DEFAULT '',
-      ludusavi_title        TEXT    NOT NULL DEFAULT ''
+      ludusavi_title        TEXT    NOT NULL DEFAULT '',
+      steamless_applied     INTEGER NOT NULL DEFAULT 0,
+      goldberg_applied      INTEGER NOT NULL DEFAULT 0,
+      steamless_exe         TEXT    NOT NULL DEFAULT '',
+      goldberg_dll_path     TEXT    NOT NULL DEFAULT ''
     );
 
     CREATE TABLE IF NOT EXISTS achievements (

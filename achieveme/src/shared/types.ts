@@ -164,6 +164,14 @@ export interface Game {
   backup_error: string
   /** Cached Ludusavi manifest title resolved via find --steam-id. */
   ludusavi_title: string
+  /** 1 when Steamless was successfully applied for this game. */
+  steamless_applied: number
+  /** 1 when Goldberg was successfully applied for this game. */
+  goldberg_applied: number
+  /** Last Steamless target exe path, or empty. */
+  steamless_exe: string
+  /** Last Goldberg steam_api DLL path, or empty. */
+  goldberg_dll_path: string
 }
 
 // One row in the `achievements` SQLite table
@@ -233,6 +241,8 @@ export interface GameSummary {
   backup_at: number
   backup_error: string
   ludusavi_title: string
+  /** True when stored `manifest_gids` has at least one depot GID. */
+  has_depot_gids: boolean
 }
 
 // Sent over IPC to renderer for the game detail page

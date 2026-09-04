@@ -38,6 +38,10 @@ function makeGame(appid, overrides = {}) {
     backup_at: 0,
     backup_error: '',
     ludusavi_title: '',
+    steamless_applied: 0,
+    goldberg_applied: 0,
+    steamless_exe: '',
+    goldberg_dll_path: '',
     ...overrides
   }
 }

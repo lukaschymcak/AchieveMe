@@ -4,7 +4,7 @@ import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 
 const rootDir = path.dirname(fileURLToPath(import.meta.url))
-const { upsertGame, getGame, updateGameBackupStatus } = await import(
+const { upsertGame, getGame, saveGameToolApply } = await import(
   pathToFileURL(path.join(rootDir, '../src/main/db/repository.ts')).href
 )
 
@@ -36,7 +36,7 @@ function makeGame(overrides = {}) {
 }
 
 /**
- * Minimal better-sqlite3-shaped store for games backup status tests.
+ * Minimal better-sqlite3-shaped store for tool-flag tests.
  * @returns {import('better-sqlite3').Database}
  */
 function openMockDb() {
@@ -64,7 +64,6 @@ function openMockDb() {
               store.set(appid, { ...row })
               return
             }
-            // Mirror ON CONFLICT preserve for backup_* columns
             store.set(appid, {
               ...existing,
               ...row,
@@ -84,18 +83,21 @@ function openMockDb() {
         }
       }
 
-      if (normalized.startsWith('UPDATE GAMES SET BACKUP_STATUS')) {
+      if (normalized.startsWith('UPDATE GAMES SET')) {
         return {
-          run(status, at, error, ludusaviTitle, appid) {
-            const existing = store.get(String(appid))
+          run(...args) {
+            const appid = String(args[args.length - 1])
+            const existing = store.get(appid)
             if (!existing) return
-            store.set(String(appid), {
-              ...existing,
-              backup_status: status,
-              backup_at: at,
-              backup_error: error,
-              ludusavi_title: ludusaviTitle
-            })
+            const next = { ...existing }
+            const setClause = String(sql)
+              .replace(/^UPDATE\s+games\s+SET\s+/i, '')
+              .replace(/\s+WHERE\s+appid\s*=\s*\?$/i, '')
+            const cols = setClause.split(',').map((c) => c.trim().split(/\s*=\s*/)[0].trim())
+            for (let i = 0; i < cols.length; i++) {
+              next[cols[i]] = args[i]
+            }
+            store.set(appid, next)
           }
         }
       }
@@ -105,58 +107,52 @@ function openMockDb() {
   }
 }
 
-test('updateGameBackupStatus writes status fields', () => {
+test('saveGameToolApply sets steamless and goldberg flags and paths', () => {
   const db = openMockDb()
   upsertGame(db, makeGame())
-  updateGameBackupStatus(db, '570', {
-    status: 'ok',
-    at: 1_700_000_000,
-    error: '',
-    ludusaviTitle: 'Dota 2'
+
+  saveGameToolApply(db, '570', {
+    steamlessApplied: true,
+    steamlessExe: 'C:\\Games\\game.exe',
+    goldbergApplied: true,
+    goldbergDllPath: 'C:\\Games\\steam_api64.dll'
   })
+
   const row = getGame(db, '570')
-  assert.equal(row.backup_status, 'ok')
-  assert.equal(row.backup_at, 1_700_000_000)
-  assert.equal(row.backup_error, '')
-  assert.equal(row.ludusavi_title, 'Dota 2')
+  assert.equal(row?.steamless_applied, 1)
+  assert.equal(row?.goldberg_applied, 1)
+  assert.equal(row?.steamless_exe, 'C:\\Games\\game.exe')
+  assert.equal(row?.goldberg_dll_path, 'C:\\Games\\steam_api64.dll')
 })
 
-test('upsertGame preserves backup status on achievement-style upsert', () => {
+test('upsertGame preserves tool flags and paths on achievement-style upsert', () => {
   const db = openMockDb()
   upsertGame(db, makeGame())
-  updateGameBackupStatus(db, '570', {
-    status: 'ok',
-    at: 100,
-    error: '',
-    ludusaviTitle: 'Dota 2'
+  saveGameToolApply(db, '570', {
+    steamlessApplied: true,
+    steamlessExe: 'C:\\Games\\game.exe',
+    goldbergApplied: true,
+    goldbergDllPath: 'C:\\Games\\steam_api64.dll'
   })
+
   upsertGame(
     db,
     makeGame({
-      unlocked_achievements: 1,
-      completion_pct: 100,
-      backup_status: '',
-      backup_at: 0,
-      backup_error: '',
-      ludusavi_title: ''
+      name: 'Dota 2 Updated',
+      total_achievements: 10,
+      unlocked_achievements: 3,
+      completion_pct: 30,
+      steamless_applied: 0,
+      goldberg_applied: 0,
+      steamless_exe: '',
+      goldberg_dll_path: ''
     })
   )
-  const row = getGame(db, '570')
-  assert.equal(row.unlocked_achievements, 1)
-  assert.equal(row.backup_status, 'ok')
-  assert.equal(row.backup_at, 100)
-  assert.equal(row.ludusavi_title, 'Dota 2')
-})
 
-test('updateGameBackupStatus sets missing and error', () => {
-  const db = openMockDb()
-  upsertGame(db, makeGame())
-  updateGameBackupStatus(db, '570', {
-    status: 'missing',
-    at: 50,
-    error: 'Not in Ludusavi'
-  })
   const row = getGame(db, '570')
-  assert.equal(row.backup_status, 'missing')
-  assert.equal(row.backup_error, 'Not in Ludusavi')
+  assert.equal(row?.name, 'Dota 2 Updated')
+  assert.equal(row?.steamless_applied, 1)
+  assert.equal(row?.goldberg_applied, 1)
+  assert.equal(row?.steamless_exe, 'C:\\Games\\game.exe')
+  assert.equal(row?.goldberg_dll_path, 'C:\\Games\\steam_api64.dll')
 })

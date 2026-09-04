@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import type { GameExecutable, GameSummary, SteamlessRunResult } from '../../../shared/types'
+import { steamlessExeStep, steamlessGamePickAction } from '../../../shared/steamlessWizardUtils'
 import { AppSearchInput, Chip } from './app'
 
 type Step = 'pick-game' | 'pick-exe' | 'run' | 'done'
@@ -9,8 +10,8 @@ interface Props {
 }
 
 function readinessLabel(game: GameSummary): string {
-  if (game.launch_exe?.trim()) return 'Launch exe ready'
   if (game.install_path?.trim()) return 'Install folder set'
+  if (game.launch_exe?.trim()) return 'Launch exe ready'
   return 'No install path'
 }
 
@@ -56,7 +57,7 @@ export default function SteamlessWizard({ onClose }: Props): React.ReactElement 
     )
   }, [games, search])
 
-  async function goToRun(exePath: string): Promise<void> {
+  async function goToRun(exePath: string, appid?: string): Promise<void> {
     setTargetExe(exePath)
     setStep('run')
     setErrorMsg('')
@@ -68,7 +69,7 @@ export default function SteamlessWizard({ onClose }: Props): React.ReactElement 
       setLogLines((prev) => [...prev, line])
     })
     try {
-      const next = await window.api.runSteamless(exePath)
+      const next = await window.api.runSteamless(exePath, appid)
       setResult(next)
       setStep('done')
     } catch (err) {
@@ -102,17 +103,16 @@ export default function SteamlessWizard({ onClose }: Props): React.ReactElement 
     }
     if (resolved.status === 'need_browse') {
       const picked = await window.api.browseSteamlessExe()
-      if (picked) await goToRun(picked)
+      if (picked) await goToRun(picked, game.appid)
       return
     }
-    if (resolved.executables.length === 1) {
-      await goToRun(resolved.executables[0].absolutePath)
-      return
-    }
-    setExeOptions(resolved.executables)
-    setStep('pick-exe')
-    if (resolved.executables.length === 0) {
-      setErrorMsg('No executables found under the game folder.')
+    const exeStep = steamlessExeStep(resolved.executables)
+    if (exeStep.kind === 'show-picker') {
+      setExeOptions(resolved.executables)
+      setStep('pick-exe')
+      if (resolved.executables.length === 0) {
+        setErrorMsg('No executables found under the game folder.')
+      }
     }
   }
 
@@ -120,18 +120,12 @@ export default function SteamlessWizard({ onClose }: Props): React.ReactElement 
     setSelectedGame(game)
     setErrorMsg('')
     setExeOptions([])
-    const launchExe = game.launch_exe?.trim() ?? ''
-    if (launchExe) {
-      await goToRun(launchExe)
-      return
-    }
-    const installPath = game.install_path?.trim() ?? ''
-    if (installPath) {
+    if (steamlessGamePickAction(game) === 'list-exes') {
       await loadExeListForGame(game)
       return
     }
     const picked = await window.api.browseSteamlessExe()
-    if (picked) await goToRun(picked)
+    if (picked) await goToRun(picked, game.appid)
   }
 
   async function handleConfirmRoot(yes: boolean): Promise<void> {
@@ -143,7 +137,7 @@ export default function SteamlessWizard({ onClose }: Props): React.ReactElement 
       return
     }
     const picked = await window.api.browseSteamlessExe()
-    if (picked) await goToRun(picked)
+    if (picked) await goToRun(picked, selectedGame.appid)
   }
 
   return (
@@ -201,8 +195,9 @@ export default function SteamlessWizard({ onClose }: Props): React.ReactElement 
         {step === 'pick-game' && !rootConfirmPath && (
           <>
             <p className="steamless-wizard__help">
-              Choose a library game. Prefer games with a launch exe or install folder already set.
-              Or search for any .exe on disk.
+              Choose a library game with an install folder. You pick the .exe from that folder
+              (same as Select executable), including after a previous unpack. Or search for any
+              .exe on disk.
             </p>
             <AppSearchInput
               type="search"
@@ -251,7 +246,7 @@ export default function SteamlessWizard({ onClose }: Props): React.ReactElement 
                   <button
                     type="button"
                     className="steamless-wizard__game-option"
-                    onClick={() => void goToRun(exe.absolutePath)}
+                    onClick={() => void goToRun(exe.absolutePath, selectedGame?.appid)}
                   >
                     <span className="steamless-wizard__game-name">{exe.name}</span>
                     <span className="steamless-wizard__game-meta">{exe.relativePath}</span>

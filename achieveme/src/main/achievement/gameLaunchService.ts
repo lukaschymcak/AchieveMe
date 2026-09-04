@@ -1,5 +1,6 @@
 import path from 'node:path'
 import fs from 'node:fs'
+import { shell } from 'electron'
 import type Database from 'better-sqlite3'
 import type { ResolveGameExecutablesResult, SetGameLaunchConfigRequest } from '../../shared/types'
 import {
@@ -90,12 +91,13 @@ export function resolveGameExecutables(
 
 /**
  * Launches the game using its saved `launch_exe`, or signals that a pick is needed.
+ * Uses ShellExecute so Windows can elevate admin-required executables via UAC.
  *
  * @param db - Open SQLite database.
  * @param appid - Steam AppID.
  * @throws Error with `code === LAUNCH_NEEDS_EXE` when no valid exe is configured.
  */
-export function launchGame(db: Database.Database, appid: string): void {
+export async function launchGame(db: Database.Database, appid: string): Promise<void> {
   const game = getGame(db, appid)
   if (!game) {
     throw new Error(`Game not found: ${appid}`)
@@ -108,5 +110,5 @@ export function launchGame(db: Database.Database, appid: string): void {
     throw err
   }
 
-  launchGameExe(launchExe)
+  await launchGameExe(launchExe, (filePath) => shell.openPath(filePath))
 }
