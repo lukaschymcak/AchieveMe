@@ -1,4 +1,6 @@
 // Supported emulator sources (Goldberg-family saves are writable on import).
+import type { UpdateTransferPhase } from './updateTransferUtils'
+
 export type SourceId =
   | 'goldberg'
   | 'gse'
@@ -133,6 +135,24 @@ export interface ActiveUpdateSession {
   pct: number
   label: string
   error: string
+  /** Display name for dock / modal header. */
+  gameName: string
+  /** Modal phase for UpdateTransferModal. */
+  phase: UpdateTransferPhase
+  /** Absolute install folder used for DepotDownloader. */
+  installPath: string
+  /** Depots confirmed for the in-flight job. */
+  selectedDepots?: string[]
+  /** Snapshot: Steamless was applied before this update. */
+  steamlessApplied: boolean
+  /** Snapshot: Goldberg was applied before this update. */
+  goldbergApplied: boolean
+  /** Last known Steamless exe path for reapply. */
+  steamlessExe: string
+  /** Last known Goldberg DLL path for reapply. */
+  goldbergDllPath: string
+  /** Optional header art for modal chrome. */
+  headerImageUrl?: string
 }
 
 // One row in the `games` SQLite table

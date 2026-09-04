@@ -591,16 +591,26 @@ export default function GameDetailPage({
 
   function patchSession(
     mode: 'update' | 'validate',
-    patch: Partial<Pick<ActiveUpdateSession, 'busy' | 'pct' | 'label' | 'error'>>
+    patch: Partial<Pick<ActiveUpdateSession, 'busy' | 'pct' | 'label' | 'error' | 'phase'>>
   ): void {
     const prev = sessionRef.current?.appid === appid ? sessionRef.current : null
+    const game = detail?.game
     const next: ActiveUpdateSession = {
       appid,
       mode,
       busy: patch.busy ?? prev?.busy ?? true,
       pct: patch.pct ?? prev?.pct ?? 0,
       label: patch.label ?? prev?.label ?? '',
-      error: patch.error ?? prev?.error ?? ''
+      error: patch.error ?? prev?.error ?? '',
+      gameName: prev?.gameName ?? game?.name ?? '',
+      phase: patch.phase ?? prev?.phase ?? 'running',
+      installPath: prev?.installPath ?? game?.install_path ?? '',
+      selectedDepots: prev?.selectedDepots,
+      steamlessApplied: prev?.steamlessApplied ?? game?.steamless_applied === 1,
+      goldbergApplied: prev?.goldbergApplied ?? game?.goldberg_applied === 1,
+      steamlessExe: prev?.steamlessExe ?? game?.steamless_exe ?? '',
+      goldbergDllPath: prev?.goldbergDllPath ?? game?.goldberg_dll_path ?? '',
+      headerImageUrl: prev?.headerImageUrl
     }
     sessionRef.current = next
     onUpdateSessionChange(next)
@@ -820,7 +830,14 @@ export default function GameDetailPage({
         busy: false,
         pct: 0,
         label: '',
-        error: message
+        error: message,
+        gameName: detail?.game.name ?? '',
+        phase: 'error',
+        installPath: detail?.game.install_path ?? '',
+        steamlessApplied: detail?.game.steamless_applied === 1,
+        goldbergApplied: detail?.game.goldberg_applied === 1,
+        steamlessExe: detail?.game.steamless_exe ?? '',
+        goldbergDllPath: detail?.game.goldberg_dll_path ?? ''
       }
       sessionRef.current = failed
       onUpdateSessionChange(failed)
