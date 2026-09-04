@@ -17,21 +17,17 @@ import HelpPage from './pages/HelpPage'
 import FirstRunWelcome from './components/FirstRunWelcome'
 import SessionRecapModal from './components/SessionRecapModal'
 import DepotWizard from './components/DepotWizard'
+import TransfersDock from './components/TransfersDock'
 import AddGameModal from './components/AddGameModal'
 import { shouldShowFirstRun } from './lib/helpStorage'
 import type { AppPage } from './lib/appNavigation'
 import { pruneNewsPayloadForLibrary } from '../../shared/newsUtils'
+import {
+  buildTransferDockRows,
+  type TransferDockRow
+} from '../../shared/transfersDockUtils'
 
 type TransitionDir = 'next' | 'prev' | null
-
-function isDownloadInProgress(session: ActiveDepotSession | null): boolean {
-  if (!session) return false
-  return (
-    session.phase === 'fetching' ||
-    session.phase === 'downloading' ||
-    session.phase === 'depots'
-  )
-}
 
 export default function App(): React.ReactElement {
   const [page, setPage] = useState<AppPage>('dashboard')
@@ -44,6 +40,8 @@ export default function App(): React.ReactElement {
   const [activeDepotSession, setActiveDepotSession] = useState<ActiveDepotSession | null>(null)
   const [activeUpdateSession, setActiveUpdateSession] = useState<ActiveUpdateSession | null>(null)
   const [depotWizardOpen, setDepotWizardOpen] = useState(false)
+  const [updateModalOpen, setUpdateModalOpen] = useState(false)
+  const [transfersExpanded, setTransfersExpanded] = useState(false)
   const [addGamePrefill, setAddGamePrefill] = useState<{
     appid: string
     name: string
@@ -210,42 +208,28 @@ export default function App(): React.ReactElement {
     <SessionRecapModal payload={sessionRecap} onDismiss={dismissSessionRecap} />
   ) : null
 
+  const transferRows = buildTransferDockRows({
+    depot: activeDepotSession,
+    update: activeUpdateSession
+  })
+
+  function handleOpenTransferRow(row: TransferDockRow): void {
+    setTransfersExpanded(false)
+    if (row.openTarget === 'depot') {
+      setDepotWizardOpen(true)
+      return
+    }
+    setUpdateModalOpen(true)
+  }
+
   const depotOverlay = (
     <>
-      {isDownloadInProgress(activeDepotSession) && (
-        <button
-          type="button"
-          className="depot-download-badge"
-          onClick={() => setDepotWizardOpen(true)}
-          aria-label={`Download in progress: ${activeDepotSession?.gameName ?? 'game'}`}
-        >
-          {activeDepotSession?.headerImageUrl ? (
-            <img
-              src={activeDepotSession.headerImageUrl}
-              alt=""
-              className="depot-download-badge__thumb"
-            />
-          ) : (
-            <span className="depot-download-badge__thumb depot-download-badge__thumb--empty" />
-          )}
-          <span className="depot-download-badge__meta">
-            <span className="depot-download-badge__name">
-              {activeDepotSession?.gameName || 'Download'}
-            </span>
-            <span className="depot-download-badge__bar" aria-hidden="true">
-              <span
-                className="depot-download-badge__fill"
-                style={{
-                  width: `${Math.max(0, Math.min(100, activeDepotSession?.pct ?? 0))}%`
-                }}
-              />
-            </span>
-            <span className="depot-download-badge__pct">
-              {Math.round(activeDepotSession?.pct ?? 0)}%
-            </span>
-          </span>
-        </button>
-      )}
+      <TransfersDock
+        rows={transferRows}
+        expanded={transfersExpanded}
+        onToggle={() => setTransfersExpanded((open) => !open)}
+        onOpenRow={handleOpenTransferRow}
+      />
       {depotWizardOpen && (
         <DepotWizard
           session={activeDepotSession}
