@@ -96,7 +96,7 @@ export default function ToolsPage({
             )}
             {depotActive && (
               <p className="tools-card__path">
-                Download in progress — reopen the wizard from the badge or below.
+                Download in progress — reopen the wizard from the Transfers dock or below.
               </p>
             )}
             <div className="tools-card__actions">

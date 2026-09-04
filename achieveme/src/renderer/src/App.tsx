@@ -10,7 +10,7 @@ import type {
 import DashboardPage from './pages/DashboardPage'
 import LibraryPage from './pages/LibraryPage'
 import NewsPage, { NEWS_LOAD_ERROR, type NewsLoadState } from './pages/NewsPage'
-import GameDetailPage from './pages/GameDetailPage'
+import GameDetailPage, { type OpenUpdateTransferInput } from './pages/GameDetailPage'
 import SettingsPage from './pages/SettingsPage'
 import ToolsPage from './pages/ToolsPage'
 import HelpPage from './pages/HelpPage'
@@ -18,6 +18,7 @@ import FirstRunWelcome from './components/FirstRunWelcome'
 import SessionRecapModal from './components/SessionRecapModal'
 import DepotWizard from './components/DepotWizard'
 import TransfersDock from './components/TransfersDock'
+import UpdateTransferModal from './components/UpdateTransferModal'
 import AddGameModal from './components/AddGameModal'
 import { shouldShowFirstRun } from './lib/helpStorage'
 import type { AppPage } from './lib/appNavigation'
@@ -26,6 +27,7 @@ import {
   buildTransferDockRows,
   type TransferDockRow
 } from '../../shared/transfersDockUtils'
+import { nextUpdatePhaseAfterSuccess } from '../../shared/updateTransferUtils'
 
 type TransitionDir = 'next' | 'prev' | null
 
@@ -39,6 +41,7 @@ export default function App(): React.ReactElement {
   const [sessionRecap, setSessionRecap] = useState<SessionRecapPayload | null>(null)
   const [activeDepotSession, setActiveDepotSession] = useState<ActiveDepotSession | null>(null)
   const [activeUpdateSession, setActiveUpdateSession] = useState<ActiveUpdateSession | null>(null)
+  const [updateManifestGidsJson, setUpdateManifestGidsJson] = useState('')
   const [depotWizardOpen, setDepotWizardOpen] = useState(false)
   const [updateModalOpen, setUpdateModalOpen] = useState(false)
   const [transfersExpanded, setTransfersExpanded] = useState(false)
@@ -51,10 +54,21 @@ export default function App(): React.ReactElement {
   const [newsError, setNewsError] = useState<string | null>(null)
   const [newsLoadState, setNewsLoadState] = useState<NewsLoadState>('loading')
   const depotSessionRef = useRef<ActiveDepotSession | null>(null)
+  const updateSessionRef = useRef<ActiveUpdateSession | null>(null)
+  const updateJobRunningRef = useRef(false)
 
   useEffect(() => {
     depotSessionRef.current = activeDepotSession
   }, [activeDepotSession])
+
+  useEffect(() => {
+    updateSessionRef.current = activeUpdateSession
+  }, [activeUpdateSession])
+
+  const handleUpdateSessionChange = useCallback((session: ActiveUpdateSession | null): void => {
+    updateSessionRef.current = session
+    setActiveUpdateSession(session)
+  }, [])
 
   const handleNewsResult = useCallback(
     (result: {
@@ -192,6 +206,210 @@ export default function App(): React.ReactElement {
     setAddGamePrefill({ appid, name, installPath })
   }
 
+  const handleOpenUpdateTransfer = useCallback(
+    (input: OpenUpdateTransferInput): void => {
+      const prev = updateSessionRef.current
+      if (prev?.busy) {
+        if (prev.appid === input.appid) setUpdateModalOpen(true)
+        return
+      }
+      if (
+        prev &&
+        prev.appid === input.appid &&
+        prev.phase !== 'pick_depots' &&
+        prev.phase !== 'done'
+      ) {
+        setUpdateModalOpen(true)
+        return
+      }
+      if (updateJobRunningRef.current) return
+
+      const session: ActiveUpdateSession = {
+        appid: input.appid,
+        mode: input.mode,
+        busy: false,
+        pct: 0,
+        label: '',
+        error: '',
+        gameName: input.gameName,
+        phase: 'pick_depots',
+        installPath: input.installPath,
+        steamlessApplied: input.steamlessApplied,
+        goldbergApplied: input.goldbergApplied,
+        steamlessExe: input.steamlessExe,
+        goldbergDllPath: input.goldbergDllPath,
+        headerImageUrl: input.headerImageUrl
+      }
+      setUpdateManifestGidsJson(input.manifestGidsJson)
+      handleUpdateSessionChange(session)
+      setUpdateModalOpen(true)
+    },
+    [handleUpdateSessionChange]
+  )
+
+  const runUpdateJob = useCallback(
+    async (selectedDepots: string[]): Promise<void> => {
+      const session = updateSessionRef.current
+      if (!session || updateJobRunningRef.current) return
+      if (!selectedDepots.length) return
+
+      const { appid, mode, installPath } = session
+      if (!installPath.trim()) {
+        handleUpdateSessionChange({
+          ...session,
+          phase: 'error',
+          busy: false,
+          error:
+            mode === 'validate'
+              ? 'Set an install folder before validating.'
+              : 'Set an install folder before updating.'
+        })
+        return
+      }
+
+      const channelId = `depot:${appid}:${mode}`
+      const manifestChannelId = `manifest:${mode}-game:progress:${appid}`
+      let finished = false
+      updateJobRunningRef.current = true
+
+      const patch = (partial: Partial<ActiveUpdateSession>): void => {
+        const prev = updateSessionRef.current
+        if (!prev || prev.appid !== appid) return
+        const next = { ...prev, ...partial }
+        updateSessionRef.current = next
+        setActiveUpdateSession(next)
+      }
+
+      patch({
+        busy: true,
+        pct: 0,
+        label: mode === 'validate' ? 'Preparing validate…' : 'Fetching manifest…',
+        error: '',
+        phase: 'running',
+        selectedDepots
+      })
+
+      const handleManifestProgress = (payload: {
+        pct?: number
+        received?: number
+        total?: number
+        status?: string
+        error?: string
+      }): void => {
+        if (finished) return
+        let pct = 0
+        if (typeof payload.pct === 'number') pct = payload.pct
+        else if (
+          typeof payload.received === 'number' &&
+          typeof payload.total === 'number' &&
+          payload.total > 0
+        ) {
+          pct = Math.round((payload.received * 100) / payload.total)
+        }
+        patch({
+          pct,
+          label: payload.status || 'Fetching manifest…',
+          error: payload.error || ''
+        })
+      }
+
+      const handleDepotProgress = (payload: {
+        channelId?: string
+        pct?: number
+        status?: string
+        error?: string
+        done?: boolean
+      }): void => {
+        if (finished) return
+        if (payload.channelId && payload.channelId !== channelId) return
+        if (payload.done) return
+        patch({
+          ...(typeof payload.pct === 'number' ? { pct: payload.pct } : {}),
+          ...(payload.status ? { label: payload.status } : {}),
+          error: payload.error || ''
+        })
+      }
+
+      window.api.onDepotLog(manifestChannelId, handleManifestProgress)
+      window.api.onDepotProgress(handleDepotProgress)
+
+      try {
+        if (mode === 'validate') {
+          await window.api.manifestValidateGame(appid, installPath, selectedDepots)
+        } else {
+          await window.api.manifestUpdateGame(appid, installPath, selectedDepots)
+        }
+        finished = true
+        const snap = updateSessionRef.current
+        if (!snap) return
+
+        if (mode === 'validate') {
+          handleUpdateSessionChange(null)
+          setUpdateModalOpen(false)
+          setUpdateManifestGidsJson('')
+          void window.api.getAllGames().then(setLibraryGames)
+          return
+        }
+
+        const nextPhase = nextUpdatePhaseAfterSuccess({
+          steamlessApplied: snap.steamlessApplied,
+          goldbergApplied: snap.goldbergApplied
+        })
+        if (nextPhase === 'done') {
+          handleUpdateSessionChange(null)
+          setUpdateModalOpen(false)
+          setUpdateManifestGidsJson('')
+        } else {
+          patch({
+            busy: false,
+            pct: 100,
+            label: 'Update finished',
+            error: '',
+            phase: nextPhase
+          })
+          setUpdateModalOpen(true)
+        }
+        void window.api.getAllGames().then(setLibraryGames)
+      } catch (err) {
+        finished = true
+        const message = err instanceof Error ? err.message : String(err)
+        const prev = updateSessionRef.current
+        if (prev) {
+          handleUpdateSessionChange({
+            ...prev,
+            busy: false,
+            pct: 0,
+            label: '',
+            error: message,
+            phase: 'error'
+          })
+          setUpdateModalOpen(true)
+        }
+      } finally {
+        finished = true
+        updateJobRunningRef.current = false
+        window.api.offDepotLog(manifestChannelId)
+        window.api.offDepotProgress(handleDepotProgress)
+      }
+    },
+    [handleUpdateSessionChange]
+  )
+
+  const handleCloseUpdateModal = useCallback((): void => {
+    const session = updateSessionRef.current
+    if (session?.phase === 'pick_depots' && !session.busy) {
+      handleUpdateSessionChange(null)
+      setUpdateManifestGidsJson('')
+    }
+    setUpdateModalOpen(false)
+  }, [handleUpdateSessionChange])
+
+  const handleDismissUpdateComplete = useCallback((): void => {
+    handleUpdateSessionChange(null)
+    setUpdateManifestGidsJson('')
+    setUpdateModalOpen(false)
+  }, [handleUpdateSessionChange])
+
   const addGameOverlay = addGamePrefill ? (
     <AddGameModal
       prefill={addGamePrefill}
@@ -241,6 +459,18 @@ export default function App(): React.ReactElement {
           }}
         />
       )}
+      {updateModalOpen && activeUpdateSession && (
+        <UpdateTransferModal
+          session={activeUpdateSession}
+          manifestGidsJson={updateManifestGidsJson}
+          onSessionChange={handleUpdateSessionChange}
+          onConfirmDepots={(selected) => {
+            void runUpdateJob(selected)
+          }}
+          onClose={handleCloseUpdateModal}
+          onDismissComplete={handleDismissUpdateComplete}
+        />
+      )}
     </>
   )
 
@@ -263,7 +493,7 @@ export default function App(): React.ReactElement {
               appid={selectedAppid}
               transitionDir={transitionDir}
               activeUpdateSession={activeUpdateSession}
-              onUpdateSessionChange={setActiveUpdateSession}
+              onOpenUpdateTransfer={handleOpenUpdateTransfer}
               onSetupAchievements={(name, installPath) =>
                 handleSetupAchievements(selectedAppid, name, installPath)
               }

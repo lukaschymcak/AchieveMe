@@ -78,6 +78,21 @@ describe('helpContent', () => {
     assert.match(body, /Goldberg/i)
   })
 
+  it('Tools section documents Transfers dock reopen', () => {
+    const section = HELP_SECTIONS.find((s) => s.id === 'tools')
+    assert.ok(section)
+    const body = (section.paragraphs ?? []).join(' ')
+    assert.match(body, /Transfers dock/i)
+  })
+
+  it('Game detail section documents Update transfer modal', () => {
+    const section = HELP_SECTIONS.find((s) => s.id === 'game-detail')
+    assert.ok(section)
+    const body = (section.paragraphs ?? []).join(' ')
+    assert.match(body, /transfer modal/i)
+    assert.match(body, /Transfers dock/i)
+  })
+
   it('Tools section documents depot update chrome gated by GIDs', () => {
     const section = HELP_SECTIONS.find((s) => s.id === 'tools')
     assert.ok(section)

@@ -1,15 +1,13 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import type {
   Achievement,
   ActiveUpdateSession,
-  GameData,
   GameDetail,
   GameExecutable,
   TrophyTier,
   UpdateStatus
 } from '../../../shared/types'
 import { LAUNCH_NEEDS_EXE } from '../../../shared/types'
-import { parseManifestGidsJson } from '../../../shared/manifestUpdateUtils'
 import { hasStoredManifestGids } from '../../../shared/libraryRetentionUtils'
 import { formatPlaytimePlayed } from '../../../shared/playtimeUtils'
 import { cacheHeroUrl } from '../../../shared/imageCacheUrls'
@@ -20,7 +18,6 @@ import {
   type LudusaviSnapshot
 } from '../../../shared/ludusaviApiUtils.ts'
 import HelpTip from '../components/HelpTip'
-import PostUpdateToolsModal from '../components/PostUpdateToolsModal'
 import { TOOLTIPS, getEmptyAchievementsMessage } from '../lib/helpContent'
 import {
   type ActiveFilter,
@@ -36,6 +33,20 @@ import {
   tierLabel
 } from '../lib/achievementDisplay'
 
+/** Payload App needs to open UpdateTransferModal from Game Detail. */
+export interface OpenUpdateTransferInput {
+  appid: string
+  mode: 'update' | 'validate'
+  gameName: string
+  installPath: string
+  manifestGidsJson: string
+  steamlessApplied: boolean
+  goldbergApplied: boolean
+  steamlessExe: string
+  goldbergDllPath: string
+  headerImageUrl?: string
+}
+
 interface Props {
   appid: string
   onBack: () => void
@@ -45,20 +56,8 @@ interface Props {
   onNext: (() => void) | null
   transitionDir: 'next' | 'prev' | null
   activeUpdateSession: ActiveUpdateSession | null
-  onUpdateSessionChange: (session: ActiveUpdateSession | null) => void
+  onOpenUpdateTransfer: (input: OpenUpdateTransferInput) => void
   onSetupAchievements: (name: string, installPath?: string) => void
-}
-
-/**
- * Formats a byte count for depot size labels.
- *
- * @param bytes - Size in bytes.
- * @returns Human-readable size string.
- */
-function formatBytes(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
-  return `${(bytes / (1024 * 1024)).toFixed(0)} MB`
 }
 
 type TierVarKey = TrophyTier | 'platinum'
@@ -508,7 +507,7 @@ export default function GameDetailPage({
   onNext,
   transitionDir,
   activeUpdateSession,
-  onUpdateSessionChange,
+  onOpenUpdateTransfer,
   onSetupAchievements
 }: Props): React.ReactElement {
   const [detail, setDetail] = useState<GameDetail | null>(null)
@@ -530,10 +529,7 @@ export default function GameDetailPage({
   const [updateBuildId, setUpdateBuildId] = useState<string | undefined>()
   const [updateChecking, setUpdateChecking] = useState(false)
   const [updateError, setUpdateError] = useState('')
-  const [depotPickerMode, setDepotPickerMode] = useState<'update' | 'validate' | null>(null)
-  const [depotPickerData, setDepotPickerData] = useState<GameData | null>(null)
-  const [depotPickerLoading, setDepotPickerLoading] = useState(false)
-  const [depotPickerSelected, setDepotPickerSelected] = useState<Record<string, boolean>>({})
+  const [openingTransfer, setOpeningTransfer] = useState(false)
   const [saveModalOpen, setSaveModalOpen] = useState(false)
   const [saveModalStep, setSaveModalStep] = useState<'main' | 'pick'>('main')
   const [saveSnapshots, setSaveSnapshots] = useState<LudusaviSnapshot[]>([])
@@ -541,7 +537,6 @@ export default function GameDetailPage({
   const [saveSnapshotsError, setSaveSnapshotsError] = useState('')
   const [selectedBackupId, setSelectedBackupId] = useState('')
   const [ludusaviPathLinked, setLudusaviPathLinked] = useState(false)
-  const [postUpdateToolsGame, setPostUpdateToolsGame] = useState<GameDetail['game'] | null>(null)
 
   const closeSaveModal = (): void => {
     setSaveModalOpen(false)
@@ -581,40 +576,12 @@ export default function GameDetailPage({
   const sessionForGame =
     activeUpdateSession?.appid === appid ? activeUpdateSession : null
   const updateBusy = Boolean(sessionForGame?.busy)
-  const updatePct = sessionForGame?.pct ?? 0
-  const updateProgressLabel = sessionForGame?.label ?? ''
-  const sessionError = sessionForGame?.error ?? ''
+  const sessionError =
+    sessionForGame?.appid === appid && sessionForGame.phase === 'error'
+      ? sessionForGame.error
+      : ''
   const displayUpdateError = updateError || sessionError
   const jobLocked = Boolean(activeUpdateSession?.busy)
-  const sessionRef = useRef(activeUpdateSession)
-  sessionRef.current = activeUpdateSession
-
-  function patchSession(
-    mode: 'update' | 'validate',
-    patch: Partial<Pick<ActiveUpdateSession, 'busy' | 'pct' | 'label' | 'error' | 'phase'>>
-  ): void {
-    const prev = sessionRef.current?.appid === appid ? sessionRef.current : null
-    const game = detail?.game
-    const next: ActiveUpdateSession = {
-      appid,
-      mode,
-      busy: patch.busy ?? prev?.busy ?? true,
-      pct: patch.pct ?? prev?.pct ?? 0,
-      label: patch.label ?? prev?.label ?? '',
-      error: patch.error ?? prev?.error ?? '',
-      gameName: prev?.gameName ?? game?.name ?? '',
-      phase: patch.phase ?? prev?.phase ?? 'running',
-      installPath: prev?.installPath ?? game?.install_path ?? '',
-      selectedDepots: prev?.selectedDepots,
-      steamlessApplied: prev?.steamlessApplied ?? game?.steamless_applied === 1,
-      goldbergApplied: prev?.goldbergApplied ?? game?.goldberg_applied === 1,
-      steamlessExe: prev?.steamlessExe ?? game?.steamless_exe ?? '',
-      goldbergDllPath: prev?.goldbergDllPath ?? game?.goldberg_dll_path ?? '',
-      headerImageUrl: prev?.headerImageUrl
-    }
-    sessionRef.current = next
-    onUpdateSessionChange(next)
-  }
 
   async function reloadDetail(): Promise<GameDetail | null> {
     const next = await window.api.getGameDetail(appid)
@@ -710,9 +677,6 @@ export default function GameDetailPage({
     if (updateChecking || jobLocked) return
     setUpdateChecking(true)
     setUpdateError('')
-    if (activeUpdateSession && !activeUpdateSession.busy) {
-      onUpdateSessionChange(null)
-    }
     try {
       const result = await window.api.manifestCheckGame(appid)
       setUpdateStatus(result.status)
@@ -725,180 +689,48 @@ export default function GameDetailPage({
     }
   }
 
-  async function runDepotJob(mode: 'update' | 'validate', selectedDepots: string[]): Promise<void> {
-    if (jobLocked || updateChecking) return
-    const installPath = detail?.game.install_path?.trim() ?? ''
-    if (!installPath) {
-      setUpdateError(
-        mode === 'validate'
-          ? 'Set an install folder before validating.'
-          : 'Set an install folder before updating.'
-      )
-      return
-    }
-    if (!selectedDepots.length) {
-      setUpdateError('Select at least one depot.')
-      return
-    }
-
-    const channelId = `depot:${appid}:${mode}`
-    const manifestChannelId = `manifest:${mode}-game:progress:${appid}`
-    let finished = false
+  async function openUpdateTransfer(mode: 'update' | 'validate'): Promise<void> {
+    if (jobLocked || updateChecking || openingTransfer) return
     setUpdateError('')
-    patchSession(mode, {
-      busy: true,
-      pct: 0,
-      label: mode === 'validate' ? 'Preparing validate…' : 'Fetching manifest…',
-      error: ''
-    })
-
-    const handleManifestProgress = (payload: {
-      pct?: number
-      received?: number
-      total?: number
-      status?: string
-      error?: string
-    }): void => {
-      if (finished) return
-      let pct = 0
-      if (typeof payload.pct === 'number') pct = payload.pct
-      else if (
-        typeof payload.received === 'number' &&
-        typeof payload.total === 'number' &&
-        payload.total > 0
-      ) {
-        pct = Math.round((payload.received * 100) / payload.total)
-      }
-      patchSession(mode, {
-        pct,
-        label: payload.status || 'Fetching manifest…',
-        error: payload.error || ''
-      })
-    }
-
-    const handleDepotProgress = (payload: {
-      channelId?: string
-      pct?: number
-      status?: string
-      error?: string
-      done?: boolean
-    }): void => {
-      if (finished) return
-      if (payload.channelId && payload.channelId !== channelId) return
-      // Terminal events can arrive after the invoke resolves; do not re-open busy UI.
-      if (payload.done) return
-      patchSession(mode, {
-        ...(typeof payload.pct === 'number' ? { pct: payload.pct } : {}),
-        ...(payload.status ? { label: payload.status } : {}),
-        error: payload.error || ''
-      })
-    }
-
-    window.api.onDepotLog(manifestChannelId, handleManifestProgress)
-    window.api.onDepotProgress(handleDepotProgress)
-
+    setOpeningTransfer(true)
     try {
-      if (mode === 'validate') {
-        await window.api.manifestValidateGame(appid, installPath, selectedDepots)
-      } else {
-        await window.api.manifestUpdateGame(appid, installPath, selectedDepots)
-        setUpdateStatus('up_to_date')
+      let game = detail?.game
+      let installPath = game?.install_path?.trim() ?? ''
+
+      if (mode === 'validate' && !installPath) {
+        const folder = await window.api.browseGameInstallFolder()
+        if (!folder) return
+        await window.api.setGameLaunchConfig({
+          appid,
+          installPath: folder,
+          launchExe: game?.launch_exe ?? ''
+        })
+        const next = await reloadDetail()
+        game = next?.game
+        installPath = game?.install_path?.trim() ?? folder
       }
-      finished = true
-      sessionRef.current = null
-      onUpdateSessionChange(null)
-      const gameBeforeReload = detail?.game
-      try {
-        await reloadDetail()
-      } catch {
-        // reload failure should not re-lock UI
+
+      if (mode === 'update' && !installPath) {
+        setUpdateError('Set an install folder before updating.')
+        return
       }
-      if (
-        mode === 'update' &&
-        gameBeforeReload &&
-        (gameBeforeReload.steamless_applied === 1 || gameBeforeReload.goldberg_applied === 1)
-      ) {
-        setPostUpdateToolsGame(gameBeforeReload)
-      }
-    } catch (err) {
-      finished = true
-      const message = err instanceof Error ? err.message : String(err)
-      setUpdateError(message)
-      const failed: ActiveUpdateSession = {
+
+      if (!game) return
+
+      onOpenUpdateTransfer({
         appid,
         mode,
-        busy: false,
-        pct: 0,
-        label: '',
-        error: message,
-        gameName: detail?.game.name ?? '',
-        phase: 'error',
-        installPath: detail?.game.install_path ?? '',
-        steamlessApplied: detail?.game.steamless_applied === 1,
-        goldbergApplied: detail?.game.goldberg_applied === 1,
-        steamlessExe: detail?.game.steamless_exe ?? '',
-        goldbergDllPath: detail?.game.goldberg_dll_path ?? ''
-      }
-      sessionRef.current = failed
-      onUpdateSessionChange(failed)
-    } finally {
-      finished = true
-      window.api.offDepotLog(manifestChannelId)
-      window.api.offDepotProgress(handleDepotProgress)
-    }
-  }
-
-  async function openDepotPicker(mode: 'update' | 'validate'): Promise<void> {
-    if (jobLocked || updateChecking || depotPickerLoading) return
-    setUpdateError('')
-
-    if (mode === 'validate' && !detail?.game.install_path?.trim()) {
-      const folder = await window.api.browseGameInstallFolder()
-      if (!folder) return
-      await window.api.setGameLaunchConfig({
-        appid,
-        installPath: folder,
-        launchExe: detail?.game.launch_exe ?? ''
+        gameName: game.name,
+        installPath,
+        manifestGidsJson: game.manifest_gids ?? '',
+        steamlessApplied: game.steamless_applied === 1,
+        goldbergApplied: game.goldberg_applied === 1,
+        steamlessExe: game.steamless_exe ?? '',
+        goldbergDllPath: game.goldberg_dll_path ?? ''
       })
-      await reloadDetail()
-    }
-
-    if (mode === 'update' && !detail?.game.install_path?.trim()) {
-      setUpdateError('Set an install folder before updating.')
-      return
-    }
-
-    setDepotPickerLoading(true)
-    setDepotPickerMode(null)
-    setDepotPickerData(null)
-    try {
-      const gd = await window.api.manifestGetGameData(appid, mode === 'update')
-      const storedKeys = new Set(
-        Object.keys(parseManifestGidsJson(detail?.game.manifest_gids ?? ''))
-      )
-      const initial: Record<string, boolean> = {}
-      for (const id of Object.keys(gd.depots)) {
-        initial[id] = storedKeys.has(id)
-      }
-      // If nothing matched stored GIDs, leave all unchecked so user must choose
-      setDepotPickerSelected(initial)
-      setDepotPickerData(gd)
-      setDepotPickerMode(mode)
-    } catch (err) {
-      setUpdateError(err instanceof Error ? err.message : String(err))
     } finally {
-      setDepotPickerLoading(false)
+      setOpeningTransfer(false)
     }
-  }
-
-  async function handleDepotPickerConfirm(): Promise<void> {
-    if (!depotPickerMode) return
-    const chosen = Object.keys(depotPickerSelected).filter((id) => depotPickerSelected[id])
-    if (!chosen.length) return
-    const mode = depotPickerMode
-    setDepotPickerMode(null)
-    setDepotPickerData(null)
-    await runDepotJob(mode, chosen)
   }
 
   async function handleConfirmRoot(yes: boolean): Promise<void> {
@@ -1118,8 +950,10 @@ export default function GameDetailPage({
                       {showDepotUpdateUi && (
                         <span className="game-detail__update-status" aria-live="polite">
                           {updateBusy
-                            ? `${updateProgressLabel || (sessionForGame?.mode === 'validate' ? 'Validating…' : 'Updating…')}${
-                                updatePct > 0 ? ` — ${Math.round(updatePct)}%` : ''
+                            ? `${sessionForGame?.label || (sessionForGame?.mode === 'validate' ? 'Validating…' : 'Updating…')}${
+                                (sessionForGame?.pct ?? 0) > 0
+                                  ? ` — ${Math.round(sessionForGame?.pct ?? 0)}%`
+                                  : ''
                               }`
                             : updateStatus === 'update_available'
                               ? `↑ Update available${updateBuildId ? ` — Build ${updateBuildId}` : ''}`
@@ -1175,14 +1009,14 @@ export default function GameDetailPage({
                         <button
                           type="button"
                           className="game-detail__pill game-detail__update-btn game-detail__update-btn--primary"
-                          onClick={() => void openDepotPicker('update')}
-                          disabled={jobLocked || updateChecking || depotPickerLoading}
+                          onClick={() => void openUpdateTransfer('update')}
+                          disabled={jobLocked || updateChecking || openingTransfer}
                           aria-label="Update game"
                         >
                           {updateBusy && sessionForGame?.mode === 'update'
                             ? 'Updating…'
-                            : depotPickerLoading && depotPickerMode === null
-                              ? 'Loading…'
+                            : openingTransfer
+                              ? 'Opening…'
                               : 'Update'}
                         </button>
                       )}
@@ -1190,8 +1024,8 @@ export default function GameDetailPage({
                         <button
                           type="button"
                           className="game-detail__pill game-detail__update-btn game-detail__update-btn--validate"
-                          onClick={() => void openDepotPicker('validate')}
-                          disabled={jobLocked || updateChecking || depotPickerLoading}
+                          onClick={() => void openUpdateTransfer('validate')}
+                          disabled={jobLocked || updateChecking || openingTransfer}
                           aria-label="Validate game files"
                         >
                           {updateBusy && sessionForGame?.mode === 'validate'
@@ -1265,28 +1099,6 @@ export default function GameDetailPage({
                               </div>
                             )}
                           </div>
-                        </div>
-                      )}
-                      {depotPickerLoading && (
-                        <p className="game-detail__depot-picker-loading">Loading depots…</p>
-                      )}
-                      {showDepotUpdateUi && updateBusy && (
-                        <div
-                          className="game-detail__update-progress-track"
-                          role="progressbar"
-                          aria-valuemin={0}
-                          aria-valuemax={100}
-                          aria-valuenow={Math.round(updatePct)}
-                          aria-label={
-                            sessionForGame?.mode === 'validate'
-                              ? 'Validate progress'
-                              : 'Update progress'
-                          }
-                        >
-                          <div
-                            className="game-detail__update-progress-fill"
-                            style={{ width: `${Math.max(0, Math.min(100, updatePct))}%` }}
-                          />
                         </div>
                       )}
                       {showDepotUpdateUi && displayUpdateError && (
@@ -1702,101 +1514,6 @@ export default function GameDetailPage({
             </ul>
           </div>
         </div>
-      )}
-
-      {depotPickerMode && depotPickerData && (
-        <div
-          className="game-detail__exe-modal-backdrop"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) {
-              setDepotPickerMode(null)
-              setDepotPickerData(null)
-            }
-          }}
-        >
-          <div
-            className="game-detail__exe-modal game-detail__depot-modal"
-            role="dialog"
-            aria-modal="true"
-            aria-label={`Select depots to ${depotPickerMode}`}
-          >
-            <div className="game-detail__exe-modal-header">
-              <h3 className="game-detail__exe-modal-title">
-                Select depots to {depotPickerMode}
-              </h3>
-              <button
-                type="button"
-                className="game-detail__pill"
-                onClick={() => {
-                  setDepotPickerMode(null)
-                  setDepotPickerData(null)
-                }}
-                aria-label="Close"
-              >
-                ×
-              </button>
-            </div>
-            <p className="game-detail__exe-modal-help">
-              Choose which depots to {depotPickerMode}. Pre-selected from your last download.
-            </p>
-            <ul className="game-detail__depot-modal-list">
-              {Object.entries(depotPickerData.depots).map(([id, info]) => (
-                <li key={id}>
-                  <label className="game-detail__depot-picker-row">
-                    <input
-                      type="checkbox"
-                      checked={Boolean(depotPickerSelected[id])}
-                      onChange={(e) =>
-                        setDepotPickerSelected((prev) => ({
-                          ...prev,
-                          [id]: e.target.checked
-                        }))
-                      }
-                    />
-                    <span>{info.description || `Depot ${id}`}</span>
-                    {info.size > 0 ? (
-                      <span className="game-detail__depot-picker-size">
-                        {formatBytes(info.size)}
-                      </span>
-                    ) : null}
-                  </label>
-                </li>
-              ))}
-            </ul>
-            <div className="game-detail__exe-confirm-actions">
-              <button
-                type="button"
-                className="game-detail__pill game-detail__play"
-                onClick={() => void handleDepotPickerConfirm()}
-                disabled={!Object.values(depotPickerSelected).some(Boolean)}
-                aria-label={`Confirm ${depotPickerMode}`}
-              >
-                Confirm
-              </button>
-              <button
-                type="button"
-                className="game-detail__pill"
-                onClick={() => {
-                  setDepotPickerMode(null)
-                  setDepotPickerData(null)
-                }}
-                aria-label="Cancel depot selection"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {postUpdateToolsGame && (
-        <PostUpdateToolsModal
-          game={postUpdateToolsGame}
-          onClose={() => {
-            setPostUpdateToolsGame(null)
-            void reloadDetail().catch(() => undefined)
-          }}
-        />
       )}
     </div>
   )
