@@ -109,6 +109,11 @@ describe('helpContent', () => {
     assert.match(body, /stops on failure|Retry/i)
   })
 
+  it('playGamesFromLauncher tooltip mentions Library Play', () => {
+    assert.match(TOOLTIPS.playGamesFromLauncher, /Library/i)
+    assert.match(TOOLTIPS.playGamesFromLauncher, /Play/i)
+  })
+
   it('refresh tooltip mentions ignored and depot retain', () => {
     assert.match(TOOLTIPS.refreshLibrary, /ignored|GIDs|install path/i)
   })

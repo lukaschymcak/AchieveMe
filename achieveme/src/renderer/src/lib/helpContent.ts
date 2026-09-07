@@ -50,7 +50,7 @@ export const TOOLTIPS = {
     'Set up Goldberg files for a new game (search, pick steam_api.dll, optionally apply the emulator DLL).',
   gridList: 'Switch between grid and list layout. Your choice is remembered.',
   playGamesFromLauncher:
-    'When checked, game detail shows Set install folder / Select exe / Play so you can launch games from AchieveMe.',
+    'Shows Play on Library cards/rows and on game detail. Library Play launches when an exe is saved; otherwise it opens detail to set folder / pick exe.',
   search: 'Filter games by name. Sort order is preserved.',
   level: 'Level = floor(XP ÷ 1000). Earn XP from unlocked achievements.',
   xp: 'Bronze 50 · Silver 100 · Gold 200 · Platinum (100% game) 500 XP per trophy.',
@@ -355,7 +355,7 @@ export const HELP_SECTIONS: HelpSection[] = [
     paragraphs: [
       'For games not yet discovered: search → pick steam_api.dll → choose whether to also apply the Goldberg emulator → apply → Done → Refresh library.',
       'Always installs steam_settings and seeds achievements. Optionally backs up and replaces the Steam API DLL with the Goldberg regular build. Does not launch the game.',
-      'Enable Play games from launcher on the Library toolbar to show Set install folder / Select exe / Play on game detail. The button is Set install folder (no path yet), Select exe (path but no exe), or Play (exe saved). Picking an executable only saves it — Play launches later. With a path, AchieveMe walks up from the steam DLL folder until a parent name matches the game title, then lists executables under that tree. Ambiguous folder names ask you to confirm. Use the chevron for Change executable.'
+      'Enable Play games from launcher on the Library toolbar to show Play on library cards and on game detail. Detail labels: Set install folder (no path), Select exe (path but no exe), or Play (exe saved). Library Play launches when an exe is saved; otherwise it opens detail to set up. The exe picker ranks Suggested games first and keeps crash/redist tools under Other. Optional launch args are saved on detail (used on spawn; ignored on UAC openPath fallback). Picking an executable only saves it — Play launches later. With a path, AchieveMe walks up from the steam DLL folder until a parent name matches the game title. Ambiguous folder names ask you to confirm. Use the chevron for Change executable.'
     ]
   },
   {
