@@ -54,6 +54,14 @@ describe('helpContent', () => {
     assert.ok(ids.includes('delete'))
   })
 
+  it('notifications section documents cached toast icons', () => {
+    const section = HELP_SECTIONS.find((s) => s.id === 'notifications')
+    assert.ok(section)
+    const body = (section.paragraphs ?? []).join(' ')
+    assert.match(body, /achieveme-img/i)
+    assert.match(body, /cache/i)
+  })
+
   it('DELETE_CONFIRM mentions ignore list for leftover CODEX/RUNE', () => {
     assert.match(DELETE_CONFIRM, /ignored/i)
     assert.match(DELETE_CONFIRM, /CODEX|RUNE/i)

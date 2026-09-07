@@ -165,7 +165,7 @@ export const SETTINGS_HINTS = {
     'Extra roots scanned for every enabled source. Use for non-standard installs. Use the layout {appid}/{achievement file}, e.g. C:\\Saves\\570\\achievements.json.',
   saveSuccess: 'Saved. Open Library and click Refresh to rescan for games.',
   notifications:
-    'Steam-style unlock toasts (rarity accents; platinum at 100%) with optional sound and volume when new achievements appear in save files. Refresh and first library scan never trigger toasts.',
+    'Steam-style unlock toasts (rarity accents; platinum at 100%) with optional sound and volume when new achievements appear in save files. Toasts load achievement icons from the on-disk image cache (`achieveme-img://`); missing schema icons use a fallback glyph. Refresh and first library scan never trigger toasts.',
   tray:
     'Keep AchieveMe in the system tray after closing the window. Optionally launch on Windows startup and start minimized to the tray on login only.',
   playSessions:
@@ -282,7 +282,7 @@ export const HELP_SECTIONS: HelpSection[] = [
     id: 'notifications',
     title: 'Notifications',
     paragraphs: [
-      'When a save file changes and a new achievement unlocks, AchieveMe shows a Steam-style toast (UNLOCKED! with bronze/silver/gold chrome by rarity). When a game first reaches 100%, a platinum celebration toast follows. Library Refresh and first launch never spam toasts for existing unlocks. Use Settings → Test notification to cycle through all four skins.',
+      'When a save file changes and a new achievement unlocks, AchieveMe shows a Steam-style toast (UNLOCKED! with bronze/silver/gold chrome by rarity). Unlock toasts use cached achievement icons (`achieveme-img://`); if the schema has no icon or the cache cannot serve one, the toast still appears with a fallback glyph. When a game first reaches 100%, a platinum celebration toast follows. Library Refresh and first launch never spam toasts for existing unlocks. Use Settings → Test notification to cycle through all four skins.',
       'Optional unlock sound uses the Windows default chime or a custom .wav/.mp3, with a volume slider. After a tracked Add Game play session of at least one minute, a session recap modal summarizes time played, unlocks, and XP. Use Settings → Test session recap to preview with a random library game.'
     ],
     bullets: [

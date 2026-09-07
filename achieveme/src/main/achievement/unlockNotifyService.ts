@@ -43,23 +43,34 @@ export function setUnlockNavigationHandler(handler: (appid: string) => void): vo
   setToastNavigateHandler(handler)
 }
 
-export function notifyUnlocks(appid: string, gameName: string, unlocks: UnlockChange[]): void {
+/**
+ * Enqueues unlock toasts with `achieveme-img://` cache icon URLs.
+ *
+ * @param appid - Steam AppID.
+ * @param gameName - Display name for the toast subtitle.
+ * @param unlocks - Newly unlocked achievements.
+ */
+export function notifyUnlocks(
+  appid: string,
+  gameName: string,
+  unlocks: UnlockChange[]
+): void {
   if (unlocks.length === 0) return
 
   ensureDeliveredSoundHandler()
   const settings = loadSettings()
 
-  if (settings.notificationsEnabled) {
-    for (const unlock of unlocks) {
-      const payload: UnlockToastPayload = {
-        appid,
-        gameName,
-        displayName: unlock.displayName,
-        iconUrl: cacheIconUrlFromSteamValue(appid, unlock.iconUrl),
-        tier: unlock.tier
-      }
-      enqueueUnlockToast(payload)
+  if (!settings.notificationsEnabled) return
+
+  for (const unlock of unlocks) {
+    const payload: UnlockToastPayload = {
+      appid,
+      gameName,
+      displayName: unlock.displayName,
+      iconUrl: cacheIconUrlFromSteamValue(appid, unlock.iconUrl),
+      tier: unlock.tier
     }
+    enqueueUnlockToast(payload)
   }
 }
 
