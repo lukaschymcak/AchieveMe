@@ -21,7 +21,9 @@ import type {
   ManifestCheckGameResult,
   NewsPayload,
   GetNewsOptions,
-  ImportExistingInstallRequest
+  ImportExistingInstallRequest,
+  ImportScannedInstallRequest,
+  ScannedInstallCandidate
 } from '../../shared/types'
 import type { LudusaviSnapshot } from '../../shared/ludusaviApiUtils'
 
@@ -96,6 +98,14 @@ declare global {
         installPath?: string
       ): Promise<void>
       importExistingInstall(request: ImportExistingInstallRequest): Promise<void>
+      scanInstalledGames(
+        roots?: string[],
+        options?: { includeIgnored?: boolean }
+      ): Promise<ScannedInstallCandidate[]>
+      importScannedInstall(
+        request: ImportScannedInstallRequest
+      ): Promise<{ created: boolean }>
+      proposeInstallScanRoots(): Promise<string[]>
       manifestCheckGame(appid: string): Promise<ManifestCheckGameResult>
       manifestGetGameData(appid: string, forceRefresh: boolean): Promise<GameData>
       manifestUpdateGame(

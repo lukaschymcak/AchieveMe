@@ -22,7 +22,9 @@ import type {
   ManifestCheckGameResult,
   NewsPayload,
   GetNewsOptions,
-  ImportExistingInstallRequest
+  ImportExistingInstallRequest,
+  ImportScannedInstallRequest,
+  ScannedInstallCandidate
 } from '../shared/types'
 import type { LudusaviSnapshot } from '../shared/ludusaviApiUtils'
 
@@ -226,6 +228,20 @@ contextBridge.exposeInMainWorld('api', {
 
   importExistingInstall: (request: ImportExistingInstallRequest): Promise<void> =>
     ipcRenderer.invoke('library:import-install', request),
+
+  scanInstalledGames: (
+    roots?: string[],
+    options?: { includeIgnored?: boolean }
+  ): Promise<ScannedInstallCandidate[]> =>
+    ipcRenderer.invoke('scan-installed-games', roots, options),
+
+  importScannedInstall: (
+    request: ImportScannedInstallRequest
+  ): Promise<{ created: boolean }> =>
+    ipcRenderer.invoke('import-scanned-install', request),
+
+  proposeInstallScanRoots: (): Promise<string[]> =>
+    ipcRenderer.invoke('propose-install-scan-roots'),
 
   manifestCheckGame: (appid: string): Promise<ManifestCheckGameResult> =>
     ipcRenderer.invoke('manifest:check-game', appid),

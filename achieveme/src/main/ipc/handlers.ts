@@ -64,7 +64,9 @@ import type {
   ManifestCheckGameResult,
   NewsPayload,
   GetNewsOptions,
-  ImportExistingInstallRequest
+  ImportExistingInstallRequest,
+  ImportScannedInstallRequest,
+  ScannedInstallCandidate
 } from '../../shared/types'
 import { getNews } from '../achievement/steamNewsService'
 import {
@@ -118,8 +120,14 @@ import {
   cancelDownload,
   startDownload
 } from '../achievement/depotRunnerService'
-import { scanSteamApiDll } from '../achievement/depotScanUtils'
 import { importExistingInstall } from '../achievement/libraryImportService'
+import {
+  assertScannedInstallPath,
+  scanInstalledGamesWithDb
+} from '../achievement/installedGamesScanService'
+import { upsertScannedInstall } from '../db/repository'
+import { proposeInstallScanRoots } from '../../shared/installedGamesScanUtils.ts'
+import { scanSteamApiDll } from '../achievement/depotScanUtils'
 import {
   checkGameUpdate,
   runManifestChecker,
@@ -959,4 +967,53 @@ export function registerIpcHandlers(): void {
       importExistingInstall(getDb(), request)
     }
   )
+
+  ipcMain.handle(
+    'scan-installed-games',
+    (
+      _event,
+      roots?: string[],
+      options?: { includeIgnored?: boolean }
+    ): ScannedInstallCandidate[] => {
+      const settings = loadSettings()
+      const scanRoots =
+        Array.isArray(roots) && roots.length > 0
+          ? roots.map((r) => String(r || '').trim()).filter(Boolean)
+          : settings.installScanRoots
+      return scanInstalledGamesWithDb(
+        getDb(),
+        scanRoots,
+        Boolean(options?.includeIgnored)
+      )
+    }
+  )
+
+  ipcMain.handle(
+    'import-scanned-install',
+    (_event, request: ImportScannedInstallRequest): { created: boolean } => {
+      const installPath = assertScannedInstallPath(request.installPath)
+      const result = upsertScannedInstall(getDb(), {
+        appid: request.appid,
+        gameName: request.gameName,
+        installPath,
+        launchExe: request.launchExe
+      })
+      notifyLibraryUpdated(String(request.appid || '').trim())
+      if (result.created) {
+        scheduleGameBackup(String(request.appid || '').trim(), 'add')
+      }
+      return result
+    }
+  )
+
+  ipcMain.handle('propose-install-scan-roots', (): string[] => {
+    const steamCandidates = [
+      'C:\\Program Files (x86)\\Steam\\steamapps\\common',
+      'C:\\Program Files\\Steam\\steamapps\\common',
+      'D:\\SteamLibrary\\steamapps\\common',
+      'E:\\SteamLibrary\\steamapps\\common',
+      'F:\\SteamLibrary\\steamapps\\common'
+    ]
+    return proposeInstallScanRoots((p) => fs.existsSync(p), steamCandidates)
+  })
 }
