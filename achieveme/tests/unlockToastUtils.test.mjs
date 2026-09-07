@@ -9,10 +9,12 @@ const utils = await import(
 )
 
 const {
+  TOAST_PREVIEW_SAMPLES,
   TOAST_PREVIEW_TIERS,
   isNewPlatinum,
   nextToastPreviewIndex,
   toastPreviewDisplayName,
+  toastPreviewSampleAt,
   toastPreviewTierAt,
   toastXpForTier,
   formatToastXp
@@ -26,7 +28,20 @@ describe('unlockToastUtils', () => {
     assert.equal(toastPreviewTierAt(2), 'gold')
     assert.equal(toastPreviewTierAt(3), 'platinum')
     assert.equal(toastPreviewTierAt(4), 'bronze')
+  })
+
+  it('cycles short, medium, and long description preview samples', () => {
+    assert.equal(TOAST_PREVIEW_SAMPLES.length, 4)
+    assert.equal(toastPreviewSampleAt(0).description, 'Nice.')
+    assert.ok(toastPreviewSampleAt(1).description.length > 40)
+    assert.ok(toastPreviewSampleAt(1).description.length < 120)
+    assert.ok(toastPreviewSampleAt(2).description.length > 120)
+    assert.equal(toastPreviewSampleAt(3).tier, 'platinum')
+    assert.equal(toastPreviewSampleAt(3).description, '')
     assert.equal(nextToastPreviewIndex(3), 0)
+    assert.equal(toastPreviewSampleAt(0).displayName, 'Quick Win')
+    assert.equal(toastPreviewSampleAt(1).displayName, 'Steady Progress')
+    assert.equal(toastPreviewSampleAt(2).displayName, 'Marathon Runner')
   })
 
   it('uses platinum display name for celebration toast', () => {

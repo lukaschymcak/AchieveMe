@@ -282,7 +282,7 @@ export const HELP_SECTIONS: HelpSection[] = [
     id: 'notifications',
     title: 'Notifications',
     paragraphs: [
-      'When a save file changes and a new achievement unlocks, AchieveMe shows a Steam-style toast (game name, trophy name, and description with bronze/silver/gold chrome by rarity). Unlock toasts use cached achievement icons (`achieveme-img://`); if the schema has no icon or the cache cannot serve one, the toast still appears with a fallback glyph. When a game first reaches 100%, a platinum celebration toast follows. Library Refresh and first launch never spam toasts for existing unlocks. Use Settings → Test notification to cycle through all four skins.',
+      'When a save file changes and a new achievement unlocks, AchieveMe shows a Steam-style toast (game name, trophy name, and description with bronze/silver/gold chrome by rarity). Overlay width scales to the measured content (within min/max clamps). Unlock toasts use cached achievement icons (`achieveme-img://`); if the schema has no icon or the cache cannot serve one, the toast still appears with a fallback glyph. When a game first reaches 100%, a platinum celebration toast follows. Library Refresh and first launch never spam toasts for existing unlocks. Use Settings → Test notification to cycle through all four skins.',
       'Optional unlock sound uses the Windows default chime or a custom .wav/.mp3, with a volume slider. After a tracked Add Game play session of at least one minute, a session recap modal summarizes time played, unlocks, and XP. Use Settings → Test session recap to preview with a random library game.'
     ],
     bullets: [

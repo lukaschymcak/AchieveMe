@@ -4,6 +4,7 @@ import {
   formatToastXp,
   toastXpForTier
 } from '../../../shared/unlockToastUtils'
+import { toastWindowWidthFromCard } from '../../../shared/toastWidthUtils'
 
 declare global {
   interface Window {
@@ -12,6 +13,7 @@ declare global {
       onShow: (cb: (payload: UnlockToastPayload) => void) => void
       done: () => void
       click: (appid: string) => void
+      resize: (width: number) => Promise<void>
     }
   }
 }
@@ -166,6 +168,18 @@ function startExpandSequence(card: HTMLElement, pointsEl: HTMLElement, tier: Toa
   })
 }
 
+/**
+ * Measures the card at natural content width and asks main to resize the overlay.
+ *
+ * @param card - Toast card element already in the DOM.
+ */
+async function fitWindowToCard(card: HTMLElement): Promise<void> {
+  card.classList.add('unlock-toast--measure')
+  const cardWidth = card.getBoundingClientRect().width
+  card.classList.remove('unlock-toast--measure')
+  await window.toastApi.resize(toastWindowWidthFromCard(cardWidth))
+}
+
 function renderToast(payload: UnlockToastPayload): void {
   clearTimers()
   currentAppid = payload.appid
@@ -244,7 +258,11 @@ function renderToast(payload: UnlockToastPayload): void {
     finish()
   })
 
-  startExpandSequence(card, points, tier)
+  void fitWindowToCard(card)
+    .catch(() => undefined)
+    .then(() => {
+      startExpandSequence(card, points, tier)
+    })
 }
 
 window.toastApi.onShow(renderToast)

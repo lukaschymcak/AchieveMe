@@ -17,5 +17,13 @@ contextBridge.exposeInMainWorld('toastApi', {
   },
   click: (appid: string): void => {
     ipcRenderer.send('toast-click', appid)
+  },
+  /**
+   * Ask main to resize the toast overlay to the measured content width.
+   *
+   * @param width - Desired CSS pixel window width (main clamps).
+   */
+  resize: (width: number): Promise<void> => {
+    return ipcRenderer.invoke('toast-resize', width)
   }
 })

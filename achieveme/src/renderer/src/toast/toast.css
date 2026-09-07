@@ -101,6 +101,36 @@ body {
   overflow: visible;
 }
 
+/** Off-screen natural-width measure before main resizes the overlay. */
+.unlock-toast--measure {
+  width: max-content;
+  max-width: none;
+  opacity: 0;
+  pointer-events: none;
+  transition: none;
+}
+
+.unlock-toast--measure .unlock-toast__body {
+  display: flex;
+  clip-path: none;
+  width: max-content;
+  max-width: none;
+  transition: none;
+}
+
+.unlock-toast--measure .unlock-toast__game,
+.unlock-toast--measure .unlock-toast__name,
+.unlock-toast--measure .unlock-toast__description {
+  opacity: 1;
+  animation: none;
+  max-width: none;
+  white-space: nowrap;
+  overflow: visible;
+  text-overflow: clip;
+  display: block;
+  -webkit-line-clamp: unset;
+}
+
 .unlock-toast--exit {
   width: var(--toast-icon-phase);
   max-width: var(--toast-icon-phase);

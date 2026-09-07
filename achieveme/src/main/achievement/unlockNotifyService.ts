@@ -8,8 +8,7 @@ import type { UnlockChange, UnlockToastPayload } from '../../shared/types'
 import { cacheIconUrlFromSteamValue } from '../../shared/imageCacheUrls'
 import {
   nextToastPreviewIndex,
-  toastPreviewDisplayName,
-  toastPreviewTierAt
+  toastPreviewSampleAt
 } from '../../shared/unlockToastUtils'
 import {
   buildDefaultSystemSoundCommand,
@@ -93,10 +92,10 @@ export function notifyPlatinumUnlock(appid: string, gameName: string): void {
   }
 }
 
-/** Sample toast for Settings — cycles rarity skins; ignores notificationsEnabled; respects sound. */
+/** Sample toast for Settings — cycles short/medium/long desc + platinum; ignores notificationsEnabled; respects sound. */
 export function previewUnlockToast(): void {
   ensureDeliveredSoundHandler()
-  const tier = toastPreviewTierAt(previewIndex)
+  const sample = toastPreviewSampleAt(previewIndex)
   previewIndex = nextToastPreviewIndex(previewIndex)
 
   // Destroy + recreate toast window so toast-ready re-handshakes after stuck states.
@@ -104,11 +103,11 @@ export function previewUnlockToast(): void {
 
   const payload: UnlockToastPayload = {
     appid: '0',
-    gameName: 'Sample Game',
-    displayName: toastPreviewDisplayName(tier),
-    description: 'Sample achievement description for the unlock toast preview.',
+    gameName: sample.gameName,
+    displayName: sample.displayName,
+    description: sample.description,
     iconUrl: '',
-    tier
+    tier: sample.tier
   }
   enqueueUnlockToast(payload)
 }

@@ -8,6 +8,11 @@ import path from 'node:path'
 import { is } from '@electron-toolkit/utils'
 import type { UnlockToastPayload } from '../../shared/types'
 import {
+  TOAST_HEIGHT,
+  TOAST_MAX_WIDTH,
+  clampToastWindowWidth
+} from '../../shared/toastWidthUtils'
+import {
   createToastQueueState,
   enqueueToast,
   markToastIdle,
@@ -15,9 +20,6 @@ import {
   type ToastQueueState
 } from './unlockToastQueue'
 
-/** Locked toast window size — bump carefully; rebuild main after changing. */
-const TOAST_WIDTH = 520
-const TOAST_HEIGHT = 120
 const MARGIN = 16
 const BUSY_TIMEOUT_MS = 22_500
 
@@ -70,6 +72,19 @@ function invalidateToastEpoch(): void {
   deliveredEpoch = 0
 }
 
+/**
+ * Positions the toast window at the top center with the given width.
+ *
+ * @param win - Toast BrowserWindow.
+ * @param width - Clamped CSS pixel width.
+ */
+function positionToast(win: BrowserWindow, width: number = TOAST_MAX_WIDTH): void {
+  const { workArea } = screen.getPrimaryDisplay()
+  const x = Math.round(workArea.x + (workArea.width - width) / 2)
+  const y = Math.round(workArea.y + MARGIN)
+  win.setBounds({ x, y, width, height: TOAST_HEIGHT })
+}
+
 function ensureIpc(): void {
   if (ipcRegistered) return
   ipcRegistered = true
@@ -88,6 +103,14 @@ function ensureIpc(): void {
       navigateHandler?.(appid)
     }
   })
+
+  ipcMain.handle('toast-resize', (_event, width: unknown): void => {
+    if (typeof width !== 'number' || !toastWindow || toastWindow.isDestroyed()) return
+    positionToast(toastWindow, clampToastWindowWidth(width))
+    if (!toastWindow.isVisible()) {
+      toastWindow.show()
+    }
+  })
 }
 
 function toastPreloadPath(): string {
@@ -101,17 +124,10 @@ function resolveToastUrl(): string {
   return path.join(__dirname, '../renderer/toast.html')
 }
 
-function positionToast(win: BrowserWindow): void {
-  const { workArea } = screen.getPrimaryDisplay()
-  const x = Math.round(workArea.x + (workArea.width - TOAST_WIDTH) / 2)
-  const y = Math.round(workArea.y + MARGIN)
-  win.setBounds({ x, y, width: TOAST_WIDTH, height: TOAST_HEIGHT })
-}
-
 function createToastWindow(): BrowserWindow {
   toastReady = false
   const win = new BrowserWindow({
-    width: TOAST_WIDTH,
+    width: TOAST_MAX_WIDTH,
     height: TOAST_HEIGHT,
     show: false,
     frame: false,
@@ -184,12 +200,10 @@ function deliverShow(win: BrowserWindow, payload: UnlockToastPayload): void {
   pendingShow = null
   toastEpoch += 1
   deliveredEpoch = toastEpoch
-  positionToast(win)
+  // Max width gives the renderer headroom to measure natural content width.
+  positionToast(win, TOAST_MAX_WIDTH)
   win.setBackgroundColor('#00000000')
   win.webContents.send('toast-show', payload)
-  if (!win.isVisible()) {
-    win.show()
-  }
   armBusyWatchdog()
   try {
     deliveredHandler?.()
