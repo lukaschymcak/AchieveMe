@@ -246,19 +246,6 @@ function renderToast(payload: UnlockToastPayload): void {
   iconWrap.className = 'unlock-toast__icon-wrap'
   appendIcon(iconWrap, payload.iconUrl)
 
-  const overlays = document.createElement('span')
-  overlays.className = 'unlock-toast__overlays'
-  overlays.setAttribute('aria-hidden', 'true')
-
-  const dark = document.createElement('span')
-  dark.className = 'unlock-toast__dark'
-  const ellipses = document.createElement('span')
-  ellipses.className = 'unlock-toast__ellipses'
-  const trophy = document.createElement('span')
-  trophy.className = 'unlock-toast__trophy'
-  overlays.append(dark, ellipses, trophy)
-  iconWrap.appendChild(overlays)
-
   const body = document.createElement('span')
   body.className = 'unlock-toast__body'
 
