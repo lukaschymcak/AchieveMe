@@ -2,7 +2,7 @@ import type Database from 'better-sqlite3'
 import type { Game, Achievement, SaveLocation, UpdateStatus } from '../../shared/types'
 
 const GAME_COLUMNS =
-  'appid, name, total_achievements, unlocked_achievements, completion_pct, has_platinum, last_unlocked_at, schema_fetched_at, playtime_seconds, install_path, launch_exe, manifest_gids, update_status, backup_status, backup_at, backup_error, ludusavi_title, steamless_applied, goldberg_applied, steamless_exe, goldberg_dll_path'
+  'appid, name, total_achievements, unlocked_achievements, completion_pct, has_platinum, last_unlocked_at, schema_fetched_at, playtime_seconds, install_path, launch_exe, playtime_session_started_at, playtime_last_flush_at, manifest_gids, update_status, backup_status, backup_at, backup_error, ludusavi_title, steamless_applied, goldberg_applied, steamless_exe, goldberg_dll_path'
 
 function normalizeGameRow(row: Game | undefined): Game | undefined {
   if (!row) return undefined
@@ -11,6 +11,8 @@ function normalizeGameRow(row: Game | undefined): Game | undefined {
     playtime_seconds: row.playtime_seconds ?? 0,
     install_path: row.install_path ?? '',
     launch_exe: row.launch_exe ?? '',
+    playtime_session_started_at: row.playtime_session_started_at ?? 0,
+    playtime_last_flush_at: row.playtime_last_flush_at ?? 0,
     manifest_gids: row.manifest_gids ?? '',
     update_status: (row.update_status ?? '') as UpdateStatus,
     backup_status: row.backup_status ?? '',
@@ -241,6 +243,43 @@ export function saveGameToolApply(
 
 export function updateGamePlaytime(db: Database.Database, appid: string, seconds: number): void {
   db.prepare('UPDATE games SET playtime_seconds = ? WHERE appid = ?').run(seconds, appid)
+}
+
+export type PlaytimeSessionUpdate = {
+  startedAt: number
+  lastFlushAt: number
+}
+
+/**
+ * Persists open-session timestamps used for crash-safe incremental playtime.
+ * Pass `0` for both to clear an idle session.
+ *
+ * @param db - Open SQLite database.
+ * @param appid - Steam AppID.
+ * @param update - Session start and last flush epoch ms.
+ */
+export function updateGamePlaytimeSession(
+  db: Database.Database,
+  appid: string,
+  update: PlaytimeSessionUpdate
+): void {
+  db.prepare(
+    'UPDATE games SET playtime_session_started_at = ?, playtime_last_flush_at = ? WHERE appid = ?'
+  ).run(update.startedAt, update.lastFlushAt, appid)
+}
+
+/**
+ * Returns library games with an open playtime session (`playtime_session_started_at > 0`).
+ *
+ * @param db - Open SQLite database.
+ */
+export function getGamesWithOpenPlaytimeSession(db: Database.Database): Game[] {
+  const rows = db
+    .prepare(
+      `SELECT ${GAME_COLUMNS} FROM games WHERE playtime_session_started_at > 0 ORDER BY appid`
+    )
+    .all() as Game[]
+  return rows.map((row) => normalizeGameRow(row)!).filter(Boolean)
 }
 
 export function updateGameInstallPath(db: Database.Database, appid: string, installPath: string): void {

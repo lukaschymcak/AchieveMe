@@ -32,6 +32,8 @@ function makeGame(appid, overrides = {}) {
     playtime_seconds: 0,
     install_path: '',
     launch_exe: '',
+    playtime_session_started_at: 0,
+    playtime_last_flush_at: 0,
     manifest_gids: '',
     update_status: '',
     backup_status: '',

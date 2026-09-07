@@ -51,6 +51,14 @@ export function migrateSchema(db: Database.Database): void {
   if (!columnExists(db, 'games', 'goldberg_dll_path')) {
     db.exec("ALTER TABLE games ADD COLUMN goldberg_dll_path TEXT NOT NULL DEFAULT ''")
   }
+  if (!columnExists(db, 'games', 'playtime_session_started_at')) {
+    db.exec(
+      'ALTER TABLE games ADD COLUMN playtime_session_started_at INTEGER NOT NULL DEFAULT 0'
+    )
+  }
+  if (!columnExists(db, 'games', 'playtime_last_flush_at')) {
+    db.exec('ALTER TABLE games ADD COLUMN playtime_last_flush_at INTEGER NOT NULL DEFAULT 0')
+  }
   db.exec(`
     CREATE TABLE IF NOT EXISTS ignored_appids (
       appid       TEXT    PRIMARY KEY,
@@ -82,7 +90,9 @@ export function createTables(db: Database.Database): void {
       steamless_applied     INTEGER NOT NULL DEFAULT 0,
       goldberg_applied      INTEGER NOT NULL DEFAULT 0,
       steamless_exe         TEXT    NOT NULL DEFAULT '',
-      goldberg_dll_path     TEXT    NOT NULL DEFAULT ''
+      goldberg_dll_path     TEXT    NOT NULL DEFAULT '',
+      playtime_session_started_at INTEGER NOT NULL DEFAULT 0,
+      playtime_last_flush_at INTEGER NOT NULL DEFAULT 0
     );
 
     CREATE TABLE IF NOT EXISTS achievements (

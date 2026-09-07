@@ -171,6 +171,10 @@ export interface Game {
   install_path: string
   /** Absolute path to the chosen game .exe for Play, or empty. */
   launch_exe: string
+  /** Epoch ms when the current play session started, or 0 when idle. */
+  playtime_session_started_at: number
+  /** Epoch ms of the last playtime flush during an open session, or 0 when idle. */
+  playtime_last_flush_at: number
   /** JSON `{ depotId: gid }` baseline from DepotWizard, or empty. */
   manifest_gids: string
   /** Last known Steam update status from PICS check. */

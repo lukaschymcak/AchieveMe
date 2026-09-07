@@ -245,6 +245,8 @@ function buildGameRecord(
     playtime_seconds: existingGame?.playtime_seconds ?? 0,
     install_path: existingGame?.install_path ?? '',
     launch_exe: existingGame?.launch_exe ?? '',
+    playtime_session_started_at: existingGame?.playtime_session_started_at ?? 0,
+    playtime_last_flush_at: existingGame?.playtime_last_flush_at ?? 0,
     manifest_gids: existingGame?.manifest_gids ?? '',
     update_status: existingGame?.update_status ?? '',
     backup_status: existingGame?.backup_status ?? '',
