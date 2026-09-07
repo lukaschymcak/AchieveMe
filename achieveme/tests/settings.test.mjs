@@ -20,6 +20,7 @@ test('normalizeAppSettings applies defaults for legacy settings files', () => {
   assert.equal(normalized.closeToTray, DEFAULT_APP_SETTINGS.closeToTray)
   assert.equal(normalized.openAtLogin, false)
   assert.equal(normalized.startMinimizedToTray, false)
+  assert.equal(normalized.hideToTrayOnGameStart, false)
   assert.equal(normalized.soundEnabled, DEFAULT_APP_SETTINGS.soundEnabled)
   assert.equal(normalized.soundVolume, 100)
   assert.equal(normalized.customSoundPath, '')
@@ -74,6 +75,15 @@ test('normalizeAppSettings preserves openAtLogin and startMinimizedToTray when s
   })
   assert.equal(normalized.openAtLogin, true)
   assert.equal(normalized.startMinimizedToTray, true)
+})
+
+test('normalizeAppSettings preserves hideToTrayOnGameStart when set', () => {
+  const normalized = normalizeAppSettings({
+    steamApiKey: 'abc',
+    enabledSources: ['goldberg'],
+    hideToTrayOnGameStart: true
+  })
+  assert.equal(normalized.hideToTrayOnGameStart, true)
 })
 
 test('normalizeAppSettings preserves ludusavi backup fields when set', () => {

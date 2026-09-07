@@ -38,6 +38,11 @@ export interface AppSettings {
   openAtLogin: boolean
   /** When true with openAtLogin, login launch passes --hidden (tray only). */
   startMinimizedToTray: boolean
+  /**
+   * When true, hide the main window to the tray when a tracked play session starts.
+   * Default false — does not surprise users.
+   */
+  hideToTrayOnGameStart: boolean
   soundEnabled: boolean
   /** Unlock sound loudness from 0 (silent) to 100 (full). */
   soundVolume: number

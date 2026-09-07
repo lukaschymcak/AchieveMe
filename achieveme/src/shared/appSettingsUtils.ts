@@ -23,6 +23,7 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   closeToTray: true,
   openAtLogin: false,
   startMinimizedToTray: false,
+  hideToTrayOnGameStart: false,
   soundEnabled: true,
   soundVolume: 100,
   customSoundPath: '',
@@ -60,6 +61,8 @@ export function normalizeAppSettings(
     openAtLogin: parsed?.openAtLogin ?? DEFAULT_APP_SETTINGS.openAtLogin,
     startMinimizedToTray:
       parsed?.startMinimizedToTray ?? DEFAULT_APP_SETTINGS.startMinimizedToTray,
+    hideToTrayOnGameStart:
+      parsed?.hideToTrayOnGameStart ?? DEFAULT_APP_SETTINGS.hideToTrayOnGameStart,
     soundEnabled: parsed?.soundEnabled ?? DEFAULT_APP_SETTINGS.soundEnabled,
     soundVolume: clampSoundVolumeLocal(
       parsed?.soundVolume ?? DEFAULT_APP_SETTINGS.soundVolume

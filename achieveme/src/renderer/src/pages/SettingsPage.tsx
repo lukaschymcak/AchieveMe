@@ -475,6 +475,17 @@ export default function SettingsPage({ page, onNavigate }: Props): React.ReactEl
               />
               <span className="settings-page__source-name">Start minimized to tray on login</span>
             </label>
+            <label className="settings-page__source-label">
+              <input
+                type="checkbox"
+                checked={settings.hideToTrayOnGameStart}
+                onChange={(e) => toggleSetting('hideToTrayOnGameStart', e.target.checked)}
+                className="settings-page__checkbox"
+              />
+              <span className="settings-page__source-name">
+                Hide to tray when a tracked game starts
+              </span>
+            </label>
           </div>
           {!loginItemsSupported && (
             <p className="settings-page__note">
