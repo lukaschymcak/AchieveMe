@@ -35,6 +35,16 @@ test('normalizeAppSettings applies defaults for legacy settings files', () => {
   assert.equal(normalized.ludusaviBackupOnStartup, true)
   assert.equal(normalized.ludusaviBackupOnSessionEnd, true)
   assert.equal(normalized.ludusaviBackupOnAddGame, true)
+  assert.deepEqual(normalized.installScanRoots, [])
+})
+
+test('normalizeAppSettings preserves installScanRoots when set', () => {
+  const normalized = normalizeAppSettings({
+    steamApiKey: 'abc',
+    enabledSources: ['goldberg'],
+    installScanRoots: ['D:\\Games', 'E:\\Games']
+  })
+  assert.deepEqual(normalized.installScanRoots, ['D:\\Games', 'E:\\Games'])
 })
 
 test('normalizeAppSettings preserves soundVolume when set', () => {

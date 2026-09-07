@@ -19,6 +19,7 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   steamApiKey: '',
   enabledSources: [...ALL_SOURCES],
   customWatchFolders: [],
+  installScanRoots: [],
   notificationsEnabled: true,
   closeToTray: true,
   openAtLogin: false,
@@ -55,6 +56,9 @@ export function normalizeAppSettings(
     steamApiKey: parsed?.steamApiKey ?? DEFAULT_APP_SETTINGS.steamApiKey,
     enabledSources: enabledSources.length > 0 ? enabledSources : [...ALL_SOURCES],
     customWatchFolders: parsed?.customWatchFolders ?? DEFAULT_APP_SETTINGS.customWatchFolders,
+    installScanRoots: Array.isArray(parsed?.installScanRoots)
+      ? parsed.installScanRoots.filter((p): p is string => typeof p === 'string')
+      : DEFAULT_APP_SETTINGS.installScanRoots,
     notificationsEnabled:
       parsed?.notificationsEnabled ?? DEFAULT_APP_SETTINGS.notificationsEnabled,
     closeToTray: parsed?.closeToTray ?? DEFAULT_APP_SETTINGS.closeToTray,

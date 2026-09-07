@@ -76,6 +76,8 @@ export const TOOLTIPS = {
     'Only enabled sources are scanned. Goldberg and GSE support delete and write-back.',
   settingsCustomFolders:
     'Extra roots scanned for every enabled source. Use for non-standard install paths.',
+  settingsInstallScanRoots:
+    'Folders Tools → Scan for installed games walks for steam_appid.txt / steam_api*.dll. Separate from Custom Watch Folders (emulator saves).',
   settingsSteamless:
     'Link a Steamless release folder that contains Steamless.CLI.exe and Plugins. Used from Tools → Steamless. Not bundled with AchieveMe.',
   settingsLudusavi:
@@ -163,6 +165,8 @@ export const SETTINGS_HINTS = {
   apiKeySettingsNote: 'After saving here, open Library and click Refresh to rescan.',
   customFolders:
     'Extra roots scanned for every enabled source. Use for non-standard installs. Use the layout {appid}/{achievement file}, e.g. C:\\Saves\\570\\achievements.json.',
+  installScanRoots:
+    'Game install folders to scan from Tools (not emulator save roots). Typical: D:\\Games or Steam steamapps\\common. Save after editing.',
   saveSuccess: 'Saved. Open Library and click Refresh to rescan for games.',
   notifications:
     'Steam-style unlock toasts (rarity accents; platinum at 100%) with optional sound and volume when new achievements appear in save files. Toasts load achievement icons from the on-disk image cache (`achieveme-img://`); missing schema icons use a fallback glyph. Refresh and first library scan never trigger toasts.',

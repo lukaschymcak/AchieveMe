@@ -32,6 +32,11 @@ export interface AppSettings {
   steamApiKey: string
   enabledSources: SourceId[]
   customWatchFolders: string[]
+  /**
+   * Disk roots scanned by Tools → Scan for installed games (Steam-shaped folders).
+   * Not used by emulator save discovery — keep separate from customWatchFolders.
+   */
+  installScanRoots: string[]
   notificationsEnabled: boolean
   closeToTray: boolean
   /** When true, register AchieveMe in the OS login items list. */

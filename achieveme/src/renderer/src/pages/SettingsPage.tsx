@@ -5,6 +5,7 @@ import {
   LUDUSAVI_CLOUD_PROVIDER_OPTIONS,
   type LudusaviCloudProviderId
 } from '../../../shared/ludusaviCloudUtils'
+import { DEFAULT_GAMES_ROOT_CANDIDATES } from '../../../shared/installedGamesScanUtils'
 import { AppChrome, AppNav, AppSearchInput, AppShell, Chip } from '../components/app'
 import HelpTip from '../components/HelpTip'
 import type { AppPage } from '../lib/appNavigation'
@@ -29,6 +30,7 @@ export default function SettingsPage({ page, onNavigate }: Props): React.ReactEl
   const [saved, setSaved] = useState(false)
   const [saveHint, setSaveHint] = useState(false)
   const [newFolder, setNewFolder] = useState('')
+  const [newScanRoot, setNewScanRoot] = useState('')
   const [showSourcesTable, setShowSourcesTable] = useState(false)
   const [cloudStatus, setCloudStatus] = useState<{
     connected: boolean
@@ -84,6 +86,35 @@ export default function SettingsPage({ page, onNavigate }: Props): React.ReactEl
     setSettings((s) => {
       if (!s) return s
       return { ...s, customWatchFolders: s.customWatchFolders.filter((_, i) => i !== index) }
+    })
+  }
+
+  function addScanRoot(): void {
+    const val = newScanRoot.trim()
+    if (!val) return
+    setSettings((s) => {
+      if (!s) return s
+      if (s.installScanRoots.includes(val)) return s
+      return { ...s, installScanRoots: [...s.installScanRoots, val] }
+    })
+    setNewScanRoot('')
+  }
+
+  function removeScanRoot(index: number): void {
+    setSettings((s) => {
+      if (!s) return s
+      return { ...s, installScanRoots: s.installScanRoots.filter((_, i) => i !== index) }
+    })
+  }
+
+  function addSuggestedScanRoots(): void {
+    setSettings((s) => {
+      if (!s) return s
+      const next = [...s.installScanRoots]
+      for (const root of DEFAULT_GAMES_ROOT_CANDIDATES) {
+        if (!next.includes(root)) next.push(root)
+      }
+      return { ...s, installScanRoots: next }
     })
   }
 
@@ -553,6 +584,53 @@ export default function SettingsPage({ page, onNavigate }: Props): React.ReactEl
                 spellCheck={false}
               />
               <Chip onClick={addFolder}>Add</Chip>
+            </div>
+          </div>
+        </section>
+
+        <section className="settings-page__section" aria-labelledby="settings-install-scan">
+          <h2 id="settings-install-scan" className="settings-page__section-title">
+            Install scan folders
+            <HelpTip
+              content={TOOLTIPS.settingsInstallScanRoots}
+              label="Install scan folders help"
+            />
+          </h2>
+          <p className="settings-page__lead">{SETTINGS_HINTS.installScanRoots}</p>
+          <div className="settings-page__panel">
+            {settings.installScanRoots.length > 0 && (
+              <ul className="settings-page__folder-list">
+                {settings.installScanRoots.map((folder, i) => (
+                  <li key={folder} className="settings-page__folder-row">
+                    <span className="settings-page__folder-path" title={folder}>
+                      {folder}
+                    </span>
+                    <button
+                      type="button"
+                      className="settings-page__icon-btn settings-page__icon-btn--remove"
+                      onClick={() => removeScanRoot(i)}
+                      aria-label={`Remove scan folder ${folder}`}
+                    >
+                      ×
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <div className="settings-page__folder-add">
+              <AppSearchInput
+                type="text"
+                value={newScanRoot}
+                onChange={(e) => setNewScanRoot(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') addScanRoot()
+                }}
+                placeholder="D:\Games"
+                className="settings-page__input--nested"
+                spellCheck={false}
+              />
+              <Chip onClick={addScanRoot}>Add</Chip>
+              <Chip onClick={addSuggestedScanRoots}>Add suggested</Chip>
             </div>
           </div>
         </section>
