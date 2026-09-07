@@ -294,6 +294,53 @@ export function updateGameInstallPath(db: Database.Database, appid: string, inst
 }
 
 /**
+ * Creates or updates a library row from Tools → Scan (install_path, no Hubcap GIDs).
+ * Overwrites install_path. Sets launch_exe only when currently empty and a suggestion is provided.
+ * Always un-ignores the AppID.
+ *
+ * @param db - Open SQLite database
+ * @param input - AppID, display name, folder, optional suggested exe
+ * @returns Whether a new row was inserted
+ */
+export function upsertScannedInstall(
+  db: Database.Database,
+  input: {
+    appid: string
+    gameName: string
+    installPath: string
+    launchExe?: string
+  }
+): { created: boolean } {
+  const appid = String(input.appid || '').trim()
+  if (!/^\d+$/.test(appid)) throw new Error('Invalid AppID.')
+  const installPath = String(input.installPath || '').trim()
+  if (!installPath) throw new Error('Install path is required.')
+  const name = String(input.gameName || '').trim() || `App ${appid}`
+  const launchExe = String(input.launchExe || '').trim()
+
+  const existing = getGame(db, appid)
+  if (!existing) {
+    db.prepare(`
+      INSERT INTO games (appid, name, install_path, launch_exe, manifest_gids, update_status)
+      VALUES (?, ?, ?, ?, '', 'unknown')
+    `).run(appid, name, installPath, launchExe)
+    unignoreAppid(db, appid)
+    return { created: true }
+  }
+
+  updateGameInstallPath(db, appid, installPath)
+  if (launchExe && !(existing.launch_exe ?? '').trim()) {
+    updateGameLaunchExe(db, appid, launchExe)
+  }
+  // Refresh placeholder names
+  if (!existing.name?.trim() || /^App \d+$/i.test(existing.name)) {
+    db.prepare('UPDATE games SET name = ? WHERE appid = ?').run(name, appid)
+  }
+  unignoreAppid(db, appid)
+  return { created: false }
+}
+
+/**
  * Persists the absolute path of the executable used by Play.
  *
  * @param db - Open SQLite database.

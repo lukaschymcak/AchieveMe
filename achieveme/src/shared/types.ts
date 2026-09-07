@@ -460,6 +460,24 @@ export interface ImportExistingInstallRequest {
   gids: Record<string, string>
 }
 
+/** One candidate from Tools → Scan for installed games. */
+export interface ScannedInstallCandidate {
+  appid: string
+  guessedName: string
+  installPath: string
+  suggestedExe: string
+  alreadyInLibrary: boolean
+  ignored: boolean
+}
+
+/** Add or update a scanned install (no Hubcap GIDs). */
+export interface ImportScannedInstallRequest {
+  appid: string
+  gameName: string
+  installPath: string
+  launchExe?: string
+}
+
 /** Request payload to start a DepotDownloader run. */
 export interface DepotDownloadStartRequest {
   gameData: GameData
