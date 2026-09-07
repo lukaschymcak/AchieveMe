@@ -731,6 +731,19 @@ button:focus-visible {
   gap: 6px;
 }
 
+.game-detail__exe-group {
+  margin-top: 4px;
+}
+
+.game-detail__exe-group-title {
+  margin: 8px 16px 0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted, oklch(70% 0.02 275));
+}
+
 .game-detail__exe-option {
   width: 100%;
   padding: 10px 12px;
@@ -1985,6 +1998,30 @@ button:focus-visible {
   padding-block: var(--space-1);
 }
 
+.library-list-row__play {
+  flex-shrink: 0;
+  align-self: center;
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid oklch(50% 0.08 145 / 0.55);
+  background: oklch(28% 0.06 145 / 0.88);
+  color: oklch(96% 0.02 145);
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+}
+
+.library-list-row__play:hover:not(:disabled) {
+  background: oklch(34% 0.07 145 / 0.95);
+}
+
+.library-list-row__play:disabled {
+  opacity: 0.65;
+  cursor: default;
+}
+
 .library-list-row__name {
   margin: 0;
   min-width: 0;
@@ -2566,6 +2603,32 @@ button:focus-visible {
   backdrop-filter: blur(24px) saturate(1.2);
   -webkit-backdrop-filter: blur(24px) saturate(1.2);
   transition: background 150ms var(--ease-out), border-color 150ms var(--ease-out);
+}
+
+.library-card__play {
+  position: absolute;
+  z-index: 2;
+  top: var(--space-2);
+  right: var(--space-2);
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid oklch(50% 0.08 145 / 0.55);
+  background: oklch(28% 0.06 145 / 0.88);
+  color: oklch(96% 0.02 145);
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+}
+
+.library-card__play:hover:not(:disabled) {
+  background: oklch(34% 0.07 145 / 0.95);
+}
+
+.library-card__play:disabled {
+  opacity: 0.65;
+  cursor: default;
 }
 
 .library-card__main {

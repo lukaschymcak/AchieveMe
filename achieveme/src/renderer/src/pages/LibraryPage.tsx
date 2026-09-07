@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import type { AppSettings, GameSummary } from '../../../shared/types'
+import { LAUNCH_NEEDS_EXE } from '../../../shared/types'
 import { formatPlaytimeCompact } from '../../../shared/playtimeUtils'
 import SteamApiKeyForm from '../components/SteamApiKeyForm'
 import AddGameModal from '../components/AddGameModal'
@@ -70,6 +71,7 @@ export default function LibraryPage({
   const [showAddModal, setShowAddModal] = useState(false)
   const [showLongPressHint, setShowLongPressHint] = useState(() => shouldShowLongPressHint())
   const [settings, setSettings] = useState<AppSettings | null>(null)
+  const [launchingAppid, setLaunchingAppid] = useState<string | null>(null)
 
   useEffect(() => {
     localStorage.setItem(LIBRARY_VIEW_MODE_KEY, viewMode)
@@ -95,6 +97,30 @@ export default function LibraryPage({
     const next = { ...settings, playGamesFromLauncher: enabled }
     setSettings(next)
     await window.api.saveSettings(next)
+  }
+
+  async function handleLibraryPlay(game: GameSummary): Promise<void> {
+    if (!(settings?.playGamesFromLauncher ?? true) || launchingAppid) return
+    if (!game.launch_exe?.trim()) {
+      closeMenu()
+      onSelect(game.appid)
+      return
+    }
+    setLaunchingAppid(game.appid)
+    try {
+      await window.api.launchGame(game.appid)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err)
+      if (
+        message.includes(LAUNCH_NEEDS_EXE) ||
+        /Select a game executable/i.test(message)
+      ) {
+        closeMenu()
+        onSelect(game.appid)
+      }
+    } finally {
+      setLaunchingAppid(null)
+    }
   }
 
   useEffect(() => {
@@ -330,12 +356,15 @@ export default function LibraryPage({
               menuMode={menuAppid === game.appid ? menuMode : 'actions'}
               deleting={deletingAppid === game.appid}
               refreshing={refreshingAppid === game.appid}
+              showPlay={settings?.playGamesFromLauncher ?? true}
+              launching={launchingAppid === game.appid}
               onOpenMenu={() => openMenu(game.appid)}
               onCloseMenu={closeMenu}
               onOpen={() => {
                 closeMenu()
                 onSelect(game.appid)
               }}
+              onPlay={() => void handleLibraryPlay(game)}
               onRefresh={() => handleRefreshGame(game.appid)}
               onDelete={() => setMenuMode('confirm-delete')}
               onConfirmDelete={() => handleDelete(game.appid)}
@@ -353,12 +382,15 @@ export default function LibraryPage({
               menuMode={menuAppid === game.appid ? menuMode : 'actions'}
               deleting={deletingAppid === game.appid}
               refreshing={refreshingAppid === game.appid}
+              showPlay={settings?.playGamesFromLauncher ?? true}
+              launching={launchingAppid === game.appid}
               onOpenMenu={() => openMenu(game.appid)}
               onCloseMenu={closeMenu}
               onOpen={() => {
                 closeMenu()
                 onSelect(game.appid)
               }}
+              onPlay={() => void handleLibraryPlay(game)}
               onRefresh={() => handleRefreshGame(game.appid)}
               onDelete={() => setMenuMode('confirm-delete')}
               onConfirmDelete={() => handleDelete(game.appid)}
@@ -395,9 +427,12 @@ function GameCard({
   menuMode,
   deleting,
   refreshing,
+  showPlay,
+  launching,
   onOpenMenu,
   onCloseMenu,
   onOpen,
+  onPlay,
   onRefresh,
   onDelete,
   onConfirmDelete,
@@ -408,9 +443,12 @@ function GameCard({
   menuMode: GameCardMenuMode
   deleting: boolean
   refreshing: boolean
+  showPlay: boolean
+  launching: boolean
   onOpenMenu: () => void
   onCloseMenu: () => void
   onOpen: () => void
+  onPlay: () => void
   onRefresh: () => void
   onDelete: () => void
   onConfirmDelete: () => void
@@ -418,6 +456,8 @@ function GameCard({
 }): React.ReactElement {
   const completionPct = Math.round(game.completion_pct)
   const hasPlatinum = game.has_platinum
+  const hasExe = Boolean(game.launch_exe?.trim())
+  const playLabel = launching ? 'Starting…' : hasExe ? 'Play' : 'Set up Play'
 
   const { isHolding, holdDurationMs, ...longPressHandlers } = useLongPress({
     onLongPress: onOpenMenu,
@@ -513,6 +553,22 @@ function GameCard({
             {completionPct}%
           </span>
         </div>
+        {showPlay && (
+          <button
+            type="button"
+            className="library-card__play"
+            disabled={launching || deleting}
+            aria-label={hasExe ? `Play ${game.name}` : `Set up Play for ${game.name}`}
+            onClick={(e) => {
+              e.stopPropagation()
+              e.preventDefault()
+              onPlay()
+            }}
+            onPointerDown={(e) => e.stopPropagation()}
+          >
+            {playLabel}
+          </button>
+        )}
       </div>
     </article>
   )
@@ -524,9 +580,12 @@ function GameListRow({
   menuMode,
   deleting,
   refreshing,
+  showPlay,
+  launching,
   onOpenMenu,
   onCloseMenu,
   onOpen,
+  onPlay,
   onRefresh,
   onDelete,
   onConfirmDelete,
@@ -537,9 +596,12 @@ function GameListRow({
   menuMode: GameCardMenuMode
   deleting: boolean
   refreshing: boolean
+  showPlay: boolean
+  launching: boolean
   onOpenMenu: () => void
   onCloseMenu: () => void
   onOpen: () => void
+  onPlay: () => void
   onRefresh: () => void
   onDelete: () => void
   onConfirmDelete: () => void
@@ -547,6 +609,8 @@ function GameListRow({
 }): React.ReactElement {
   const completionPct = Math.round(game.completion_pct)
   const hasPlatinum = game.has_platinum
+  const hasExe = Boolean(game.launch_exe?.trim())
+  const playLabel = launching ? 'Starting…' : hasExe ? 'Play' : 'Set up'
 
   const { isHolding, holdDurationMs, ...longPressHandlers } = useLongPress({
     onLongPress: onOpenMenu,
@@ -633,6 +697,23 @@ function GameListRow({
           />
         </div>
       </div>
+
+      {showPlay && (
+        <button
+          type="button"
+          className="library-list-row__play"
+          disabled={launching || deleting}
+          aria-label={hasExe ? `Play ${game.name}` : `Set up Play for ${game.name}`}
+          onClick={(e) => {
+            e.stopPropagation()
+            e.preventDefault()
+            onPlay()
+          }}
+          onPointerDown={(e) => e.stopPropagation()}
+        >
+          {playLabel}
+        </button>
+      )}
 
       <span className="library-list-row__pct" aria-hidden>
         {completionPct}%
