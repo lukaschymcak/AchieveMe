@@ -12,7 +12,6 @@ const {
   TOAST_PREVIEW_TIERS,
   isNewPlatinum,
   nextToastPreviewIndex,
-  toastEyebrow,
   toastPreviewDisplayName,
   toastPreviewTierAt,
   toastXpForTier,
@@ -30,9 +29,7 @@ describe('unlockToastUtils', () => {
     assert.equal(nextToastPreviewIndex(3), 0)
   })
 
-  it('uses platinum eyebrow and display name for celebration toast', () => {
-    assert.equal(toastEyebrow('gold'), 'Unlocked!')
-    assert.equal(toastEyebrow('platinum'), 'Platinum!')
+  it('uses platinum display name for celebration toast', () => {
     assert.equal(toastPreviewDisplayName('platinum'), 'All achievements unlocked')
   })
 

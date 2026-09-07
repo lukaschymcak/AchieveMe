@@ -34,6 +34,7 @@ test('diffAchievements reports newly earned achievements', () => {
       api_name: 'A',
       earned: 1,
       earned_time: 200,
+      description: 'Unlock by scoring first.',
       icon_url: 'https://example.com/a.png',
       trophy_tier: 'gold'
     }),
@@ -44,6 +45,7 @@ test('diffAchievements reports newly earned achievements', () => {
   assert.equal(result.unlocked.length, 1)
   assert.equal(result.unlocked[0].apiName, 'A')
   assert.equal(result.unlocked[0].earnedTime, 200)
+  assert.equal(result.unlocked[0].description, 'Unlock by scoring first.')
   assert.equal(result.unlocked[0].iconUrl, 'https://example.com/a.png')
   assert.equal(result.unlocked[0].tier, 'gold')
 })

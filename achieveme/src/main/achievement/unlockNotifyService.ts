@@ -67,6 +67,7 @@ export function notifyUnlocks(
       appid,
       gameName,
       displayName: unlock.displayName,
+      description: unlock.description,
       iconUrl: cacheIconUrlFromSteamValue(appid, unlock.iconUrl),
       tier: unlock.tier
     }
@@ -84,6 +85,7 @@ export function notifyPlatinumUnlock(appid: string, gameName: string): void {
       appid,
       gameName,
       displayName: 'All achievements unlocked',
+      description: '',
       iconUrl: '',
       tier: 'platinum'
     }
@@ -102,8 +104,9 @@ export function previewUnlockToast(): void {
 
   const payload: UnlockToastPayload = {
     appid: '0',
-    gameName: '',
+    gameName: 'Sample Game',
     displayName: toastPreviewDisplayName(tier),
+    description: 'Sample achievement description for the unlock toast preview.',
     iconUrl: '',
     tier
   }

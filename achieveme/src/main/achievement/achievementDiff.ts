@@ -30,6 +30,7 @@ export function diffAchievements(
       unlocked.push({
         apiName: ach.api_name,
         displayName: ach.display_name,
+        description: ach.description ?? '',
         earnedTime: ach.earned_time,
         iconUrl: ach.icon_url || ach.icon_gray_url || '',
         tier: ach.trophy_tier

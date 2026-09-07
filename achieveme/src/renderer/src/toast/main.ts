@@ -2,7 +2,6 @@ import './toast.css'
 import type { ToastTier, UnlockToastPayload } from '../../../shared/types'
 import {
   formatToastXp,
-  toastEyebrow,
   toastXpForTier
 } from '../../../shared/unlockToastUtils'
 
@@ -27,7 +26,7 @@ const EXIT_MS = 280
 const XP_COUNT_MS = 600
 
 const TEXT_FADE_SELECTOR =
-  '.unlock-toast__eyebrow, .unlock-toast__name, .unlock-toast__game, .unlock-toast__points'
+  '.unlock-toast__game, .unlock-toast__name, .unlock-toast__description, .unlock-toast__points'
 
 const rootEl = document.getElementById('root')
 if (!rootEl) {
@@ -172,15 +171,19 @@ function renderToast(payload: UnlockToastPayload): void {
   currentAppid = payload.appid
   const tier: ToastTier = payload.tier || 'bronze'
   const isPlatinum = tier === 'platinum'
+  const gameName = payload.gameName?.trim() ?? ''
+  const description = payload.description?.trim() ?? ''
 
   const card = document.createElement('button')
   card.type = 'button'
   card.className = 'unlock-toast unlock-toast--icon'
   card.dataset.tier = tier
-  card.setAttribute(
-    'aria-label',
-    isPlatinum ? 'Platinum unlocked' : 'Achievement unlocked'
-  )
+  const ariaParts = [
+    isPlatinum ? 'Platinum unlocked' : 'Achievement unlocked',
+    payload.displayName,
+    gameName
+  ].filter(Boolean)
+  card.setAttribute('aria-label', ariaParts.join(', '))
 
   const points = document.createElement('span')
   points.className = 'unlock-toast__points'
@@ -214,22 +217,23 @@ function renderToast(payload: UnlockToastPayload): void {
   const body = document.createElement('span')
   body.className = 'unlock-toast__body'
 
-  const eyebrow = document.createElement('span')
-  eyebrow.className = 'unlock-toast__eyebrow'
-  eyebrow.textContent = toastEyebrow(tier)
-
-  const nameEl = document.createElement('span')
-  nameEl.className = 'unlock-toast__name'
-  nameEl.textContent = payload.displayName
-
-  body.append(eyebrow, nameEl)
-
-  const gameName = payload.gameName?.trim() ?? ''
   if (gameName) {
     const gameEl = document.createElement('span')
     gameEl.className = 'unlock-toast__game'
     gameEl.textContent = gameName
     body.appendChild(gameEl)
+  }
+
+  const nameEl = document.createElement('span')
+  nameEl.className = 'unlock-toast__name'
+  nameEl.textContent = payload.displayName
+  body.appendChild(nameEl)
+
+  if (description) {
+    const descEl = document.createElement('span')
+    descEl.className = 'unlock-toast__description'
+    descEl.textContent = description
+    body.appendChild(descEl)
   }
 
   card.append(points, iconWrap, body)

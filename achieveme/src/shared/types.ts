@@ -78,6 +78,7 @@ export interface AppSettings {
 export interface UnlockChange {
   apiName: string
   displayName: string
+  description: string
   earnedTime: number
   iconUrl: string
   tier: TrophyTier
@@ -88,6 +89,7 @@ export interface UnlockToastPayload {
   appid: string
   gameName: string
   displayName: string
+  description: string
   iconUrl: string
   tier: ToastTier
 }

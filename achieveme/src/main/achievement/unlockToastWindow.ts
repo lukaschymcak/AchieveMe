@@ -16,8 +16,8 @@ import {
 } from './unlockToastQueue'
 
 /** Locked toast window size — bump carefully; rebuild main after changing. */
-const TOAST_WIDTH = 387
-const TOAST_HEIGHT = 97
+const TOAST_WIDTH = 520
+const TOAST_HEIGHT = 120
 const MARGIN = 16
 const BUSY_TIMEOUT_MS = 22_500
 

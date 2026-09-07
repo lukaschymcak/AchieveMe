@@ -27,10 +27,6 @@ export function toastPreviewDisplayName(tier: ToastTier): string {
   return PREVIEW_NAMES[tier]
 }
 
-export function toastEyebrow(tier: ToastTier): string {
-  return tier === 'platinum' ? 'Platinum!' : 'Unlocked!'
-}
-
 /** XP awarded for toast tier — matches profileStatsUtils scoring. */
 export function toastXpForTier(tier: ToastTier): number {
   switch (tier) {
