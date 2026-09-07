@@ -1,6 +1,17 @@
 import React, { useEffect, useState } from 'react'
-import type { ScannedInstallCandidate } from '../../../shared/types'
+import { bucketDepotsForScan } from '../../../shared/depotOsClassifyUtils'
+import { pickManifestGids } from '../../../shared/manifestUpdateUtils'
+import type { GameData, ScannedInstallCandidate } from '../../../shared/types'
 import { Chip } from './app'
+
+type PickerQueueItem = {
+  appid: string
+  gameName: string
+  installPath: string
+  gameData: GameData
+  autoKeepIds: string[]
+  unsureIds: string[]
+}
 
 interface Props {
   onClose: () => void
@@ -22,6 +33,8 @@ export default function InstalledGamesScanModal({
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [errorMsg, setErrorMsg] = useState('')
   const [statusMsg, setStatusMsg] = useState('')
+  const [pickerQueue, setPickerQueue] = useState<PickerQueueItem[]>([])
+  const [pickerIndex, setPickerIndex] = useState(0)
 
   useEffect(() => {
     void window.api.getSettings().then((s) => {
@@ -90,17 +103,65 @@ export default function InstalledGamesScanModal({
     if (toAdd.length === 0) return
     setImporting(true)
     setErrorMsg('')
+    setStatusMsg('')
+    const errors: string[] = []
+    const queue: PickerQueueItem[] = []
     try {
       for (const c of toAdd) {
+        const name = c.guessedName
         await window.api.importScannedInstall({
           appid: c.appid,
-          gameName: c.guessedName,
+          gameName: name,
           installPath: c.installPath,
           launchExe: c.suggestedExe || undefined
         })
+        setStatusMsg(`Fetching Hubcap for ${name}…`)
+        try {
+          const channel = `manifest:scan:${crypto.randomUUID()}`
+          const zipPath = await window.api.depotDownloadManifest(c.appid, channel)
+          const gameData = await window.api.depotProcessZip(zipPath)
+          const buckets = bucketDepotsForScan(gameData.depots, gameData.manifests, gameData.dlcs)
+          if (buckets.unsureIds.length === 0) {
+            if (buckets.autoKeepIds.length === 0) {
+              errors.push(`${name}: no Windows/DLC depots found`)
+            } else {
+              const gids = pickManifestGids(gameData.manifests, buckets.autoKeepIds)
+              if (Object.keys(gids).length > 0) {
+                await window.api.manifestSaveGids(c.appid, gids, name, c.installPath)
+              } else {
+                errors.push(`${name}: no Windows/DLC depots found`)
+              }
+            }
+          } else {
+            queue.push({
+              appid: c.appid,
+              gameName: name,
+              installPath: c.installPath,
+              gameData,
+              autoKeepIds: buckets.autoKeepIds,
+              unsureIds: buckets.unsureIds
+            })
+          }
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err)
+          errors.push(`${name}: ${message}`)
+        }
       }
+      setPickerQueue(queue)
+      setPickerIndex(0)
       onImported()
-      onClose()
+      if (queue.length === 0) {
+        if (errors.length > 0) {
+          setErrorMsg(errors.join('\n'))
+        } else {
+          setStatusMsg(
+            `Added ${toAdd.length} game${toAdd.length === 1 ? '' : 's'} with manifest GIDs.`
+          )
+          onClose()
+        }
+      } else if (errors.length > 0) {
+        setErrorMsg(errors.join('\n'))
+      }
     } catch (err) {
       setErrorMsg(err instanceof Error ? err.message : String(err))
     } finally {
@@ -123,6 +184,8 @@ export default function InstalledGamesScanModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="install-scan-title"
+        data-picker-queue-length={pickerQueue.length}
+        data-picker-index={pickerIndex}
       >
         <header className="install-scan-modal__header">
           <h2 id="install-scan-title" className="install-scan-modal__title">
