@@ -531,6 +531,44 @@ button:focus-visible {
   gap: 2px;
 }
 
+.game-detail__launch-args {
+  flex: 1 1 100%;
+  min-width: 0;
+  margin-top: 2px;
+}
+
+.game-detail__launch-args-label {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 0.75rem;
+  color: var(--muted, oklch(70% 0.02 275));
+}
+
+.game-detail__launch-args-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.game-detail__launch-args-input {
+  flex: 1 1 12rem;
+  min-width: 0;
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid oklch(28% 0.02 275);
+  background: oklch(16% 0.014 275);
+  color: var(--ink);
+  font: inherit;
+}
+
+.game-detail__launch-args-hint {
+  margin: 4px 0 0;
+  font-size: 0.7rem;
+  color: var(--muted, oklch(65% 0.02 275));
+  line-height: 1.35;
+}
+
 .game-detail__play {
   font-weight: 600;
   letter-spacing: 0.04em;

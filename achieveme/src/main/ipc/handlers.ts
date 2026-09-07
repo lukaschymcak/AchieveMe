@@ -438,7 +438,8 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle(
     'list-game-executables',
-    (_event, installPath: string): GameExecutable[] => listInstallExecutables(installPath)
+    (_event, installPath: string, gameName?: string): GameExecutable[] =>
+      listInstallExecutables(installPath, gameName)
   )
 
   ipcMain.handle(

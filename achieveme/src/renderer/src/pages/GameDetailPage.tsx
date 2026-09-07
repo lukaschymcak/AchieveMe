@@ -523,6 +523,8 @@ export default function GameDetailPage({
   const [isLaunching, setIsLaunching] = useState(false)
   const [playMenuOpen, setPlayMenuOpen] = useState(false)
   const [rootConfirmPath, setRootConfirmPath] = useState<string | null>(null)
+  const [launchArgsDraft, setLaunchArgsDraft] = useState('')
+  const [launchArgsSaving, setLaunchArgsSaving] = useState(false)
   const [playGamesFromLauncher, setPlayGamesFromLauncher] = useState(true)
   const [hasApiKey, setHasApiKey] = useState(false)
   const [updateStatus, setUpdateStatus] = useState<UpdateStatus>('')
@@ -587,6 +589,7 @@ export default function GameDetailPage({
     const next = await window.api.getGameDetail(appid)
     setDetail(next)
     setUpdateStatus(next?.game.update_status ?? '')
+    setLaunchArgsDraft(next?.game.launch_args ?? '')
     return next
   }
 
@@ -606,8 +609,8 @@ export default function GameDetailPage({
       installPath: folder,
       launchExe: detail?.game.launch_exe ?? ''
     })
-    await reloadDetail()
-    const list = await window.api.listGameExecutables(folder)
+    const next = await reloadDetail()
+    const list = await window.api.listGameExecutables(folder, next?.game.name ?? detail?.game.name)
     showExePicker(folder, list)
   }
 
@@ -761,6 +764,23 @@ export default function GameDetailPage({
     }
   }
 
+  async function handleSaveLaunchArgs(): Promise<void> {
+    if (!detail?.game.launch_exe?.trim() || launchArgsSaving) return
+    setLaunchArgsSaving(true)
+    try {
+      await window.api.setGameLaunchConfig({
+        appid,
+        launchExe: detail.game.launch_exe,
+        launchArgs: launchArgsDraft
+      })
+      await reloadDetail()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setLaunchArgsSaving(false)
+    }
+  }
+
   useEffect(() => {
     setError(null)
     setDetail(null)
@@ -790,6 +810,7 @@ export default function GameDetailPage({
       .then((next) => {
         setDetail(next)
         setUpdateStatus(next?.game.update_status ?? '')
+        setLaunchArgsDraft(next?.game.launch_args ?? '')
       })
       .catch(() => setError('Could not load game details. Try Refresh all from the toolbar.'))
   }, [appid])
@@ -802,6 +823,7 @@ export default function GameDetailPage({
         .then((next) => {
           setDetail(next)
           setUpdateStatus(next?.game.update_status ?? '')
+          setLaunchArgsDraft(next?.game.launch_args ?? '')
         })
         .catch(() => setError('Could not load game details. Try Refresh all from the toolbar.'))
     }
@@ -1099,6 +1121,38 @@ export default function GameDetailPage({
                               </div>
                             )}
                           </div>
+                        </div>
+                      )}
+                      {playGamesFromLauncher && hasLaunchExe && (
+                        <div className="game-detail__launch-args">
+                          <label className="game-detail__launch-args-label" htmlFor="game-launch-args">
+                            Launch args
+                          </label>
+                          <div className="game-detail__launch-args-row">
+                            <input
+                              id="game-launch-args"
+                              type="text"
+                              className="game-detail__launch-args-input"
+                              value={launchArgsDraft}
+                              onChange={(e) => setLaunchArgsDraft(e.target.value)}
+                              placeholder="-windowed"
+                              aria-label="Launch arguments"
+                              disabled={launchArgsSaving}
+                            />
+                            <button
+                              type="button"
+                              className="game-detail__pill"
+                              onClick={() => void handleSaveLaunchArgs()}
+                              disabled={launchArgsSaving}
+                              aria-label="Save launch arguments"
+                            >
+                              {launchArgsSaving ? 'Saving…' : 'Save'}
+                            </button>
+                          </div>
+                          <p className="game-detail__launch-args-hint">
+                            Passed when AchieveMe can spawn the game. Ignored if Windows requires
+                            UAC elevation (openPath fallback).
+                          </p>
                         </div>
                       )}
                       {showDepotUpdateUi && displayUpdateError && (
@@ -1485,7 +1539,8 @@ export default function GameDetailPage({
               </button>
             </div>
             <p className="game-detail__exe-modal-help">
-              Choose the game&apos;s main .exe anywhere under the game folder.
+              Suggested executables are ranked for this game. Other tools and crash handlers stay
+              available if you need them. Picking an exe saves it — it does not launch.
             </p>
             {exeRootLabel && (
               <p className="game-detail__exe-modal-path" title={exeRootLabel}>
@@ -1495,23 +1550,47 @@ export default function GameDetailPage({
             {exePickerError && (
               <p className="game-detail__exe-modal-error">{exePickerError}</p>
             )}
-            <ul className="game-detail__exe-list">
-              {exeOptions.map((exe) => (
-                <li key={exe.absolutePath}>
-                  <button
-                    type="button"
-                    className="game-detail__exe-option"
-                    disabled={playBusy}
-                    onClick={() => void handlePickExecutable(exe)}
-                  >
-                    <span className="game-detail__exe-option-name">{exe.name}</span>
-                    {exe.relativePath !== exe.name && (
-                      <span className="game-detail__exe-option-path">{exe.relativePath}</span>
-                    )}
-                  </button>
-                </li>
-              ))}
-            </ul>
+            {(() => {
+              const suggestedList = exeOptions.filter((e) => e.suggested === true)
+              const otherList = exeOptions.filter((e) => e.suggested !== true)
+              const renderList = (items: GameExecutable[]) => (
+                <ul className="game-detail__exe-list">
+                  {items.map((exe) => (
+                    <li key={exe.absolutePath}>
+                      <button
+                        type="button"
+                        className="game-detail__exe-option"
+                        disabled={playBusy}
+                        onClick={() => void handlePickExecutable(exe)}
+                      >
+                        <span className="game-detail__exe-option-name">{exe.name}</span>
+                        {exe.relativePath !== exe.name && (
+                          <span className="game-detail__exe-option-path">{exe.relativePath}</span>
+                        )}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )
+              return (
+                <>
+                  {suggestedList.length > 0 && (
+                    <div className="game-detail__exe-group">
+                      <h4 className="game-detail__exe-group-title">Suggested</h4>
+                      {renderList(suggestedList)}
+                    </div>
+                  )}
+                  {otherList.length > 0 && (
+                    <div className="game-detail__exe-group">
+                      <h4 className="game-detail__exe-group-title">
+                        {suggestedList.length > 0 ? 'Other executables' : 'Executables'}
+                      </h4>
+                      {renderList(otherList)}
+                    </div>
+                  )}
+                </>
+              )
+            })()}
           </div>
         </div>
       )}

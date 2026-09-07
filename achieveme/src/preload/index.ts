@@ -124,8 +124,8 @@ contextBridge.exposeInMainWorld('api', {
   browseGameInstallFolder: (): Promise<string | null> =>
     ipcRenderer.invoke('browse-game-install-folder'),
 
-  listGameExecutables: (installPath: string): Promise<GameExecutable[]> =>
-    ipcRenderer.invoke('list-game-executables', installPath),
+  listGameExecutables: (installPath: string, gameName?: string): Promise<GameExecutable[]> =>
+    ipcRenderer.invoke('list-game-executables', installPath, gameName),
 
   resolveGameExecutables: (
     appid: string,

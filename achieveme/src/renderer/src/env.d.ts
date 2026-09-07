@@ -50,7 +50,7 @@ declare global {
       sessionRecapDone(): void
       applyGoldberg(request: GoldbergApplyRequest): Promise<void>
       browseGameInstallFolder(): Promise<string | null>
-      listGameExecutables(installPath: string): Promise<GameExecutable[]>
+      listGameExecutables(installPath: string, gameName?: string): Promise<GameExecutable[]>
       resolveGameExecutables(
         appid: string,
         acceptedRoot?: string
