@@ -802,6 +802,18 @@ button:focus-visible {
   text-shadow: 0 2px 24px oklch(8% 0.02 275 / 0.85);
 }
 
+.game-detail__hunter-stats {
+  max-width: var(--app-content-max);
+  margin: 0 auto;
+  padding: 0 clamp(var(--space-5), 5vw, 48px) var(--space-2);
+  font-family: var(--font-stats);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.4;
+  color: var(--ink-muted);
+  font-variant-numeric: tabular-nums;
+}
+
 .game-detail__body {
   max-width: var(--app-content-max);
   margin-inline: auto;

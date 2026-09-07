@@ -4,11 +4,16 @@ import type {
   ActiveUpdateSession,
   GameDetail,
   GameExecutable,
+  GameHunterStats,
   TrophyTier,
   UpdateStatus
 } from '../../../shared/types'
 import { LAUNCH_NEEDS_EXE } from '../../../shared/types'
 import { hasStoredManifestGids } from '../../../shared/libraryRetentionUtils'
+import {
+  formatHunterStatsLine,
+  shouldShowHunterStatsStrip
+} from '../../../shared/hunterStatsUtils.ts'
 import { formatPlaytimePlayed } from '../../../shared/playtimeUtils'
 import { cacheHeroUrl } from '../../../shared/imageCacheUrls'
 import { formatBackupStatusLabel } from '../../../shared/backupStatusUtils.ts'
@@ -539,6 +544,7 @@ export default function GameDetailPage({
   const [saveSnapshotsError, setSaveSnapshotsError] = useState('')
   const [selectedBackupId, setSelectedBackupId] = useState('')
   const [ludusaviPathLinked, setLudusaviPathLinked] = useState(false)
+  const [hunterStats, setHunterStats] = useState<GameHunterStats | null>(null)
 
   const closeSaveModal = (): void => {
     setSaveModalOpen(false)
@@ -813,6 +819,29 @@ export default function GameDetailPage({
         setLaunchArgsDraft(next?.game.launch_args ?? '')
       })
       .catch(() => setError('Could not load game details. Try Refresh all from the toolbar.'))
+  }, [appid])
+
+  useEffect(() => {
+    let cancelled = false
+    setHunterStats(null)
+    void window.api
+      .getGameHunterStats(appid)
+      .then((stats) => {
+        if (!cancelled) setHunterStats(stats)
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setHunterStats({
+            reviewPercent: null,
+            reviewCount: null,
+            metacritic: null,
+            hasAny: false
+          })
+        }
+      })
+    return () => {
+      cancelled = true
+    }
   }, [appid])
 
   useEffect(() => {
@@ -1194,6 +1223,12 @@ export default function GameDetailPage({
                   </div>
                 </div>
               </header>
+
+              {hunterStats && shouldShowHunterStatsStrip(hunterStats) && (
+                <p className="game-detail__hunter-stats" aria-label="Store ratings">
+                  {formatHunterStatsLine(hunterStats)}
+                </p>
+              )}
 
               <div className="game-detail__body">
                 <div className="game-detail__toolbar">
