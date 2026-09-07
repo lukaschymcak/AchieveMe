@@ -23,8 +23,10 @@ declare global {
 
 /** Scale-in duration — icon hold starts after this settles. */
 const SCALE_IN_MS = 350
-/** Centered icon hold before expand / after shrink. */
-const ICON_HOLD_MS = 500
+/** Centered icon hold before expand. */
+const ICON_HOLD_START_MS = 1000
+/** Centered icon hold after shrink, before exit. */
+const ICON_HOLD_END_MS = 500
 const EXPAND_MS = 450
 const SHRINK_MS = 450
 const VISIBLE_MS = 4000
@@ -32,7 +34,7 @@ const EXIT_MS = 450
 const XP_COUNT_MS = 600
 const TEXT_OUT_MS = 280
 /** Time from --play until expand (scale-in + settled icon hold). */
-const PRE_EXPAND_MS = SCALE_IN_MS + ICON_HOLD_MS
+const PRE_EXPAND_MS = SCALE_IN_MS + ICON_HOLD_START_MS
 
 const TEXT_FADE_SELECTOR =
   '.unlock-toast__name, .unlock-toast__description, .unlock-toast__points, .unlock-toast__body'
@@ -158,7 +160,7 @@ function startSequence(card: HTMLElement, pointsEl: HTMLElement, tier: ToastTier
           stepTimer = setTimeout(() => {
             card.classList.add('unlock-toast--exit')
             exitTimer = setTimeout(finish, EXIT_MS)
-          }, SHRINK_MS + ICON_HOLD_MS)
+          }, SHRINK_MS + ICON_HOLD_END_MS)
         })
       }, EXPAND_MS + VISIBLE_MS)
     }, PRE_EXPAND_MS)

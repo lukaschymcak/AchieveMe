@@ -8,7 +8,7 @@
   --tier-bronze: oklch(74% 0.12 48);
   --tier-silver: oklch(88% 0.014 250);
   --tier-gold: #f4a510;
-  --tier-platinum: #0cf1ca;
+  --tier-platinum: oklch(88% 0.06 286);
   --toast-accent: var(--tier-bronze);
   --toast-icon-size: 64px;
   --toast-collapsed: 80px;
@@ -170,11 +170,11 @@ body {
   border-color: color-mix(in srgb, var(--tier-platinum) 70%, #ffffff1a);
   box-shadow:
     0 2px 16px rgba(0, 0, 0, 0.25),
-    0 0 14px 0 rgba(12, 241, 202, 0.28);
+    0 0 14px 0 color-mix(in oklch, var(--tier-platinum) 35%, transparent);
 }
 
 .unlock-toast[data-tier='platinum'] .unlock-toast__inner {
-  background: linear-gradient(94deg, #1c1c1c -25%, #044838 100%);
+  background: linear-gradient(94deg, #1c1c1c -25%, #2a2440 100%);
 }
 
 .unlock-toast--exit .unlock-toast__shell {
@@ -191,25 +191,6 @@ body {
   background: var(--surface-1);
   overflow: hidden;
   border-radius: 3px;
-}
-
-.unlock-toast[data-tier='gold'] .unlock-toast__inner::before {
-  content: '';
-  position: absolute;
-  top: -50%;
-  left: -60px;
-  width: 29px;
-  height: 134px;
-  transform: translateX(0) rotate(36deg);
-  opacity: 0.2;
-  background: #d9d9d9;
-  filter: blur(8px);
-  pointer-events: none;
-  z-index: 3;
-}
-
-.unlock-toast--expanded[data-tier='gold'] .unlock-toast__inner::before {
-  animation: toast-shine 450ms var(--toast-ease) both;
 }
 
 .unlock-toast__content {
@@ -256,7 +237,7 @@ body {
 .unlock-toast[data-tier='platinum'] .unlock-toast__icon,
 .unlock-toast[data-tier='platinum'] .unlock-toast__icon-fallback {
   outline: 1px solid var(--tier-platinum);
-  box-shadow: 0 0 12px 0 rgba(12, 241, 202, 0.25);
+  box-shadow: 0 0 12px 0 color-mix(in oklch, var(--tier-platinum) 30%, transparent);
 }
 
 .unlock-toast__overlays {
@@ -339,20 +320,20 @@ body {
 .unlock-toast[data-tier='platinum'] .unlock-toast__trophy {
   background: linear-gradient(
     118deg,
-    #15e8d6 18.96%,
-    #0fd5a7 26.41%,
-    #15e8b7 29.99%,
-    #15e4b4 38.89%,
-    #0eca7f 42.43%,
-    #0eca9e 46.59%,
-    #1aecbb 50.08%,
-    #1aecb0 53.48%,
-    #0db392 57.39%,
-    #0a6648 75.64%,
-    #13a38b 78.2%,
-    #129862 79.28%,
-    #085042 83.6%,
-    #083e31 85.77%
+    #f0ecff 18.96%,
+    #c8b8f0 26.41%,
+    #e8e0ff 29.99%,
+    #d4c4f5 38.89%,
+    #a890d8 42.43%,
+    #b8a4e0 46.59%,
+    #f5f2ff 50.08%,
+    #ddd0f5 53.48%,
+    #8a78b8 57.39%,
+    #4a4068 75.64%,
+    #9a88c8 78.2%,
+    #8a78b0 79.28%,
+    #3a3450 83.6%,
+    #2a2440 85.77%
   );
 }
 
@@ -458,22 +439,22 @@ body {
 .unlock-toast[data-tier='platinum'] .unlock-toast__points {
   background: linear-gradient(
     118deg,
-    #15e8d6 18.96%,
-    #0fd5a7 26.41%,
-    #15e8b7 29.99%,
-    #15e4b4 38.89%,
-    #0eca7f 42.43%,
-    #0eca9e 46.59%,
-    #1aecbb 50.08%,
-    #1aecb0 53.48%,
-    #0db392 57.39%,
-    #0a6648 75.64%,
-    #13a38b 78.2%,
-    #129862 79.28%,
-    #085042 83.6%,
-    #083e31 85.77%
+    #f0ecff 18.96%,
+    #c8b8f0 26.41%,
+    #e8e0ff 29.99%,
+    #d4c4f5 38.89%,
+    #a890d8 42.43%,
+    #b8a4e0 46.59%,
+    #f5f2ff 50.08%,
+    #ddd0f5 53.48%,
+    #8a78b8 57.39%,
+    #4a4068 75.64%,
+    #9a88c8 78.2%,
+    #8a78b0 79.28%,
+    #3a3450 83.6%,
+    #2a2440 85.77%
   );
-  color: #fff;
+  color: #1a1528;
 }
 
 .unlock-toast--exit .unlock-toast__points {
@@ -566,15 +547,6 @@ body {
   }
 }
 
-@keyframes toast-shine {
-  from {
-    transform: translateX(0) rotate(36deg);
-  }
-  to {
-    transform: translateX(420px) rotate(36deg);
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
   .unlock-toast__shell,
   .unlock-toast--play .unlock-toast__shell,
@@ -593,8 +565,7 @@ body {
   .unlock-toast__points,
   .unlock-toast__dark,
   .unlock-toast__trophy,
-  .unlock-toast__ellipses,
-  .unlock-toast[data-tier='gold'] .unlock-toast__inner::before {
+  .unlock-toast__ellipses {
     animation: none !important;
     opacity: 1;
     transform: none;
