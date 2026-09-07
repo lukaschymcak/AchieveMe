@@ -1950,7 +1950,8 @@ button:focus-visible {
 .library-list-row__update-badge {
   position: absolute;
   top: 4px;
-  right: 4px;
+  left: 4px;
+  right: auto;
   z-index: 2;
   min-width: 18px;
   height: 18px;
@@ -2109,20 +2110,26 @@ button:focus-visible {
 }
 
 .library-list-row__menu,
-.library-card__menu {
-  position: absolute;
-  inset: 0;
-  z-index: 4;
+.library-card__menu,
+.library-game-menu {
+  position: fixed;
+  z-index: 80;
   display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: var(--space-4);
-  background: transparent;
-  pointer-events: none;
-}
-
-.library-list-row__menu > *,
-.library-card__menu > * {
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-2);
+  min-width: 11rem;
+  max-width: min(20rem, calc(100vw - 16px));
+  padding: var(--space-3);
+  padding-top: calc(var(--space-3) + 4px);
+  border-radius: var(--radius-md);
+  border: 1px solid oklch(34% 0.02 275 / 0.55);
+  background: oklch(12% 0.014 275 / 0.92);
+  box-shadow:
+    0 12px 40px oklch(0% 0 0 / 0.45),
+    0 0 0 1px oklch(100% 0 0 / 0.04);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
   pointer-events: auto;
 }
 
@@ -2311,32 +2318,46 @@ button:focus-visible {
 .library-list-row__menu-actions,
 .library-card__menu-actions {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
+  flex-wrap: nowrap;
   gap: var(--space-2);
-  justify-content: center;
-  align-items: center;
+  justify-content: flex-start;
+  align-items: stretch;
   max-width: 100%;
-  padding-inline: var(--space-2);
+  padding-inline: 0;
+  padding-right: 28px;
 }
 
 .library-list-row__menu-actions .library-menu-chip,
 .library-card__menu-actions .library-menu-chip {
+  justify-content: flex-start;
+  width: 100%;
   animation: library-item-menu-chip-in 280ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 .library-list-row__menu-actions .library-menu-chip:nth-child(1),
 .library-card__menu-actions .library-menu-chip:nth-child(1) {
-  animation-delay: 60ms;
+  animation-delay: 40ms;
 }
 
 .library-list-row__menu-actions .library-menu-chip:nth-child(2),
 .library-card__menu-actions .library-menu-chip:nth-child(2) {
-  animation-delay: 100ms;
+  animation-delay: 70ms;
 }
 
 .library-list-row__menu-actions .library-menu-chip:nth-child(3),
 .library-card__menu-actions .library-menu-chip:nth-child(3) {
-  animation-delay: 140ms;
+  animation-delay: 100ms;
+}
+
+.library-list-row__menu-actions .library-menu-chip:nth-child(4),
+.library-card__menu-actions .library-menu-chip:nth-child(4) {
+  animation-delay: 130ms;
+}
+
+.library-list-row__menu-actions .library-menu-chip:nth-child(5),
+.library-card__menu-actions .library-menu-chip:nth-child(5) {
+  animation-delay: 160ms;
 }
 
 @keyframes library-item-hold-sweep {
@@ -2447,10 +2468,11 @@ button:focus-visible {
 .library-card__menu-confirm {
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: stretch;
   gap: var(--space-2);
-  text-align: center;
+  text-align: left;
   max-width: 100%;
+  padding-right: 28px;
 }
 
 .library-list-row__menu-confirm-title,
@@ -2716,7 +2738,8 @@ button:focus-visible {
 .library-card__update-badge {
   position: absolute;
   top: 8px;
-  right: 8px;
+  left: 8px;
+  right: auto;
   z-index: 3;
   min-width: 22px;
   height: 22px;
