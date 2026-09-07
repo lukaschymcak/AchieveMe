@@ -17,7 +17,8 @@ import {
   deleteCacheEntry,
   ignoreAppid,
   getIgnoredAppids,
-  updateGameBackupStatus
+  updateGameBackupStatus,
+  upsertScannedInstall
 } from '../db/repository'
 import { parseManifestGidsJson, pickManifestGids } from '../../shared/manifestUpdateUtils'
 import { hasStoredManifestGids } from '../../shared/libraryRetentionUtils'
@@ -125,7 +126,6 @@ import {
   assertScannedInstallPath,
   scanInstalledGamesWithDb
 } from '../achievement/installedGamesScanService'
-import { upsertScannedInstall } from '../db/repository'
 import { proposeInstallScanRoots } from '../../shared/installedGamesScanUtils.ts'
 import { scanSteamApiDll } from '../achievement/depotScanUtils'
 import {

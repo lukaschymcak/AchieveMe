@@ -20,6 +20,7 @@ import DepotWizard from './components/DepotWizard'
 import TransfersDock from './components/TransfersDock'
 import UpdateTransferModal from './components/UpdateTransferModal'
 import AddGameModal from './components/AddGameModal'
+import InstalledGamesScanModal from './components/InstalledGamesScanModal'
 import { shouldShowFirstRun } from './lib/helpStorage'
 import type { AppPage } from './lib/appNavigation'
 import { pruneNewsPayloadForLibrary } from '../../shared/newsUtils'
@@ -43,6 +44,7 @@ export default function App(): React.ReactElement {
   const [activeUpdateSession, setActiveUpdateSession] = useState<ActiveUpdateSession | null>(null)
   const [updateManifestGidsJson, setUpdateManifestGidsJson] = useState('')
   const [depotWizardOpen, setDepotWizardOpen] = useState(false)
+  const [scanInstalledOpen, setScanInstalledOpen] = useState(false)
   const [updateModalOpen, setUpdateModalOpen] = useState(false)
   const [transfersExpanded, setTransfersExpanded] = useState(false)
   const [addGamePrefill, setAddGamePrefill] = useState<{
@@ -601,10 +603,19 @@ export default function App(): React.ReactElement {
                 })
                 setDepotWizardOpen(true)
               }}
+              onOpenScanInstalled={() => setScanInstalledOpen(true)}
               depotSession={activeDepotSession}
             />
           </main>
         </div>
+        {scanInstalledOpen && (
+          <InstalledGamesScanModal
+            onClose={() => setScanInstalledOpen(false)}
+            onImported={() => {
+              void window.api.getAllGames().then(setLibraryGames)
+            }}
+          />
+        )}
       </>
     )
   }

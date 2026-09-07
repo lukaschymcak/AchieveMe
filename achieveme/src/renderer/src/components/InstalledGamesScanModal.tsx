@@ -1,0 +1,234 @@
+import React, { useEffect, useState } from 'react'
+import type { ScannedInstallCandidate } from '../../../shared/types'
+import { Chip } from './app'
+
+interface Props {
+  onClose: () => void
+  onImported: () => void
+}
+
+/**
+ * Tools modal: scan installScanRoots / browsed folders and add selected installs.
+ */
+export default function InstalledGamesScanModal({
+  onClose,
+  onImported
+}: Props): React.ReactElement {
+  const [roots, setRoots] = useState<string[]>([])
+  const [includeIgnored, setIncludeIgnored] = useState(false)
+  const [scanning, setScanning] = useState(false)
+  const [importing, setImporting] = useState(false)
+  const [candidates, setCandidates] = useState<ScannedInstallCandidate[]>([])
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [errorMsg, setErrorMsg] = useState('')
+  const [statusMsg, setStatusMsg] = useState('')
+
+  useEffect(() => {
+    void window.api.getSettings().then((s) => {
+      setRoots([...(s.installScanRoots ?? [])])
+    })
+  }, [])
+
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent): void {
+      if (e.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [onClose])
+
+  async function handleScan(): Promise<void> {
+    setScanning(true)
+    setErrorMsg('')
+    setStatusMsg('')
+    try {
+      const found = await window.api.scanInstalledGames(roots, { includeIgnored })
+      setCandidates(found)
+      setSelected(new Set(found.filter((c) => !c.alreadyInLibrary).map((c) => c.appid)))
+      setStatusMsg(
+        found.length === 0
+          ? 'No Steam-shaped installs found in the configured roots.'
+          : `Found ${found.length} install${found.length === 1 ? '' : 's'}.`
+      )
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : String(err))
+      setCandidates([])
+      setSelected(new Set())
+    } finally {
+      setScanning(false)
+    }
+  }
+
+  async function handleBrowse(): Promise<void> {
+    const folder = await window.api.browseGameInstallFolder()
+    if (!folder) return
+    setRoots((prev) => (prev.includes(folder) ? prev : [...prev, folder]))
+  }
+
+  async function handleAddSuggestedRoots(): Promise<void> {
+    const suggested = await window.api.proposeInstallScanRoots()
+    setRoots((prev) => {
+      const next = [...prev]
+      for (const root of suggested) {
+        if (!next.includes(root)) next.push(root)
+      }
+      return next
+    })
+  }
+
+  function toggleAppid(appid: string): void {
+    setSelected((prev) => {
+      const next = new Set(prev)
+      if (next.has(appid)) next.delete(appid)
+      else next.add(appid)
+      return next
+    })
+  }
+
+  async function handleAddSelected(): Promise<void> {
+    const toAdd = candidates.filter((c) => selected.has(c.appid))
+    if (toAdd.length === 0) return
+    setImporting(true)
+    setErrorMsg('')
+    try {
+      for (const c of toAdd) {
+        await window.api.importScannedInstall({
+          appid: c.appid,
+          gameName: c.guessedName,
+          installPath: c.installPath,
+          launchExe: c.suggestedExe || undefined
+        })
+      }
+      onImported()
+      onClose()
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : String(err))
+    } finally {
+      setImporting(false)
+    }
+  }
+
+  const selectedCount = selected.size
+
+  return (
+    <div
+      className="install-scan-modal-backdrop"
+      role="presentation"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose()
+      }}
+    >
+      <div
+        className="install-scan-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="install-scan-title"
+      >
+        <header className="install-scan-modal__header">
+          <h2 id="install-scan-title" className="install-scan-modal__title">
+            Scan for installed games
+          </h2>
+          <button
+            type="button"
+            className="install-scan-modal__close"
+            onClick={onClose}
+            aria-label="Close"
+          >
+            ×
+          </button>
+        </header>
+
+        <p className="install-scan-modal__lead">
+          Looks for <code>steam_appid.txt</code> or numeric folders with{' '}
+          <code>steam_api*.dll</code>. Does not download files or invent achievements.
+        </p>
+
+        <div className="install-scan-modal__roots">
+          <div className="install-scan-modal__roots-head">
+            <span>Scan roots</span>
+            <div className="install-scan-modal__roots-actions">
+              <Chip onClick={() => void handleBrowse()}>Browse…</Chip>
+              <Chip onClick={() => void handleAddSuggestedRoots()}>Add suggested</Chip>
+            </div>
+          </div>
+          {roots.length === 0 ? (
+            <p className="install-scan-modal__empty">
+              No roots yet. Browse a folder or add suggested Games / Steam paths. Configure
+              permanently in Settings → Install scan folders.
+            </p>
+          ) : (
+            <ul className="install-scan-modal__root-list">
+              {roots.map((root) => (
+                <li key={root}>
+                  <span title={root}>{root}</span>
+                  <button
+                    type="button"
+                    className="install-scan-modal__remove"
+                    aria-label={`Remove ${root}`}
+                    onClick={() => setRoots((prev) => prev.filter((r) => r !== root))}
+                  >
+                    ×
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        <label className="install-scan-modal__check">
+          <input
+            type="checkbox"
+            checked={includeIgnored}
+            onChange={(e) => setIncludeIgnored(e.target.checked)}
+          />
+          Include ignored AppIDs
+        </label>
+
+        <div className="install-scan-modal__toolbar">
+          <Chip
+            variant="action"
+            onClick={() => void handleScan()}
+            disabled={scanning || roots.length === 0}
+          >
+            {scanning ? 'Scanning…' : 'Scan'}
+          </Chip>
+          <Chip
+            variant="action"
+            onClick={() => void handleAddSelected()}
+            disabled={importing || selectedCount === 0}
+          >
+            {importing ? 'Adding…' : `Add selected (${selectedCount})`}
+          </Chip>
+        </div>
+
+        {errorMsg && <p className="install-scan-modal__error">{errorMsg}</p>}
+        {statusMsg && !errorMsg && <p className="install-scan-modal__status">{statusMsg}</p>}
+
+        <ul className="install-scan-modal__list" aria-label="Scan results">
+          {candidates.map((c) => (
+            <li key={c.appid} className="install-scan-modal__row">
+              <label className="install-scan-modal__row-label">
+                <input
+                  type="checkbox"
+                  checked={selected.has(c.appid)}
+                  onChange={() => toggleAppid(c.appid)}
+                />
+                <span className="install-scan-modal__row-main">
+                  <span className="install-scan-modal__name">{c.guessedName}</span>
+                  <span className="install-scan-modal__meta">
+                    AppID {c.appid}
+                    {c.alreadyInLibrary ? ' · Already in library' : ''}
+                    {c.ignored ? ' · Ignored' : ''}
+                  </span>
+                  <span className="install-scan-modal__path" title={c.installPath}>
+                    {c.installPath}
+                  </span>
+                </span>
+              </label>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  )
+}

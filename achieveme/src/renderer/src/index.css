@@ -5786,3 +5786,197 @@ button.dashboard-near__row:focus-visible {
   }
 }
 
+
+/* Tools — Scan for installed games modal */
+.install-scan-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+  background: oklch(0% 0 0 / 0.55);
+}
+
+.install-scan-modal {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  width: min(560px, 100%);
+  max-height: min(80vh, 720px);
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-1);
+  box-shadow: 0 16px 48px oklch(0% 0 0 / 0.45);
+  overflow: hidden;
+}
+
+.install-scan-modal__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.install-scan-modal__title {
+  margin: 0;
+  font-family: var(--font-ui);
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.install-scan-modal__close {
+  border: none;
+  background: transparent;
+  color: var(--ink-muted);
+  font-size: 1.25rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 2px 6px;
+}
+
+.install-scan-modal__lead {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--ink-muted);
+  line-height: 1.45;
+}
+
+.install-scan-modal__roots {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  border: 1px solid var(--border-subtle);
+}
+
+.install-scan-modal__roots-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ink-muted);
+}
+
+.install-scan-modal__roots-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.install-scan-modal__empty {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--ink-subtle);
+}
+
+.install-scan-modal__root-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.install-scan-modal__root-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  font-size: 0.75rem;
+  color: var(--ink);
+  word-break: break-all;
+}
+
+.install-scan-modal__remove {
+  border: none;
+  background: transparent;
+  color: var(--ink-muted);
+  cursor: pointer;
+  font-size: 1rem;
+}
+
+.install-scan-modal__check {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 0.8125rem;
+  color: var(--ink-muted);
+}
+
+.install-scan-modal__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.install-scan-modal__error {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--color-error);
+}
+
+.install-scan-modal__status {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--ink-muted);
+}
+
+.install-scan-modal__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  overflow: auto;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.install-scan-modal__row {
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+}
+
+.install-scan-modal__row-label {
+  display: flex;
+  gap: var(--space-3);
+  align-items: flex-start;
+  padding: var(--space-3);
+  cursor: pointer;
+}
+
+.install-scan-modal__row-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.install-scan-modal__name {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.install-scan-modal__meta {
+  font-size: 0.75rem;
+  color: var(--ink-muted);
+}
+
+.install-scan-modal__path {
+  font-size: 0.6875rem;
+  color: var(--ink-subtle);
+  word-break: break-all;
+}
