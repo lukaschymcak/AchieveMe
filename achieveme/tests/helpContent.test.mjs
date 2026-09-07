@@ -198,4 +198,13 @@ describe('helpContent', () => {
     assert.ok(library)
     assert.match((library.paragraphs ?? []).join(' '), /right-click/i)
   })
+
+  it('tools section documents scan for installed games', () => {
+    const section = HELP_SECTIONS.find((s) => s.id === 'tools')
+    assert.ok(section)
+    const body = (section.paragraphs ?? []).join(' ')
+    assert.match(body, /Scan for installed games/i)
+    assert.match(body, /install scan folders|Install scan folders/i)
+    assert.match(body, /steam_appid\.txt/i)
+  })
 })
