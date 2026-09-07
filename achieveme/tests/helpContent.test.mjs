@@ -163,23 +163,23 @@ describe('helpContent', () => {
   })
 
   it('tray section documents installed Setup vs portable login items', () => {
-    assert.match(SETTINGS_HINTS.tray, /installed Setup/i)
+    assert.match(SETTINGS_HINTS.tray, /Setup/i)
     assert.match(SETTINGS_HINTS.tray, /Portable/i)
-    assert.match(TOOLTIPS.settingsTray, /installed Setup/i)
+    assert.match(TOOLTIPS.settingsTray, /Setup/i)
     const section = HELP_SECTIONS.find((s) => s.id === 'tray')
     assert.ok(section)
     const body = [...(section.paragraphs ?? []), ...(section.bullets ?? [])].join(' ')
-    assert.match(body, /installed Setup/i)
+    assert.match(body, /Setup/i)
     assert.match(body, /Portable/i)
-    assert.match(body, /Hide on play|hide.*tracked game/i)
+    assert.match(body, /Hide on play|hide.*(game|tray)/i)
   })
 
-  it('play-sessions section documents path PID tracking and incremental save', () => {
-    assert.match(SETTINGS_HINTS.playSessions, /30s|path\/PID/i)
+  it('play-sessions section documents path tracking and incremental save', () => {
+    assert.match(SETTINGS_HINTS.playSessions, /30s|2s|Play path|install/i)
     const section = HELP_SECTIONS.find((s) => s.id === 'play-sessions')
     assert.ok(section)
     const body = [...(section.paragraphs ?? []), ...(section.bullets ?? [])].join(' ')
-    assert.match(body, /2 seconds|path\/PID|PID/i)
-    assert.match(body, /30 seconds|Incremental/i)
+    assert.match(body, /full path|process name/i)
+    assert.match(body, /30 seconds|30s/i)
   })
 })

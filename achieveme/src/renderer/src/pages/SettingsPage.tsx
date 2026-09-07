@@ -482,16 +482,13 @@ export default function SettingsPage({ page, onNavigate }: Props): React.ReactEl
                 onChange={(e) => toggleSetting('hideToTrayOnGameStart', e.target.checked)}
                 className="settings-page__checkbox"
               />
-              <span className="settings-page__source-name">
-                Hide to tray when a tracked game starts
-              </span>
+              <span className="settings-page__source-name">Hide to tray when a game starts</span>
             </label>
           </div>
           {!loginItemsSupported && (
             <p className="settings-page__note">
-              Windows startup is registered only for the installed Setup. Portable and development
-              builds never add a startup entry and clear one if present. Save on an installed Setup
-              build to apply Launch when Windows starts.
+              Startup launch is Setup-only. Portable and development builds never add a startup
+              entry and clear one if present.
             </p>
           )}
         </section>
@@ -511,7 +508,7 @@ export default function SettingsPage({ page, onNavigate }: Props): React.ReactEl
                 className="settings-page__checkbox"
               />
               <span className="settings-page__source-name">
-                Track playtime for games with an install path or launch exe
+                Track playtime while the game is running
               </span>
             </label>
           </div>

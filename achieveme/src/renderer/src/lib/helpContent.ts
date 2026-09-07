@@ -64,7 +64,7 @@ export const TOOLTIPS = {
   libraryCompletion: 'Average completion percentage across games that have achievements.',
   unlocksPerGame: 'Total unlocked achievements divided by games in your library.',
   playtimeStat:
-    'Tracked playtime for games with an install folder or launch exe when that process is running.',
+    'Hours tracked while the game’s install or Play path is running.',
   hiddenFilter:
     'Toggle descriptions for unearned hidden achievements. Earned hidden achievements always show their text.',
   tierFilter: 'Filter the list by trophy tier. Counts show how many you have earned in that tier.',
@@ -85,13 +85,13 @@ export const TOOLTIPS = {
   settingsNotifications:
     'Unlock toasts use a Steam-style layout with bronze/silver/gold accents by rarity, plus a platinum toast when a game first hits 100%. They fire on live save changes only. Optional sound uses the Windows default chime or a custom .wav/.mp3 with adjustable volume.',
   settingsTray:
-    'Close the window to keep AchieveMe in the system tray while it watches save folders. Launch when Windows starts is registered only for the installed Setup — Save required. Start minimized applies to login launch only. Portable and development builds never register a startup entry. Optionally hide to tray when a tracked game starts.',
+    'Close to tray to keep watching saves. Startup launch is Setup-only (Save). Start minimized is login-only. Portable/dev never register startup. Optional: hide when a game starts.',
   settingsPlaySessions:
-    'Playtime is tracked when a known game executable under the install folder or launch_exe is running (path/PID check every ~2s; saved about every 30s). Session recap appears under Notifications.',
+    'Counts time while the game’s install or Play path is running. Checks about every 2s; saves about every 30s. Session recap is under Notifications.',
   settingsPlaytime:
-    'Playtime uses the install folder and/or launch executable path — not process name alone. Crash-handler and tool executables are ignored.',
+    'Matches the full file path (not the process name). Crash handlers and tools are ignored.',
   settingsSessionRecap:
-    'After a tracked play session of at least one minute, AchieveMe shows time played, unlocks, and XP gained.',
+    'After a play session of at least one minute, shows time played, unlocks, and XP.',
   refreshNews:
     'Refetch popular Steam releases and library announcements, ignoring the one-hour cache. Popularity uses Steam’s popular-wishlist chart (exact wishlist counts are not public).'
 } as const
@@ -167,9 +167,9 @@ export const SETTINGS_HINTS = {
   notifications:
     'Steam-style unlock toasts (rarity accents; platinum at 100%) with optional sound and volume when new achievements appear in save files. Toasts load achievement icons from the on-disk image cache (`achieveme-img://`); missing schema icons use a fallback glyph. Refresh and first library scan never trigger toasts.',
   tray:
-    'Keep AchieveMe in the system tray after closing the window. Launch on Windows startup is available on the installed Setup only (click Save). Start minimized applies to login launch only. Portable and development builds never add a startup entry and clear one if present. Hide to tray when a tracked game starts is optional (Save required).',
+    'Keep AchieveMe in the tray after close. Startup launch is Setup-only (Save). Start minimized is login-only. Portable/dev never register startup. Optional: hide when a game starts (Save).',
   playSessions:
-    'Track playtime for games with an install path or launch exe. Detection is path/PID based (~2s); playtime is saved about every 30s and on session end.',
+    'Counts time while the game’s install or Play path is running (~2s check, ~30s save).',
   customSound:
     'Leave blank to use the Windows default unlock sound. Pick a .wav or .mp3 file for a custom chime. Click Save before Test notification so the new path and volume are used.',
   soundVolume: 'Unlock sound loudness from 0% (silent) to 100% (full). Disabled when Play sound is off.',
@@ -283,7 +283,7 @@ export const HELP_SECTIONS: HelpSection[] = [
     title: 'Notifications',
     paragraphs: [
       'When a save file changes and a new achievement unlocks, AchieveMe shows a Hydra-style toast (centered icon hold → expand from center to measured width → hold → shrink to icon → icon hold → fade). White title + description, rarity border glow; gold rarity / lilac platinum chrome. Unlock toasts use cached achievement icons (`achieveme-img://`); if the schema has no icon or the cache cannot serve one, the toast still appears with a fallback glyph. When a game first reaches 100%, a platinum celebration toast follows. Library Refresh and first launch never spam toasts for existing unlocks. Use Settings → Test notification to cycle through all four skins.',
-      'Optional unlock sound uses the Windows default chime or a custom .wav/.mp3, with a volume slider. After a tracked Add Game play session of at least one minute, a session recap modal summarizes time played, unlocks, and XP. Use Settings → Test session recap to preview with a random library game.'
+      'Optional unlock sound uses the Windows default chime or a custom .wav/.mp3, with a volume slider. After a play session of at least one minute, a session recap summarizes time, unlocks, and XP. Settings → Test session recap previews it.'
     ],
     bullets: [
       'Notifications — Steam-style unlock toasts on live save changes',
@@ -291,7 +291,7 @@ export const HELP_SECTIONS: HelpSection[] = [
       'Sound — default Windows chime or custom .wav/.mp3',
       'Volume — 0–100% unlock sound loudness',
       'Test notification — cycles rarity skins from Settings',
-      'Session recap — modal after play with time, unlocks, and XP',
+      'Session recap — after play (≥1 min): time, unlocks, XP',
       'Test session recap — demo modal for a random library game'
     ]
   },
@@ -299,31 +299,31 @@ export const HELP_SECTIONS: HelpSection[] = [
     id: 'tray',
     title: 'Tray & startup',
     paragraphs: [
-      'Close the window to hide AchieveMe in the system tray — it keeps watching save folders. Use Show from the tray icon to reopen.',
-      'On the installed Setup, you can launch AchieveMe when Windows starts (click Save). With start minimized enabled, a login launch stays in the tray only; opening the app yourself still shows the window.',
-      'Portable and development builds never register a Windows startup entry and clear one if present. Save again from the installed Setup to restore Launch when Windows starts.',
-      'Optionally hide AchieveMe to the tray when a tracked game starts. The window restores when the last tracked session ends (or when a session recap opens).'
+      'Close the window to stay in the tray and keep watching saves. Tray → Show reopens the app.',
+      'Installed Setup only: launch at Windows login (Save). Start minimized keeps a login launch in the tray; opening the app yourself still shows the window.',
+      'Portable and development builds never register startup and clear an existing entry if present.',
+      'Optional: hide to tray when a game starts. The window returns when play ends (or when a session recap opens).'
     ],
     bullets: [
-      'Close to tray — app stays running in the background',
-      'Launch on startup — installed Setup only; Save required',
-      'Start minimized on login — tray only when Windows starts the app',
-      'Portable / npm run dev — never register a startup entry',
-      'Hide on play — optional; only when playtime tracking sees a game process'
+      'Close to tray — keep watching in the background',
+      'Launch on startup — Setup only; Save required',
+      'Start minimized — login launch stays in tray',
+      'Portable / npm run dev — no startup entry',
+      'Hide on play — optional'
     ]
   },
   {
     id: 'play-sessions',
     title: 'Play sessions',
     paragraphs: [
-      'Playtime is tracked for games with an install folder and/or a saved launch executable. AchieveMe matches the running process by PID (when launched from a future launcher hook), full launch path, or an executable under the game folder — not by process name alone.',
-      'Detection runs about every 2 seconds. Playtime is written to the library about every 30 seconds while the game runs, and immediately when the session ends or AchieveMe quits, so a crash no longer loses the whole session.',
-      'After a live session of at least one minute, AchieveMe can show a session recap (time, unlocks, XP). Orphan sessions recovered after a restart do not show a surprise recap.'
+      'Playtime counts while the game’s install folder or Play path is running. Matching uses the full path (and PID when available), not the process name.',
+      'Checks about every 2 seconds. Saves about every 30 seconds while playing, and immediately when the session ends or AchieveMe quits.',
+      'After a live session of at least one minute, a session recap can show time, unlocks, and XP. Sessions recovered after a restart do not show a surprise recap.'
     ],
     bullets: [
-      'Path / PID matching — avoids Game.exe basename collisions',
-      'Incremental save — ~30s while playing; flush on quit',
-      'Session recap — after ≥1 minute when AchieveMe sees the session end'
+      'Full path matching — not process name',
+      'Saves ~every 30s — also on quit',
+      'Session recap — after ≥1 minute of live play'
     ]
   },
   {
