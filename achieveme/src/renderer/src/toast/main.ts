@@ -212,8 +212,8 @@ function renderToast(payload: UnlockToastPayload): void {
     img.className = 'unlock-toast__icon'
     img.src = payload.iconUrl
     img.alt = ''
-    img.width = 57
-    img.height = 57
+    img.width = 72
+    img.height = 72
     img.onerror = () => {
       const fallback = document.createElement('span')
       fallback.className = 'unlock-toast__icon-fallback'

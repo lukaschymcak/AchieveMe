@@ -14,7 +14,7 @@ const {
 } = await import(pathToFileURL(path.join(rootDir, '../src/shared/toastWidthUtils.ts')).href)
 
 test('toast height and pad constants', () => {
-  assert.equal(TOAST_HEIGHT, 120)
+  assert.equal(TOAST_HEIGHT, 132)
   assert.equal(TOAST_ROOT_PAD_X, 12)
   assert.ok(TOAST_MIN_WIDTH < TOAST_MAX_WIDTH)
 })
