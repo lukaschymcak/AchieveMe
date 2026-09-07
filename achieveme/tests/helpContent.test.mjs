@@ -171,5 +171,15 @@ describe('helpContent', () => {
     const body = [...(section.paragraphs ?? []), ...(section.bullets ?? [])].join(' ')
     assert.match(body, /installed Setup/i)
     assert.match(body, /Portable/i)
+    assert.match(body, /Hide on play|hide.*tracked game/i)
+  })
+
+  it('play-sessions section documents path PID tracking and incremental save', () => {
+    assert.match(SETTINGS_HINTS.playSessions, /30s|path\/PID/i)
+    const section = HELP_SECTIONS.find((s) => s.id === 'play-sessions')
+    assert.ok(section)
+    const body = [...(section.paragraphs ?? []), ...(section.bullets ?? [])].join(' ')
+    assert.match(body, /2 seconds|path\/PID|PID/i)
+    assert.match(body, /30 seconds|Incremental/i)
   })
 })

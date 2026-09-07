@@ -85,11 +85,11 @@ export const TOOLTIPS = {
   settingsNotifications:
     'Unlock toasts use a Steam-style layout with bronze/silver/gold accents by rarity, plus a platinum toast when a game first hits 100%. They fire on live save changes only. Optional sound uses the Windows default chime or a custom .wav/.mp3 with adjustable volume.',
   settingsTray:
-    'Close the window to keep AchieveMe in the system tray while it watches save folders. Launch when Windows starts is registered only for the installed Setup — Save required. Start minimized applies to login launch only. Portable and development builds never register a startup entry.',
+    'Close the window to keep AchieveMe in the system tray while it watches save folders. Launch when Windows starts is registered only for the installed Setup — Save required. Start minimized applies to login launch only. Portable and development builds never register a startup entry. Optionally hide to tray when a tracked game starts.',
   settingsPlaySessions:
-    'Playtime is tracked when a known game executable under the resolved game folder is running. Session recap appears under Notifications.',
+    'Playtime is tracked when a known game executable under the install folder or launch_exe is running (path/PID check every ~2s; saved about every 30s). Session recap appears under Notifications.',
   settingsPlaytime:
-    'Playtime is tracked when a known game executable under the resolved game folder (climbed from the Add Game DLL path) is running.',
+    'Playtime uses the install folder and/or launch executable path — not process name alone. Crash-handler and tool executables are ignored.',
   settingsSessionRecap:
     'After a tracked play session of at least one minute, AchieveMe shows time played, unlocks, and XP gained.',
   refreshNews:
@@ -167,9 +167,9 @@ export const SETTINGS_HINTS = {
   notifications:
     'Steam-style unlock toasts (rarity accents; platinum at 100%) with optional sound and volume when new achievements appear in save files. Toasts load achievement icons from the on-disk image cache (`achieveme-img://`); missing schema icons use a fallback glyph. Refresh and first library scan never trigger toasts.',
   tray:
-    'Keep AchieveMe in the system tray after closing the window. Launch on Windows startup is available on the installed Setup only (click Save). Start minimized applies to login launch only. Portable and development builds never add a startup entry and clear one if present.',
+    'Keep AchieveMe in the system tray after closing the window. Launch on Windows startup is available on the installed Setup only (click Save). Start minimized applies to login launch only. Portable and development builds never add a startup entry and clear one if present. Hide to tray when a tracked game starts is optional (Save required).',
   playSessions:
-    'Track playtime for games added via the Add Game wizard when their executable is running.',
+    'Track playtime for games with an install path or launch exe. Detection is path/PID based (~2s); playtime is saved about every 30s and on session end.',
   customSound:
     'Leave blank to use the Windows default unlock sound. Pick a .wav or .mp3 file for a custom chime. Click Save before Test notification so the new path and volume are used.',
   soundVolume: 'Unlock sound loudness from 0% (silent) to 100% (full). Disabled when Play sound is off.',
@@ -301,22 +301,30 @@ export const HELP_SECTIONS: HelpSection[] = [
     paragraphs: [
       'Close the window to hide AchieveMe in the system tray — it keeps watching save folders. Use Show from the tray icon to reopen.',
       'On the installed Setup, you can launch AchieveMe when Windows starts (click Save). With start minimized enabled, a login launch stays in the tray only; opening the app yourself still shows the window.',
-      'Portable and development builds never register a Windows startup entry and clear one if present. Save again from the installed Setup to restore Launch when Windows starts.'
+      'Portable and development builds never register a Windows startup entry and clear one if present. Save again from the installed Setup to restore Launch when Windows starts.',
+      'Optionally hide AchieveMe to the tray when a tracked game starts. The window restores when the last tracked session ends (or when a session recap opens).'
     ],
     bullets: [
       'Close to tray — app stays running in the background',
       'Launch on startup — installed Setup only; Save required',
       'Start minimized on login — tray only when Windows starts the app',
-      'Portable / npm run dev — never register a startup entry'
+      'Portable / npm run dev — never register a startup entry',
+      'Hide on play — optional; only when playtime tracking sees a game process'
     ]
   },
   {
     id: 'play-sessions',
     title: 'Play sessions',
     paragraphs: [
-      'Playtime is tracked for games set up via Add Game when a known executable under the resolved game folder is running.'
+      'Playtime is tracked for games with an install folder and/or a saved launch executable. AchieveMe matches the running process by PID (when launched from a future launcher hook), full launch path, or an executable under the game folder — not by process name alone.',
+      'Detection runs about every 2 seconds. Playtime is written to the library about every 30 seconds while the game runs, and immediately when the session ends or AchieveMe quits, so a crash no longer loses the whole session.',
+      'After a live session of at least one minute, AchieveMe can show a session recap (time, unlocks, XP). Orphan sessions recovered after a restart do not show a surprise recap.'
     ],
-    bullets: ['Playtime — tracks hours for games added via Add Game wizard']
+    bullets: [
+      'Path / PID matching — avoids Game.exe basename collisions',
+      'Incremental save — ~30s while playing; flush on quit',
+      'Session recap — after ≥1 minute when AchieveMe sees the session end'
+    ]
   },
   {
     id: 'game-detail',
