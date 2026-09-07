@@ -1,7 +1,8 @@
-import { spawn } from 'node:child_process'
+import { spawn, type ChildProcess } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
 import type { GameExecutable } from '../../shared/types'
+import { rankGameExecutables } from '../../shared/gameExecutableRanking.ts'
 
 /** Error code thrown when Play cannot launch until the user picks an exe. */
 export const LAUNCH_NEEDS_EXE = 'LAUNCH_NEEDS_EXE' as const
@@ -184,11 +185,13 @@ export function resolveGameRoot(installPath: string, gameName: string): GameRoot
 
 /**
  * Recursively lists `.exe` files under an install / game-root folder.
+ * When `gameName` is provided, results are ranked (suggested first).
  *
  * @param installPath - Absolute directory to scan.
+ * @param gameName - Optional library title for ranking.
  * @returns Executable entries with display name and relative paths.
  */
-export function listInstallExecutables(installPath: string): GameExecutable[] {
+export function listInstallExecutables(installPath: string, gameName?: string): GameExecutable[] {
   const resolved = path.resolve(installPath)
   if (!fs.existsSync(resolved) || !fs.statSync(resolved).isDirectory()) {
     return []
@@ -230,10 +233,13 @@ export function listInstallExecutables(installPath: string): GameExecutable[] {
 
   walk(resolved, '')
 
-  results.sort((a, b) =>
-    a.relativePath.localeCompare(b.relativePath, undefined, { sensitivity: 'base' })
-  )
-  return results
+  const ranked = rankGameExecutables(results, gameName?.trim() ?? '')
+  return ranked.map(({ name, relativePath, absolutePath, suggested }) => ({
+    name,
+    relativePath,
+    absolutePath,
+    suggested
+  }))
 }
 
 /**
@@ -254,23 +260,41 @@ export function listExeBaseNamesForPlaytime(installPath: string, gameName?: stri
     }
   }
 
-  return listInstallExecutables(scanRoot).map((exe) => path.parse(exe.name).name.toLowerCase())
+  return listInstallExecutables(scanRoot, gameName).map((exe) =>
+    path.parse(exe.name).name.toLowerCase()
+  )
+}
+
+/** Result of launching a game executable. */
+export type LaunchGameExeResult = {
+  readonly pid?: number
+  readonly usedOpenPath: boolean
+}
+
+/** Options for {@link launchGameExe}. */
+export type LaunchGameExeOptions = {
+  /** Argv after the executable (from tokenizeLaunchArgs). */
+  args?: string[]
+  /** ShellExecute fallback used only on spawn EACCES. */
+  openPath?: (filePath: string) => Promise<string>
+  /** Test seam replacing `child_process.spawn`. */
+  spawnImpl?: typeof spawn
 }
 
 /**
- * Spawns a game executable detached from the AchieveMe process.
- * Prefers ShellExecute (`openPath`) so Windows can show UAC for
- * "Run as administrator" executables. Falls back to `spawn` with an
- * error listener so EACCES never becomes an uncaught main-process crash.
+ * Launches a game executable detached from AchieveMe.
+ * Prefers `spawn` (args + PID). On EACCES only, falls back to ShellExecute
+ * (`openPath`) so UAC admin exes still start — args are ignored on that path.
  *
  * @param absolutePath - Absolute path to a `.exe` file.
- * @param openPath - Optional ShellExecute-style opener (Electron `shell.openPath`).
+ * @param options - Args, openPath fallback, optional spawn seam.
  * @throws If the file is missing, is not an `.exe`, or launch fails.
  */
 export async function launchGameExe(
   absolutePath: string,
-  openPath?: (filePath: string) => Promise<string>
-): Promise<void> {
+  options: LaunchGameExeOptions = {}
+): Promise<LaunchGameExeResult> {
+  const { args = [], openPath, spawnImpl = spawn } = options
   const resolved = path.resolve(absolutePath)
   const lower = resolved.toLowerCase()
   if (!lower.endsWith('.exe')) {
@@ -280,31 +304,70 @@ export async function launchGameExe(
     throw new Error(`Executable was not found: ${resolved}`)
   }
 
-  if (openPath) {
-    const shellError = await openPath(resolved)
-    if (shellError?.trim()) {
-      throw new Error(shellError.trim())
+  try {
+    const pid = await spawnDetached(resolved, args, spawnImpl)
+    return { pid, usedOpenPath: false }
+  } catch (err) {
+    if (!isEaccesError(err) || !openPath) {
+      throw err instanceof Error ? err : new Error(String(err))
     }
-    return
   }
 
-  await new Promise<void>((resolve, reject) => {
-    const child = spawn(resolved, [], {
-      cwd: path.dirname(resolved),
-      detached: true,
-      stdio: 'ignore',
-      windowsHide: false
-    })
+  const shellError = await openPath(resolved)
+  if (shellError?.trim()) {
+    throw new Error(shellError.trim())
+  }
+  return { usedOpenPath: true }
+}
+
+/**
+ * Spawns a detached child and resolves with its PID on successful spawn.
+ *
+ * @param resolved - Absolute exe path
+ * @param args - Argv
+ * @param spawnImpl - spawn implementation
+ */
+function spawnDetached(
+  resolved: string,
+  args: string[],
+  spawnImpl: typeof spawn
+): Promise<number | undefined> {
+  return new Promise((resolve, reject) => {
+    let child: ChildProcess
+    try {
+      child = spawnImpl(resolved, args, {
+        cwd: path.dirname(resolved),
+        detached: true,
+        stdio: 'ignore',
+        windowsHide: false
+      })
+    } catch (err) {
+      reject(new Error(formatSpawnLaunchError(resolved, err)))
+      return
+    }
 
     child.on('error', (err) => {
       reject(new Error(formatSpawnLaunchError(resolved, err)))
     })
 
     child.on('spawn', () => {
+      const pid = typeof child.pid === 'number' && child.pid > 0 ? child.pid : undefined
       child.unref()
-      resolve()
+      resolve(pid)
     })
   })
+}
+
+/**
+ * @param err - Unknown spawn failure
+ */
+function isEaccesError(err: unknown): boolean {
+  const code =
+    err && typeof err === 'object' && 'code' in err
+      ? String((err as { code?: unknown }).code ?? '')
+      : ''
+  const message = err instanceof Error ? err.message : String(err)
+  return code === 'EACCES' || /\bEACCES\b/i.test(message)
 }
 
 /**

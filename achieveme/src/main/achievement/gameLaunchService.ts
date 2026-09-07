@@ -3,11 +3,14 @@ import fs from 'node:fs'
 import { shell } from 'electron'
 import type Database from 'better-sqlite3'
 import type { ResolveGameExecutablesResult, SetGameLaunchConfigRequest } from '../../shared/types'
+import { tokenizeLaunchArgs } from '../../shared/gameExecutableRanking.ts'
 import {
   getGame,
   updateGameInstallPath,
+  updateGameLaunchArgs,
   updateGameLaunchExe
 } from '../db/repository'
+import { registerLaunchedPid } from './playtimeService'
 import {
   LAUNCH_NEEDS_EXE,
   launchGameExe,
@@ -34,11 +37,14 @@ export function setGameLaunchConfig(
   db: Database.Database,
   request: SetGameLaunchConfigRequest
 ): void {
-  const { appid, installPath, launchExe } = request
+  const { appid, installPath, launchExe, launchArgs } = request
   if (installPath !== undefined && installPath.trim()) {
     updateGameInstallPath(db, appid, path.resolve(installPath.trim()))
   }
   updateGameLaunchExe(db, appid, launchExe.trim() ? path.resolve(launchExe.trim()) : '')
+  if (launchArgs !== undefined) {
+    updateGameLaunchArgs(db, appid, launchArgs)
+  }
 }
 
 /**
@@ -53,6 +59,11 @@ export function resolveGameExecutables(
   appid: string,
   acceptedRoot?: string
 ): ResolveGameExecutablesResult {
+  const game = getGame(db, appid)
+  if (!game) {
+    throw new Error(`Game not found: ${appid}`)
+  }
+
   if (acceptedRoot?.trim()) {
     const root = path.resolve(acceptedRoot.trim())
     if (!fs.existsSync(root) || !fs.statSync(root).isDirectory()) {
@@ -61,13 +72,8 @@ export function resolveGameExecutables(
     return {
       status: 'ready',
       root,
-      executables: listInstallExecutables(root)
+      executables: listInstallExecutables(root, game.name)
     }
-  }
-
-  const game = getGame(db, appid)
-  if (!game) {
-    throw new Error(`Game not found: ${appid}`)
   }
 
   const installPath = game.install_path?.trim() ?? ''
@@ -80,7 +86,7 @@ export function resolveGameExecutables(
     return {
       status: 'ready',
       root: resolved.root,
-      executables: listInstallExecutables(resolved.root)
+      executables: listInstallExecutables(resolved.root, game.name)
     }
   }
   if (resolved.status === 'unsure') {
@@ -90,8 +96,8 @@ export function resolveGameExecutables(
 }
 
 /**
- * Launches the game using its saved `launch_exe`, or signals that a pick is needed.
- * Uses ShellExecute so Windows can elevate admin-required executables via UAC.
+ * Launches the game using its saved `launch_exe` and `launch_args`, or signals that a pick is needed.
+ * Prefers spawn (PID → playtime). Falls back to ShellExecute on EACCES.
  *
  * @param db - Open SQLite database.
  * @param appid - Steam AppID.
@@ -110,5 +116,12 @@ export async function launchGame(db: Database.Database, appid: string): Promise<
     throw err
   }
 
-  await launchGameExe(launchExe, (filePath) => shell.openPath(filePath))
+  const args = tokenizeLaunchArgs(game.launch_args ?? '')
+  const result = await launchGameExe(launchExe, {
+    args,
+    openPath: (filePath) => shell.openPath(filePath)
+  })
+  if (result.pid != null) {
+    registerLaunchedPid(appid, result.pid)
+  }
 }

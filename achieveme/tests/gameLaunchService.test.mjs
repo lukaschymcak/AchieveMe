@@ -1,5 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
+import { EventEmitter } from 'node:events'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
@@ -30,12 +31,27 @@ test('listInstallExecutables finds nested exes with relative paths', () => {
     fs.writeFileSync(path.join(tmp, 'sub', 'Nested.exe'), 'x')
 
     const list = listInstallExecutables(tmp)
-    assert.deepEqual(
-      list.map((e) => e.relativePath.replace(/\\/g, '/')),
-      ['Alpha.exe', 'sub/Nested.exe', 'Zebra.exe']
-    )
-    assert.equal(list[0].absolutePath, path.join(tmp, 'Alpha.exe'))
-    assert.equal(list.find((e) => e.name === 'Nested.exe').relativePath.replace(/\\/g, '/'), 'sub/Nested.exe')
+    const paths = list.map((e) => e.relativePath.replace(/\\/g, '/'))
+    assert.ok(paths.includes('Alpha.exe'))
+    assert.ok(paths.includes('Zebra.exe'))
+    assert.ok(paths.includes('sub/Nested.exe'))
+    assert.equal(list.length, 3)
+    assert.equal(list.find((e) => e.name === 'Nested.exe')?.relativePath.replace(/\\/g, '/'), 'sub/Nested.exe')
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true })
+  }
+})
+
+test('listInstallExecutables ranks title exe above crash handler', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'achieveme-launch-'))
+  try {
+    fs.writeFileSync(path.join(tmp, 'UnityCrashHandler64.exe'), 'x')
+    fs.writeFileSync(path.join(tmp, 'EldenRing.exe'), 'x')
+    const list = listInstallExecutables(tmp, 'Elden Ring')
+    assert.equal(list[0].name, 'EldenRing.exe')
+    assert.equal(list[0].suggested, true)
+    const crash = list.find((e) => e.name === 'UnityCrashHandler64.exe')
+    assert.equal(crash?.suggested, false)
   } finally {
     fs.rmSync(tmp, { recursive: true, force: true })
   }
@@ -102,29 +118,82 @@ test('launchGameExe throws when path is not an exe', async () => {
   }
 })
 
-test('launchGameExe uses openPath when provided', async () => {
+test('launchGameExe spawn-first returns pid and passes args', async () => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'achieveme-launch-'))
   try {
     const exe = path.join(tmp, 'Game.exe')
     fs.writeFileSync(exe, 'x')
-    let seen = ''
-    await launchGameExe(exe, async (p) => {
-      seen = p
-      return ''
+    let seenArgs
+    let seenFile
+    const result = await launchGameExe(exe, {
+      args: ['-windowed'],
+      spawnImpl: (file, args) => {
+        seenFile = file
+        seenArgs = args
+        const child = new EventEmitter()
+        child.pid = 4242
+        child.unref = () => {}
+        queueMicrotask(() => child.emit('spawn'))
+        return child
+      }
     })
-    assert.equal(seen, path.resolve(exe))
+    assert.equal(seenFile, path.resolve(exe))
+    assert.deepEqual(seenArgs, ['-windowed'])
+    assert.equal(result.pid, 4242)
+    assert.equal(result.usedOpenPath, false)
   } finally {
     fs.rmSync(tmp, { recursive: true, force: true })
   }
 })
 
-test('launchGameExe rejects when openPath returns an error string', async () => {
+test('launchGameExe falls back to openPath on EACCES', async () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'achieveme-launch-'))
+  try {
+    const exe = path.join(tmp, 'Game.exe')
+    fs.writeFileSync(exe, 'x')
+    let openPathSeen = ''
+    const result = await launchGameExe(exe, {
+      args: ['-ignored'],
+      openPath: async (p) => {
+        openPathSeen = p
+        return ''
+      },
+      spawnImpl: () => {
+        const child = new EventEmitter()
+        child.pid = undefined
+        child.unref = () => {}
+        queueMicrotask(() =>
+          child.emit('error', Object.assign(new Error('spawn EACCES'), { code: 'EACCES' }))
+        )
+        return child
+      }
+    })
+    assert.equal(openPathSeen, path.resolve(exe))
+    assert.equal(result.usedOpenPath, true)
+    assert.equal(result.pid, undefined)
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true })
+  }
+})
+
+test('launchGameExe rejects when openPath returns an error string after EACCES', async () => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'achieveme-launch-'))
   try {
     const exe = path.join(tmp, 'Game.exe')
     fs.writeFileSync(exe, 'x')
     await assert.rejects(
-      () => launchGameExe(exe, async () => 'Failed to open'),
+      () =>
+        launchGameExe(exe, {
+          openPath: async () => 'Failed to open',
+          spawnImpl: () => {
+            const child = new EventEmitter()
+            child.unref = () => {}
+            queueMicrotask(() =>
+              child.emit('error', Object.assign(new Error('spawn EACCES'), { code: 'EACCES' }))
+            )
+            return child
+          }
+        }),
       /Failed to open/
     )
   } finally {
