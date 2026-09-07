@@ -128,12 +128,18 @@ export default function InstalledGamesScanModal({
     try {
       for (const c of toAdd) {
         const name = c.guessedName
-        await window.api.importScannedInstall({
-          appid: c.appid,
-          gameName: name,
-          installPath: c.installPath,
-          launchExe: c.suggestedExe || undefined
-        })
+        try {
+          await window.api.importScannedInstall({
+            appid: c.appid,
+            gameName: name,
+            installPath: c.installPath,
+            launchExe: c.suggestedExe || undefined
+          })
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err)
+          errors.push(`${name}: ${message}`)
+          continue
+        }
         setStatusMsg(`Fetching Hubcap for ${name}…`)
         try {
           const channel = `manifest:scan:${crypto.randomUUID()}`
@@ -169,11 +175,9 @@ export default function InstalledGamesScanModal({
       setBatchErrors(errors)
       setPickerQueue(queue)
       setPickerIndex(0)
-      onImported()
       if (queue.length === 0) {
-        if (errors.length > 0) {
-          setErrorMsg(errors.join('\n'))
-        } else {
+        onImported()
+        if (errors.length === 0) {
           setStatusMsg(
             `Added ${toAdd.length} game${toAdd.length === 1 ? '' : 's'} with manifest GIDs.`
           )
