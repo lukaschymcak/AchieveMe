@@ -139,7 +139,7 @@ contextBridge.exposeInMainWorld('api', {
   launchGame: (appid: string): Promise<void> =>
     ipcRenderer.invoke('launch-game', appid),
 
-  openPath: (absolutePath: string): Promise<void> =>
+  openPath: (absolutePath: string | string[]): Promise<void> =>
     ipcRenderer.invoke('open-path', absolutePath),
 
   browseSteamlessFolder: (): Promise<string | null> =>

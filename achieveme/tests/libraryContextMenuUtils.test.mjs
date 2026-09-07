@@ -57,3 +57,19 @@ test('dirnameOfPath handles mixed separators', () => {
   assert.equal(dirnameOfPath('D:\\a\\b\\c.exe'), 'D:\\a\\b')
   assert.equal(dirnameOfPath('D:/a/b.exe'), 'D:\\a')
 })
+
+test('listLibraryOpenFolderCandidates orders install then exe dirname', async () => {
+  const { listLibraryOpenFolderCandidates } = await import(
+    pathToFileURL(path.join(rootDir, '../src/shared/libraryContextMenuUtils.ts')).href
+  )
+  assert.deepEqual(
+    listLibraryOpenFolderCandidates('D:\\Games\\A', 'D:\\Games\\A\\bin\\Game.exe'),
+    ['D:\\Games\\A', 'D:\\Games\\A\\bin']
+  )
+  assert.deepEqual(listLibraryOpenFolderCandidates('', 'D:\\Games\\A\\Game.exe'), [
+    'D:\\Games\\A'
+  ])
+  assert.deepEqual(listLibraryOpenFolderCandidates('D:\\Games\\A', 'D:\\Games\\A\\Game.exe'), [
+    'D:\\Games\\A'
+  ])
+})

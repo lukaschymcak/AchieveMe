@@ -2,6 +2,7 @@ import { ipcMain, dialog, BrowserWindow, shell } from 'electron'
 import fs from 'node:fs'
 import https from 'node:https'
 import path from 'node:path'
+import { execFile } from 'node:child_process'
 import { app } from 'electron'
 import { getDb } from '../db/database'
 import {
@@ -138,6 +139,33 @@ function resolveDepotOutputDir(installPath: string, gameName: string): string {
   if (resolved.status === 'confident') return resolved.root
   if (resolved.status === 'unsure') return resolved.candidatePath
   return path.resolve(installPath)
+}
+
+/**
+ * Opens a directory in the OS file manager. On Windows, prefer explorer.exe because
+ * shell.openPath is unreliable for folders (often no window / opens behind Electron).
+ *
+ * @param folder - Absolute existing directory path
+ */
+async function openFolderInFileManager(folder: string): Promise<void> {
+  if (process.platform === 'win32') {
+    await new Promise<void>((resolve, reject) => {
+      execFile('explorer.exe', [folder], (error) => {
+        if (error && (error as NodeJS.ErrnoException).code === 'ENOENT') {
+          reject(new Error('explorer.exe was not found.'))
+          return
+        }
+        // explorer.exe often exits with code 1 even when it opened the folder
+        resolve()
+      })
+    })
+    return
+  }
+
+  const err = await shell.openPath(folder)
+  if (err?.trim()) {
+    throw new Error(err.trim())
+  }
 }
 
 export function registerIpcHandlers(): void {
@@ -472,27 +500,42 @@ export function registerIpcHandlers(): void {
   })
 
   /**
-   * Opens a folder in the OS file manager (Explorer). Accepts a directory or file path;
-   * files open their parent directory.
+   * Opens a folder in the OS file manager (Explorer). Accepts one path or an ordered
+   * list of candidates (first existing wins). Files open their parent directory.
    */
-  ipcMain.handle('open-path', async (_event, targetPath: string): Promise<void> => {
-    const normalized = normalizeOpenableAbsolutePath(String(targetPath ?? ''))
-    if (!normalized) {
-      throw new Error('Invalid path.')
+  ipcMain.handle(
+    'open-path',
+    async (_event, targetPath: string | string[]): Promise<void> => {
+      const rawList = Array.isArray(targetPath) ? targetPath : [targetPath]
+      const candidates = rawList
+        .map((value) => normalizeOpenableAbsolutePath(String(value ?? '')))
+        .filter((value): value is string => Boolean(value))
+
+      if (candidates.length === 0) {
+        throw new Error('Invalid path.')
+      }
+
+      let lastMissing = ''
+      for (const candidate of candidates) {
+        const resolved = path.resolve(candidate)
+        if (!fs.existsSync(resolved)) {
+          lastMissing = resolved
+          continue
+        }
+        const folder = fs.statSync(resolved).isDirectory()
+          ? resolved
+          : dirnameOfPath(resolved)
+        if (!folder || !fs.existsSync(folder)) {
+          lastMissing = folder || resolved
+          continue
+        }
+        await openFolderInFileManager(folder)
+        return
+      }
+
+      throw new Error(`Path was not found: ${lastMissing || candidates[0]}`)
     }
-    const resolved = path.resolve(normalized)
-    if (!fs.existsSync(resolved)) {
-      throw new Error(`Path was not found: ${resolved}`)
-    }
-    const folder = fs.statSync(resolved).isDirectory() ? resolved : dirnameOfPath(resolved)
-    if (!folder || !fs.existsSync(folder)) {
-      throw new Error(`Folder was not found: ${folder || resolved}`)
-    }
-    const err = await shell.openPath(folder)
-    if (err?.trim()) {
-      throw new Error(err.trim())
-    }
-  })
+  )
 
   ipcMain.handle('browse-steamless-folder', async (): Promise<string | null> => {
     const { canceled, filePaths } = await dialog.showOpenDialog({

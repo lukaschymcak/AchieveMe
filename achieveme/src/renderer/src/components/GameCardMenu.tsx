@@ -73,10 +73,10 @@ export default function GameCardMenu({
 
   useEffect(() => {
     function handlePointerDown(e: PointerEvent): void {
-      const target = e.target as Node | null
-      if (panelRef.current && target && !panelRef.current.contains(target)) {
-        onClose()
-      }
+      const target = e.target
+      if (!(target instanceof Element)) return
+      if (target.closest('[data-library-game-menu]')) return
+      onClose()
     }
     window.addEventListener('pointerdown', handlePointerDown, true)
     return () => window.removeEventListener('pointerdown', handlePointerDown, true)

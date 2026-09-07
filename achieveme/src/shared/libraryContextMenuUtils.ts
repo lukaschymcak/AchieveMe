@@ -14,14 +14,43 @@ export const resolveLibraryOpenFolder = (
   installPath: string,
   launchExe: string
 ): string | null => {
+  const candidates = listLibraryOpenFolderCandidates(installPath, launchExe)
+  return candidates[0] ?? null
+}
+
+/**
+ * Ordered folder candidates for Open folder (install path first, then exe dirname).
+ * Main tries each until one exists on disk.
+ *
+ * @param installPath - Stored install / DLL folder
+ * @param launchExe - Absolute Play executable path
+ */
+export const listLibraryOpenFolderCandidates = (
+  installPath: string,
+  launchExe: string
+): string[] => {
+  const out: string[] = []
+  const seen = new Set<string>()
+
+  const push = (value: string): void => {
+    const normalized = normalizeFolderPath(value)
+    if (!normalized) return
+    const key = normalized.toLowerCase()
+    if (seen.has(key)) return
+    seen.add(key)
+    out.push(normalized)
+  }
+
   const install = installPath.trim()
-  if (install) return normalizeFolderPath(install)
+  if (install) push(install)
 
   const exe = launchExe.trim()
-  if (!exe) return null
+  if (exe) {
+    const dir = dirnameOfPath(exe)
+    if (dir) push(dir)
+  }
 
-  const dir = dirnameOfPath(exe)
-  return dir ? normalizeFolderPath(dir) : null
+  return out
 }
 
 /**
@@ -31,7 +60,7 @@ export const resolveLibraryOpenFolder = (
  * @param launchExe - Stored launch exe
  */
 export const shouldShowOpenFolder = (installPath: string, launchExe: string): boolean =>
-  resolveLibraryOpenFolder(installPath, launchExe) !== null
+  listLibraryOpenFolderCandidates(installPath, launchExe).length > 0
 
 /**
  * Label for the Play menu item / button.

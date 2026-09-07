@@ -24,7 +24,7 @@ import type { AppPage } from '../lib/appNavigation'
 import { filterAndSortGames, type SortOption } from '../lib/libraryUtils'
 import { EMPTY_STATES, TOOLTIPS } from '../lib/helpContent'
 import {
-  resolveLibraryOpenFolder,
+  listLibraryOpenFolderCandidates,
   shouldShowOpenFolder
 } from '../../../shared/libraryContextMenuUtils'
 
@@ -188,13 +188,20 @@ export default function LibraryPage({
   }
 
   async function handleOpenFolder(game: GameSummary): Promise<void> {
-    const folder = resolveLibraryOpenFolder(game.install_path ?? '', game.launch_exe ?? '')
-    if (!folder) return
+    const candidates = listLibraryOpenFolderCandidates(
+      game.install_path ?? '',
+      game.launch_exe ?? ''
+    )
+    if (candidates.length === 0) return
+    if (typeof window.api.openPath !== 'function') {
+      console.error('Open folder failed: window.api.openPath is unavailable (restart the app).')
+      return
+    }
     try {
-      await window.api.openPath(folder)
+      await window.api.openPath(candidates)
       closeMenu()
-    } catch {
-      // Keep menu open; path may be missing on disk
+    } catch (err) {
+      console.error('Open folder failed:', err)
     }
   }
 
