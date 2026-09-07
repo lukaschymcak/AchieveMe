@@ -319,6 +319,15 @@ export interface SteamSearchResult {
   imageUrl: string | null
 }
 
+/** Steam Store hunter stats for Game Detail (HLTB deferred). */
+export interface GameHunterStats {
+  readonly reviewPercent: number | null
+  readonly reviewCount: number | null
+  readonly metacritic: number | null
+  /** True when at least one display field is present. */
+  readonly hasAny: boolean
+}
+
 export interface GoldbergApplyRequest {
   appid: string
   dllPath: string
