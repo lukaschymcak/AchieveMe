@@ -122,6 +122,7 @@ export default function InstalledGamesScanModal({
     setImporting(true)
     setErrorMsg('')
     setStatusMsg('')
+    setBatchErrors([])
     const errors: string[] = []
     const queue: PickerQueueItem[] = []
     try {
