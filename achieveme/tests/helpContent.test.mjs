@@ -16,7 +16,9 @@ const {
   EMPTY_STATES,
   getEmptyAchievementsMessage,
   DELETE_CONFIRM,
-  SETTINGS_HINTS
+  SETTINGS_HINTS,
+  FIRST_RUN,
+  LONG_PRESS_HINT
 } = helpContent
 
 describe('helpContent', () => {
@@ -186,5 +188,14 @@ describe('helpContent', () => {
     const body = [...(section.paragraphs ?? []), ...(section.bullets ?? [])].join(' ')
     assert.match(body, /full path|process name/i)
     assert.match(body, /30 seconds|30s/i)
+  })
+
+  it('coach copy teaches right-click for library game actions', () => {
+    assert.match(FIRST_RUN.bullets.join(' '), /right-click/i)
+    assert.match(LONG_PRESS_HINT.title, /right-click/i)
+    assert.match(LONG_PRESS_HINT.body, /right-click/i)
+    const library = HELP_SECTIONS.find((s) => s.id === 'library')
+    assert.ok(library)
+    assert.match((library.paragraphs ?? []).join(' '), /right-click/i)
   })
 })

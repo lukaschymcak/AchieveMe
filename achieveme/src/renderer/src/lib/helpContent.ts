@@ -143,14 +143,14 @@ export const FIRST_RUN = {
     'Set a Steam Web API key to show achievement names, icons, and descriptions.',
     'Games appear automatically when save folders are found — click Refresh to rescan.',
     'Progress updates live when save files change; use Refresh to force a full resync.',
-    'Hold a library card (~0.5s) for per-game actions: Open, Refresh, or Delete.'
+    'Hold a library card (~0.5s) or right-click for per-game actions: Play, Open, Open folder, Refresh, or Delete.'
   ],
   dismiss: 'Got it'
 } as const
 
 export const LONG_PRESS_HINT = {
-  title: 'Tip: long-press a game card',
-  body: 'Click to open details. Hold about half a second for Open, Refresh (this game only), or Delete.',
+  title: 'Tip: right-click a game',
+  body: 'Click to open details. Right-click (or hold ~0.5s) for Play, Open, Open folder, Refresh, or Delete.',
   dismiss: 'Got it'
 } as const
 
@@ -255,7 +255,7 @@ export const HELP_SECTIONS: HelpSection[] = [
     paragraphs: [
       'The file watcher updates the library within about a second when achievement save files change on disk. No Refresh needed during normal play.',
       'Library Refresh rescans all sources, re-reads every save file, refetches Steam metadata (bypassing cache), and removes games whose saves are gone.',
-      'Game detail Refresh does the same full-library sync. For one game only, long-press its card → Refresh.'
+      'Game detail Refresh does the same full-library sync. For one game only, right-click its card → Refresh.'
     ]
   },
   {
@@ -270,7 +270,9 @@ export const HELP_SECTIONS: HelpSection[] = [
   {
     id: 'library',
     title: 'Library',
-    paragraphs: ['Click a card to open game details. Hold ~0.5 seconds for Open, Refresh, or Delete.'],
+    paragraphs: [
+      'Click a card to open game details. Right-click (or hold ~0.5s, or Shift+F10) for Play, Open, Open folder, Refresh, or Delete.'
+    ],
     bullets: [
       'Search — filter by game name',
       'Least / Most / Recent — sort by completion, unlock count, or last unlock',
@@ -417,7 +419,7 @@ export const HELP_SECTIONS: HelpSection[] = [
       'Game on disk missing from library? Tools → Import existing folder (Hubcap GIDs, no re-download).',
       'Save backups? Link Ludusavi in Settings → Save backups. Library titles only; floppy on Game Detail chooses Back up (keeps 5 full snapshots when saves change) or Install backup (pick a snapshot). Not in Ludusavi means no matching Steam AppID. Install overwrites current saves.',
       'Live updates? Save file edits propagate in ~1s via the file watcher.',
-      'Keyboard: Enter/Space on a focused card opens it; Escape closes the long-press menu.',
+      'Keyboard: Enter/Space on a focused card opens it; ContextMenu / Shift+F10 opens actions; Escape closes the menu.',
       'Privacy: data stays local (SQLite + userData, including cached cover/hero/icon images). API key in settings.json. Hidden descriptions may fetch from SteamDB.'
     ]
   }
