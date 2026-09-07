@@ -4,7 +4,10 @@ import {
   formatToastXp,
   toastXpForTier
 } from '../../../shared/unlockToastUtils'
-import { toastWindowWidthFromCard } from '../../../shared/toastWidthUtils'
+import {
+  clampToastPanelWidth,
+  toastWindowWidthFromCard
+} from '../../../shared/toastWidthUtils'
 
 declare global {
   interface Window {
@@ -18,17 +21,21 @@ declare global {
   }
 }
 
-const ICON_HOLD_MS = 750
-const PULSE_AT_MS = 60
-const EXPAND_MS = 700
-const SHRINK_MS = 700
-const TEXT_OUT_MS = 320
-const VISIBLE_MS = 4800
-const EXIT_MS = 280
+/** Scale-in duration — icon hold starts after this settles. */
+const SCALE_IN_MS = 350
+/** Centered icon hold before expand / after shrink. */
+const ICON_HOLD_MS = 500
+const EXPAND_MS = 450
+const SHRINK_MS = 450
+const VISIBLE_MS = 4000
+const EXIT_MS = 450
 const XP_COUNT_MS = 600
+const TEXT_OUT_MS = 280
+/** Time from --play until expand (scale-in + settled icon hold). */
+const PRE_EXPAND_MS = SCALE_IN_MS + ICON_HOLD_MS
 
 const TEXT_FADE_SELECTOR =
-  '.unlock-toast__name, .unlock-toast__description, .unlock-toast__points'
+  '.unlock-toast__name, .unlock-toast__description, .unlock-toast__points, .unlock-toast__body'
 
 const rootEl = document.getElementById('root')
 if (!rootEl) {
@@ -38,21 +45,18 @@ const root: HTMLElement = rootEl
 
 let hideTimer: ReturnType<typeof setTimeout> | null = null
 let exitTimer: ReturnType<typeof setTimeout> | null = null
-let expandTimer: ReturnType<typeof setTimeout> | null = null
-let pulseTimer: ReturnType<typeof setTimeout> | null = null
+let stepTimer: ReturnType<typeof setTimeout> | null = null
 let xpRaf: number | null = null
 let currentAppid = ''
 
 function clearTimers(): void {
   if (hideTimer) clearTimeout(hideTimer)
   if (exitTimer) clearTimeout(exitTimer)
-  if (expandTimer) clearTimeout(expandTimer)
-  if (pulseTimer) clearTimeout(pulseTimer)
+  if (stepTimer) clearTimeout(stepTimer)
   if (xpRaf !== null) cancelAnimationFrame(xpRaf)
   hideTimer = null
   exitTimer = null
-  expandTimer = null
-  pulseTimer = null
+  stepTimer = null
   xpRaf = null
 }
 
@@ -93,11 +97,9 @@ function finish(): void {
   window.toastApi.done()
 }
 
-function fadeOutTextAndXp(card: HTMLElement, onDone: () => void): void {
+function fadeOutExpandedCopy(card: HTMLElement, onDone: () => void): void {
   const targets = card.querySelectorAll<HTMLElement>(TEXT_FADE_SELECTOR)
 
-  // Kill enter animations and lock opacity at fully visible, then transition to 0.
-  // (Removing CSS animations otherwise snaps opacity back to the base "0" rule.)
   for (const el of targets) {
     el.style.animation = 'none'
     el.style.opacity = '1'
@@ -110,74 +112,96 @@ function fadeOutTextAndXp(card: HTMLElement, onDone: () => void): void {
         el.style.transition = `opacity ${TEXT_OUT_MS}ms cubic-bezier(0.22, 1, 0.36, 1)`
         el.style.opacity = '0'
       }
-      expandTimer = setTimeout(onDone, TEXT_OUT_MS)
+      stepTimer = setTimeout(onDone, TEXT_OUT_MS)
     })
   })
 }
 
-function scheduleDismiss(card: HTMLElement): void {
-  hideTimer = setTimeout(() => {
-    if (prefersReducedMotion()) {
-      card.classList.remove('unlock-toast--visible')
-      card.classList.add('unlock-toast--exit')
-      exitTimer = setTimeout(finish, EXIT_MS)
-      return
-    }
-
-    fadeOutTextAndXp(card, () => {
-      card.classList.remove('unlock-toast--expanded')
-      expandTimer = setTimeout(() => {
-        card.classList.remove('unlock-toast--visible')
-        card.classList.add('unlock-toast--exit')
-        exitTimer = setTimeout(finish, EXIT_MS)
-      }, SHRINK_MS)
-    })
-  }, VISIBLE_MS)
+function clearInlineFadeStyles(card: HTMLElement): void {
+  const targets = card.querySelectorAll<HTMLElement>(TEXT_FADE_SELECTOR)
+  for (const el of targets) {
+    el.style.animation = ''
+    el.style.opacity = ''
+    el.style.transition = ''
+  }
 }
 
-function startExpandSequence(card: HTMLElement, pointsEl: HTMLElement, tier: ToastTier): void {
+function startSequence(card: HTMLElement, pointsEl: HTMLElement, tier: ToastTier): void {
   requestAnimationFrame(() => {
-    card.classList.add('unlock-toast--visible')
+    card.classList.add('unlock-toast--play')
 
     if (prefersReducedMotion()) {
       card.classList.add('unlock-toast--expanded')
       card.classList.add('unlock-toast--xp')
       pointsEl.textContent = formatToastXp(tier)
-      scheduleDismiss(card)
+      hideTimer = setTimeout(() => {
+        card.classList.add('unlock-toast--exit')
+        exitTimer = setTimeout(finish, EXIT_MS)
+      }, VISIBLE_MS)
       return
     }
 
-    requestAnimationFrame(() => {
-      pulseTimer = setTimeout(() => {
-        card.classList.add('unlock-toast--pulse')
-        card.classList.add('unlock-toast--shimmer')
-      }, PULSE_AT_MS)
+    // 1) Scale-in + settled icon hold, then expand from center.
+    stepTimer = setTimeout(() => {
+      card.classList.add('unlock-toast--expanded')
+      card.classList.add('unlock-toast--xp')
+      animateXpCount(pointsEl, toastXpForTier(tier), XP_COUNT_MS)
 
-      expandTimer = setTimeout(() => {
-        card.classList.remove('unlock-toast--pulse')
-        card.classList.remove('unlock-toast--shimmer')
-        card.classList.add('unlock-toast--expanded')
+      // 2) Hold expanded, then shrink back to icon.
+      hideTimer = setTimeout(() => {
+        fadeOutExpandedCopy(card, () => {
+          card.classList.remove('unlock-toast--xp')
+          card.classList.remove('unlock-toast--expanded')
+          clearInlineFadeStyles(card)
 
-        expandTimer = setTimeout(() => {
-          card.classList.add('unlock-toast--xp')
-          animateXpCount(pointsEl, toastXpForTier(tier), XP_COUNT_MS)
-          scheduleDismiss(card)
-        }, EXPAND_MS)
-      }, ICON_HOLD_MS)
-    })
+          // 3) Icon-only hold, then exit.
+          stepTimer = setTimeout(() => {
+            card.classList.add('unlock-toast--exit')
+            exitTimer = setTimeout(finish, EXIT_MS)
+          }, SHRINK_MS + ICON_HOLD_MS)
+        })
+      }, EXPAND_MS + VISIBLE_MS)
+    }, PRE_EXPAND_MS)
   })
 }
 
 /**
- * Measures the card at natural content width and asks main to resize the overlay.
+ * Measures natural content width, sets `--toast-expanded`, resizes the overlay.
  *
- * @param card - Toast card element already in the DOM.
+ * @param card - Toast root button already in the DOM.
  */
 async function fitWindowToCard(card: HTMLElement): Promise<void> {
   card.classList.add('unlock-toast--measure')
-  const cardWidth = card.getBoundingClientRect().width
+  const measured = card.getBoundingClientRect().width
   card.classList.remove('unlock-toast--measure')
-  await window.toastApi.resize(toastWindowWidthFromCard(cardWidth))
+
+  const panelWidth = clampToastPanelWidth(measured)
+  card.style.setProperty('--toast-expanded', `${panelWidth}px`)
+  await window.toastApi.resize(toastWindowWidthFromCard(panelWidth))
+}
+
+function appendIcon(iconWrap: HTMLElement, iconUrl: string | undefined): void {
+  if (iconUrl) {
+    const img = document.createElement('img')
+    img.className = 'unlock-toast__icon'
+    img.src = iconUrl
+    img.alt = ''
+    img.width = 64
+    img.height = 64
+    img.onerror = () => {
+      const fallback = document.createElement('span')
+      fallback.className = 'unlock-toast__icon-fallback'
+      fallback.setAttribute('aria-hidden', 'true')
+      img.replaceWith(fallback)
+    }
+    iconWrap.appendChild(img)
+    return
+  }
+
+  const fallback = document.createElement('span')
+  fallback.className = 'unlock-toast__icon-fallback'
+  fallback.setAttribute('aria-hidden', 'true')
+  iconWrap.appendChild(fallback)
 }
 
 function renderToast(payload: UnlockToastPayload): void {
@@ -190,7 +214,7 @@ function renderToast(payload: UnlockToastPayload): void {
 
   const card = document.createElement('button')
   card.type = 'button'
-  card.className = 'unlock-toast unlock-toast--icon'
+  card.className = 'unlock-toast'
   card.dataset.tier = tier
   const ariaParts = [
     isPlatinum ? 'Platinum unlocked' : 'Achievement unlocked',
@@ -204,29 +228,34 @@ function renderToast(payload: UnlockToastPayload): void {
   points.textContent = '+0'
   points.setAttribute('aria-hidden', 'true')
 
+  const shell = document.createElement('span')
+  shell.className = 'unlock-toast__shell'
+
+  const panel = document.createElement('span')
+  panel.className = 'unlock-toast__panel'
+
+  const inner = document.createElement('span')
+  inner.className = 'unlock-toast__inner'
+
+  const content = document.createElement('span')
+  content.className = 'unlock-toast__content'
+
   const iconWrap = document.createElement('span')
   iconWrap.className = 'unlock-toast__icon-wrap'
+  appendIcon(iconWrap, payload.iconUrl)
 
-  if (payload.iconUrl) {
-    const img = document.createElement('img')
-    img.className = 'unlock-toast__icon'
-    img.src = payload.iconUrl
-    img.alt = ''
-    img.width = 72
-    img.height = 72
-    img.onerror = () => {
-      const fallback = document.createElement('span')
-      fallback.className = 'unlock-toast__icon-fallback'
-      fallback.setAttribute('aria-hidden', 'true')
-      img.replaceWith(fallback)
-    }
-    iconWrap.appendChild(img)
-  } else {
-    const fallback = document.createElement('span')
-    fallback.className = 'unlock-toast__icon-fallback'
-    fallback.setAttribute('aria-hidden', 'true')
-    iconWrap.appendChild(fallback)
-  }
+  const overlays = document.createElement('span')
+  overlays.className = 'unlock-toast__overlays'
+  overlays.setAttribute('aria-hidden', 'true')
+
+  const dark = document.createElement('span')
+  dark.className = 'unlock-toast__dark'
+  const ellipses = document.createElement('span')
+  ellipses.className = 'unlock-toast__ellipses'
+  const trophy = document.createElement('span')
+  trophy.className = 'unlock-toast__trophy'
+  overlays.append(dark, ellipses, trophy)
+  iconWrap.appendChild(overlays)
 
   const body = document.createElement('span')
   body.className = 'unlock-toast__body'
@@ -243,7 +272,11 @@ function renderToast(payload: UnlockToastPayload): void {
     body.appendChild(descEl)
   }
 
-  card.append(points, iconWrap, body)
+  content.append(iconWrap, body)
+  inner.appendChild(content)
+  panel.appendChild(inner)
+  shell.append(points, panel)
+  card.appendChild(shell)
   root.replaceChildren(card)
 
   card.addEventListener('click', () => {
@@ -254,7 +287,7 @@ function renderToast(payload: UnlockToastPayload): void {
   void fitWindowToCard(card)
     .catch(() => undefined)
     .then(() => {
-      startExpandSequence(card, points, tier)
+      startSequence(card, points, tier)
     })
 }
 

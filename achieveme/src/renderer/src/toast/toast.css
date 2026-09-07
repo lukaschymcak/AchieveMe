@@ -1,20 +1,22 @@
 :root {
-  --surface-1: oklch(18% 0.014 275);
+  --surface-1: #121212;
   --surface-2: oklch(22% 0.016 275);
   --surface-3: oklch(28% 0.018 275);
-  --border-subtle: oklch(34% 0.02 275);
-  --ink: oklch(93% 0.01 275);
-  --ink-muted: oklch(70% 0.014 275);
+  --border-subtle: #ffffff1a;
+  --ink: #f0f1f7;
+  --ink-muted: #d0d1d7;
   --tier-bronze: oklch(74% 0.12 48);
   --tier-silver: oklch(88% 0.014 250);
-  --tier-gold: oklch(86% 0.15 82);
-  --tier-platinum: oklch(92% 0.035 280);
+  --tier-gold: #f4a510;
+  --tier-platinum: #0cf1ca;
   --toast-accent: var(--tier-bronze);
-  --toast-icon-size: 72px;
-  --toast-pad: 12px;
+  --toast-icon-size: 64px;
+  --toast-collapsed: 80px;
+  --toast-expanded: 320px;
+  --toast-ease: ease-in-out;
+  --toast-expand-ms: 450ms;
   --font-stats: 'Rajdhani', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-ui: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 * {
@@ -37,55 +39,32 @@ body {
 
 #root {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
   width: 100%;
   height: 100%;
-  padding: 10px;
+  padding: 28px 20px 16px;
   background: transparent !important;
 }
 
-/**
- * Compact achievement-row toast — same surfaces as game detail,
- * not a pure-black billboard.
- */
 .unlock-toast {
   --toast-accent: var(--tier-bronze);
-  --toast-border-w: 2px;
-  --toast-collapsed-w: calc(
-    var(--toast-icon-size) + var(--toast-pad) * 2 + var(--toast-border-w) * 2
-  );
   position: relative;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: flex-start;
-  gap: 10px;
-  width: var(--toast-collapsed-w);
-  max-width: var(--toast-collapsed-w);
-  height: auto;
+  width: 100%;
   margin: 0;
-  padding: var(--toast-pad);
-  background: var(--surface-1);
-  border: var(--toast-border-w) solid color-mix(in oklch, var(--toast-accent) 72%, var(--border-subtle));
-  border-radius: 8px;
-  box-shadow:
-    0 0 0 1px color-mix(in oklch, var(--toast-accent) 22%, transparent),
-    0 0 8px 0 color-mix(in oklch, var(--toast-accent) 28%, transparent);
-  overflow: hidden;
+  padding: 0;
+  border: none;
+  background: transparent;
   cursor: pointer;
   color: var(--ink);
   font: inherit;
   text-align: left;
   appearance: none;
   -webkit-appearance: none;
-  opacity: 0;
-  transform: scale(0.98);
-  transform-origin: left center;
-  transition:
-    opacity 150ms var(--ease-out),
-    transform 150ms var(--ease-out),
-    width 700ms cubic-bezier(0.33, 1, 0.32, 1),
-    max-width 700ms cubic-bezier(0.33, 1, 0.32, 1);
 }
 
 .unlock-toast[data-tier='bronze'] {
@@ -104,35 +83,28 @@ body {
   --toast-accent: var(--tier-platinum);
 }
 
-.unlock-toast--visible {
-  opacity: 1;
-  transform: scale(1);
-}
-
-.unlock-toast--expanded {
-  width: 100%;
-  max-width: 100%;
-  overflow: visible;
-}
-
 .unlock-toast--measure {
   width: max-content;
   max-width: none;
   opacity: 0;
   pointer-events: none;
-  transition: none;
+  align-items: stretch;
 }
 
-.unlock-toast--measure .unlock-toast__body {
-  display: flex;
-  clip-path: none;
+.unlock-toast--measure .unlock-toast__shell,
+.unlock-toast--measure .unlock-toast__panel,
+.unlock-toast--measure .unlock-toast__inner {
   width: max-content;
   max-width: none;
+  animation: none;
   transition: none;
+  opacity: 1;
+  transform: none;
 }
 
 .unlock-toast--measure .unlock-toast__name,
-.unlock-toast--measure .unlock-toast__description {
+.unlock-toast--measure .unlock-toast__description,
+.unlock-toast--measure .unlock-toast__body {
   opacity: 1;
   animation: none;
   max-width: none;
@@ -141,55 +113,117 @@ body {
   text-overflow: clip;
   display: block;
   -webkit-line-clamp: unset;
+  line-clamp: unset;
 }
 
-.unlock-toast--exit {
-  width: var(--toast-collapsed-w);
-  max-width: var(--toast-collapsed-w);
+.unlock-toast__shell {
+  position: relative;
+  width: var(--toast-collapsed);
+  transition: width var(--toast-expand-ms) var(--toast-ease);
+}
+
+.unlock-toast--expanded .unlock-toast__shell {
+  width: var(--toast-expanded);
+}
+
+.unlock-toast__panel {
+  position: relative;
+  display: grid;
+  width: 100%;
   overflow: hidden;
-  opacity: 0;
-  transform: scale(0.98);
-  transform-origin: left center;
-  transition:
-    opacity 280ms var(--ease-out),
-    transform 280ms var(--ease-out);
-}
-
-.unlock-toast__points {
-  position: absolute;
-  top: 6px;
-  right: 8px;
-  z-index: 2;
-  display: none;
-  align-items: center;
-  padding: 3px 10px;
-  border-radius: 999px;
-  background: oklch(16% 0.014 275 / 0.92);
-  color: var(--ink);
   border: 1px solid var(--border-subtle);
-  font-family: var(--font-stats);
-  font-size: 13px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  line-height: 1.15;
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 420ms var(--ease-out);
+  border-radius: 4px;
+  background: var(--surface-1);
+  box-shadow: 0 2px 16px rgba(0, 0, 0, 0.25);
 }
 
-.unlock-toast--xp .unlock-toast__points {
-  display: inline-flex;
+/* Hidden until --play; resting cascade stays visible after scale-in. */
+.unlock-toast:not(.unlock-toast--play):not(.unlock-toast--exit) .unlock-toast__shell {
+  opacity: 0;
+  transform: scale(0);
+  transform-origin: center center;
+}
+
+.unlock-toast--play .unlock-toast__shell {
   opacity: 1;
-  animation: toast-xp-drop 420ms var(--ease-out) 40ms both;
+  transform: scale(1);
+  transform-origin: center center;
+  animation: toast-scale-in 350ms var(--toast-ease);
+}
+
+.unlock-toast[data-tier='bronze'] .unlock-toast__panel,
+.unlock-toast[data-tier='silver'] .unlock-toast__panel {
+  border-color: color-mix(in srgb, var(--toast-accent) 55%, #ffffff1a);
+  box-shadow:
+    0 2px 16px rgba(0, 0, 0, 0.25),
+    0 0 10px 0 color-mix(in srgb, var(--toast-accent) 28%, transparent);
+}
+
+.unlock-toast[data-tier='gold'] .unlock-toast__panel {
+  border-color: color-mix(in srgb, var(--tier-gold) 70%, #ffffff1a);
+  box-shadow:
+    0 2px 16px rgba(0, 0, 0, 0.25),
+    0 0 14px 0 rgba(244, 165, 16, 0.28);
+}
+
+.unlock-toast[data-tier='platinum'] .unlock-toast__panel {
+  border-color: color-mix(in srgb, var(--tier-platinum) 70%, #ffffff1a);
+  box-shadow:
+    0 2px 16px rgba(0, 0, 0, 0.25),
+    0 0 14px 0 rgba(12, 241, 202, 0.28);
+}
+
+.unlock-toast[data-tier='platinum'] .unlock-toast__inner {
+  background: linear-gradient(94deg, #1c1c1c -25%, #044838 100%);
+}
+
+.unlock-toast--exit .unlock-toast__shell {
+  animation: toast-content-out 450ms var(--toast-ease) forwards;
+}
+
+.unlock-toast__inner {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: var(--toast-expanded);
+  min-height: var(--toast-collapsed);
+  padding: 8px 16px 8px 8px;
+  background: var(--surface-1);
+  overflow: hidden;
+  border-radius: 3px;
+}
+
+.unlock-toast[data-tier='gold'] .unlock-toast__inner::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -60px;
+  width: 29px;
+  height: 134px;
+  transform: translateX(0) rotate(36deg);
+  opacity: 0.2;
+  background: #d9d9d9;
+  filter: blur(8px);
+  pointer-events: none;
+  z-index: 3;
+}
+
+.unlock-toast--expanded[data-tier='gold'] .unlock-toast__inner::before {
+  animation: toast-shine 450ms var(--toast-ease) both;
+}
+
+.unlock-toast__content {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  z-index: 1;
 }
 
 .unlock-toast__icon-wrap {
   position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   flex: 0 0 auto;
-  padding: 0;
   width: var(--toast-icon-size);
   height: var(--toast-icon-size);
   line-height: 0;
@@ -197,14 +231,10 @@ body {
 
 .unlock-toast__icon,
 .unlock-toast__icon-fallback {
-  position: relative;
   display: block;
   width: var(--toast-icon-size);
   height: var(--toast-icon-size);
-  flex-shrink: 0;
-  border-radius: 6px;
-  border: none;
-  box-shadow: 0 0 0 1px color-mix(in oklch, var(--border-subtle) 80%, transparent);
+  border-radius: 2px;
   overflow: hidden;
 }
 
@@ -217,64 +247,160 @@ body {
   background: var(--surface-3);
 }
 
-.unlock-toast--pulse {
-  overflow: visible;
+.unlock-toast[data-tier='gold'] .unlock-toast__icon,
+.unlock-toast[data-tier='gold'] .unlock-toast__icon-fallback {
+  outline: 1px solid var(--tier-gold);
+  box-shadow: 0 0 12px 0 rgba(244, 165, 16, 0.25);
 }
 
-.unlock-toast--pulse .unlock-toast__icon,
-.unlock-toast--pulse .unlock-toast__icon-fallback {
-  animation: toast-rarity-pulse 700ms var(--ease-out);
+.unlock-toast[data-tier='platinum'] .unlock-toast__icon,
+.unlock-toast[data-tier='platinum'] .unlock-toast__icon-fallback {
+  outline: 1px solid var(--tier-platinum);
+  box-shadow: 0 0 12px 0 rgba(12, 241, 202, 0.25);
 }
 
-.unlock-toast--shimmer .unlock-toast__icon-wrap::after {
-  content: none;
+.unlock-toast__overlays {
+  position: absolute;
+  inset: 0;
+  width: var(--toast-icon-size);
+  height: var(--toast-icon-size);
+  pointer-events: none;
+  z-index: 2;
+}
+
+.unlock-toast__dark {
+  position: absolute;
+  inset: 0;
+  background: #000;
+  opacity: 0;
+}
+
+.unlock-toast--play:not(.unlock-toast--expanded) .unlock-toast__dark {
+  animation: toast-dark-overlay 500ms var(--toast-ease) both;
+}
+
+.unlock-toast__ellipses {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  background:
+    radial-gradient(circle at 30% 35%, rgba(255, 255, 255, 0.55) 0 2px, transparent 3px),
+    radial-gradient(circle at 55% 48%, rgba(255, 255, 255, 0.4) 0 1.5px, transparent 2.5px),
+    radial-gradient(circle at 70% 28%, rgba(255, 255, 255, 0.35) 0 1px, transparent 2px),
+    radial-gradient(circle at 42% 70%, rgba(255, 255, 255, 0.3) 0 1.5px, transparent 2.5px);
+}
+
+.unlock-toast--play:not(.unlock-toast--expanded) .unlock-toast__ellipses {
+  animation: toast-ellipses-out 500ms var(--toast-ease) both;
+}
+
+.unlock-toast__trophy {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  width: 36px;
+  height: 36px;
+  opacity: 0;
+  background: #fff;
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='black' d='M7 4h10v2h2.5a1.5 1.5 0 0 1 0 3H18c-.3 2.4-1.7 4.4-3.7 5.3L15 17h2v2H7v-2h2l.7-2.7C7.7 13.4 6.3 11.4 6 9H4.5a1.5 1.5 0 0 1 0-3H7V4zm2 2v1.1c.2 2.1 1.4 3.8 3 4.4 1.6-.6 2.8-2.3 3-4.4V6H9z'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='black' d='M7 4h10v2h2.5a1.5 1.5 0 0 1 0 3H18c-.3 2.4-1.7 4.4-3.7 5.3L15 17h2v2H7v-2h2l.7-2.7C7.7 13.4 6.3 11.4 6 9H4.5a1.5 1.5 0 0 1 0-3H7V4zm2 2v1.1c.2 2.1 1.4 3.8 3 4.4 1.6-.6 2.8-2.3 3-4.4V6H9z'/%3E%3C/svg%3E");
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+}
+
+.unlock-toast--play:not(.unlock-toast--expanded) .unlock-toast__trophy {
+  animation: toast-trophy-out 500ms var(--toast-ease) both;
+}
+
+.unlock-toast[data-tier='gold'] .unlock-toast__trophy {
+  background: linear-gradient(
+    118deg,
+    #e8ad15 18.96%,
+    #d5900f 26.41%,
+    #e8ad15 29.99%,
+    #e4aa15 38.89%,
+    #ca890e 42.43%,
+    #ca880e 46.59%,
+    #ecbe1a 50.08%,
+    #ecbd1a 53.48%,
+    #b3790d 57.39%,
+    #66470a 75.64%,
+    #a37a13 78.2%,
+    #987112 79.28%,
+    #503808 83.6%,
+    #3e2d08 85.77%
+  );
+}
+
+.unlock-toast[data-tier='platinum'] .unlock-toast__trophy {
+  background: linear-gradient(
+    118deg,
+    #15e8d6 18.96%,
+    #0fd5a7 26.41%,
+    #15e8b7 29.99%,
+    #15e4b4 38.89%,
+    #0eca7f 42.43%,
+    #0eca9e 46.59%,
+    #1aecbb 50.08%,
+    #1aecb0 53.48%,
+    #0db392 57.39%,
+    #0a6648 75.64%,
+    #13a38b 78.2%,
+    #129862 79.28%,
+    #085042 83.6%,
+    #083e31 85.77%
+  );
 }
 
 .unlock-toast__body {
-  display: none;
+  display: flex;
   flex: 1;
   min-width: 0;
   flex-direction: column;
   justify-content: center;
-  gap: 3px;
-  padding: 0 52px 0 0;
-  clip-path: inset(0 100% 0 0);
-  transition: clip-path 675ms cubic-bezier(0.33, 1, 0.32, 1);
+  gap: 4px;
+  overflow: hidden;
+  opacity: 0;
+  transition: opacity 320ms var(--toast-ease);
 }
 
 .unlock-toast--expanded .unlock-toast__body {
-  display: flex;
-  clip-path: inset(0 0 0 0);
+  opacity: 1;
 }
 
 .unlock-toast__name,
 .unlock-toast__description {
   opacity: 0;
-  transition: opacity 420ms var(--ease-out);
 }
 
 .unlock-toast--expanded .unlock-toast__name {
-  animation: toast-fade-in 420ms var(--ease-out) 0ms both;
+  animation: toast-title-in 450ms var(--toast-ease) both;
 }
 
 .unlock-toast--expanded .unlock-toast__description {
-  animation: toast-fade-in 420ms var(--ease-out) 100ms both;
+  animation: toast-desc-in 450ms var(--toast-ease) 80ms both;
 }
 
 .unlock-toast__name {
-  font-size: 17px;
+  font-size: 14px;
   font-weight: 700;
-  line-height: 1.2;
+  line-height: 1.3;
   color: var(--ink);
-  white-space: nowrap;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
   overflow: hidden;
-  text-overflow: ellipsis;
+  overflow-wrap: anywhere;
 }
 
 .unlock-toast__description {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 400;
-  line-height: 1.4;
+  line-height: 1.35;
   color: var(--ink-muted);
   display: -webkit-box;
   -webkit-box-orient: vertical;
@@ -282,78 +408,206 @@ body {
   overflow: hidden;
 }
 
-@keyframes toast-fade-in {
-  from {
-    opacity: 0;
-    transform: translateY(2px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+.unlock-toast__points {
+  position: absolute;
+  top: -12px;
+  right: 8px;
+  z-index: 2;
+  display: none;
+  align-items: center;
+  height: 24px;
+  padding: 0 8px;
+  border-radius: 300px;
+  background: var(--ink);
+  color: var(--surface-1);
+  font-family: var(--font-stats);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  pointer-events: none;
+  opacity: 0;
 }
 
-@keyframes toast-xp-drop {
-  from {
-    opacity: 0;
-    transform: translateY(-4px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+.unlock-toast--xp .unlock-toast__points {
+  display: inline-flex;
+  animation: toast-chip-in 450ms var(--toast-ease) both;
 }
 
-@keyframes toast-rarity-pulse {
-  0%,
+.unlock-toast[data-tier='gold'] .unlock-toast__points {
+  background: linear-gradient(
+    160deg,
+    #e8ad15 18.96%,
+    #d5900f 26.41%,
+    #e8ad15 29.99%,
+    #e4aa15 38.89%,
+    #ca890e 42.43%,
+    #ca880e 46.59%,
+    #ecbe1a 50.08%,
+    #ecbd1a 53.48%,
+    #b3790d 57.39%,
+    #66470a 75.64%,
+    #a37a13 78.2%,
+    #987112 79.28%,
+    #503808 83.6%,
+    #3e2d08 85.77%
+  );
+  color: #fff;
+}
+
+.unlock-toast[data-tier='platinum'] .unlock-toast__points {
+  background: linear-gradient(
+    118deg,
+    #15e8d6 18.96%,
+    #0fd5a7 26.41%,
+    #15e8b7 29.99%,
+    #15e4b4 38.89%,
+    #0eca7f 42.43%,
+    #0eca9e 46.59%,
+    #1aecbb 50.08%,
+    #1aecb0 53.48%,
+    #0db392 57.39%,
+    #0a6648 75.64%,
+    #13a38b 78.2%,
+    #129862 79.28%,
+    #085042 83.6%,
+    #083e31 85.77%
+  );
+  color: #fff;
+}
+
+.unlock-toast--exit .unlock-toast__points {
+  animation: toast-content-out 450ms var(--toast-ease) forwards;
+}
+
+@keyframes toast-scale-in {
+  0% {
+    opacity: 0;
+    transform: scale(0);
+  }
   100% {
+    opacity: 1;
     transform: scale(1);
   }
+}
+
+@keyframes toast-content-out {
+  0% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-20px);
+    opacity: 0;
+  }
+}
+
+@keyframes toast-dark-overlay {
+  0%,
   50% {
-    transform: scale(1.1);
+    opacity: 0.7;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes toast-trophy-out {
+  0%,
+  50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes toast-ellipses-out {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.5);
+  }
+}
+
+@keyframes toast-title-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes toast-desc-in {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes toast-chip-in {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes toast-shine {
+  from {
+    transform: translateX(0) rotate(36deg);
+  }
+  to {
+    transform: translateX(420px) rotate(36deg);
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .unlock-toast {
+  .unlock-toast__shell,
+  .unlock-toast--play .unlock-toast__shell,
+  .unlock-toast--exit .unlock-toast__shell,
+  .unlock-toast__panel {
+    animation: none;
     transition: none;
-    transform: none;
-    width: 100%;
-    max-width: 100%;
-    justify-content: flex-start;
-    overflow: visible;
+    width: var(--toast-expanded);
     opacity: 1;
-  }
-
-  .unlock-toast__body {
-    display: flex;
-    clip-path: none;
-    transition: none;
+    transform: none;
   }
 
   .unlock-toast__name,
   .unlock-toast__description,
-  .unlock-toast__points {
+  .unlock-toast__body,
+  .unlock-toast__points,
+  .unlock-toast__dark,
+  .unlock-toast__trophy,
+  .unlock-toast__ellipses,
+  .unlock-toast[data-tier='gold'] .unlock-toast__inner::before {
+    animation: none !important;
     opacity: 1;
-    animation: none;
     transform: none;
     transition: none;
   }
 
+  .unlock-toast__dark,
+  .unlock-toast__trophy,
+  .unlock-toast__ellipses {
+    opacity: 0;
+  }
+
   .unlock-toast__points {
     display: inline-flex;
-  }
-
-  .unlock-toast--xp .unlock-toast__points {
-    animation: none;
-  }
-
-  .unlock-toast--pulse .unlock-toast__icon,
-  .unlock-toast--pulse .unlock-toast__icon-fallback {
-    animation: none;
-  }
-
-  .unlock-toast--exit {
-    transform: none;
   }
 }

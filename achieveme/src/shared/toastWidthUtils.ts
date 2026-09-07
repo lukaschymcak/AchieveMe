@@ -1,27 +1,40 @@
 /**
- * Toast overlay width clamp helpers (main + renderer).
+ * Toast overlay size helpers (main + renderer).
+ * Hydra choreography expands the panel to a measured content width.
  */
 
-/** Fixed toast window height — 12+72+12+4 border card + 10+10 root pad. */
-export const TOAST_HEIGHT = 120
+/** Fixed overlay height in CSS pixels. */
+export const TOAST_HEIGHT = 180
 
-/** Narrowest overlay after content measure (icon phase + short copy). */
-export const TOAST_MIN_WIDTH = 360
+/** Horizontal `#root` padding (20px each side) — keep in sync with toast.css `#root`. */
+export const TOAST_ROOT_PAD_X = 40
 
-/** Widest overlay — measure headroom and long-description cap. */
-export const TOAST_MAX_WIDTH = 680
+/** Narrowest expanded panel (icon + short copy). */
+export const TOAST_PANEL_MIN = 280
 
-/** Horizontal `#root` padding (10px each side) included when sizing the window. */
-export const TOAST_ROOT_PAD_X = 20
+/** Widest expanded panel — long description cap. */
+export const TOAST_PANEL_MAX = 640
 
-/** Vertical `#root` padding (10px each side) — keep in sync with toast.css `#root`. */
-export const TOAST_ROOT_PAD_Y = 20
+/** Narrowest overlay window (panel min + root pad). */
+export const TOAST_MIN_WIDTH = TOAST_PANEL_MIN + TOAST_ROOT_PAD_X
+
+/** Widest overlay window (panel max + root pad) — also measure headroom. */
+export const TOAST_MAX_WIDTH = TOAST_PANEL_MAX + TOAST_ROOT_PAD_X
 
 /**
- * Clamps a measured toast width into the allowed window range.
+ * Clamps a measured panel width into the allowed expand range.
  *
- * @param width - Measured CSS pixel width (may be non-finite).
- * @returns Integer width between {@link TOAST_MIN_WIDTH} and {@link TOAST_MAX_WIDTH}.
+ * @param width - Measured CSS pixel panel width (may be non-finite).
+ */
+export function clampToastPanelWidth(width: number): number {
+  if (!Number.isFinite(width)) return TOAST_PANEL_MIN
+  return Math.min(TOAST_PANEL_MAX, Math.max(TOAST_PANEL_MIN, Math.ceil(width)))
+}
+
+/**
+ * Clamps a window width into the allowed overlay range.
+ *
+ * @param width - Requested CSS pixel window width (may be non-finite).
  */
 export function clampToastWindowWidth(width: number): number {
   if (!Number.isFinite(width)) return TOAST_MIN_WIDTH
@@ -29,7 +42,7 @@ export function clampToastWindowWidth(width: number): number {
 }
 
 /**
- * Converts a measured card width into a window width (adds root pad, then clamps).
+ * Converts a measured card/panel width into a window width (adds root pad, then clamps).
  *
  * @param cardWidth - `getBoundingClientRect().width` of the toast card in measure mode.
  */
