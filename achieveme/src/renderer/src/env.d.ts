@@ -2,6 +2,7 @@ import type {
   ProfileStats,
   GameSummary,
   GameDetail,
+  GameHunterStats,
   AppSettings,
   SteamSearchResult,
   GoldbergApplyRequest,
@@ -33,6 +34,7 @@ declare global {
       getProfileStats(): Promise<ProfileStats | null>
       getAllGames(): Promise<GameSummary[]>
       getGameDetail(appid: string): Promise<GameDetail | null>
+      getGameHunterStats(appid: string): Promise<GameHunterStats>
       getSettings(): Promise<AppSettings>
       getAppRuntime(): Promise<{
         isPackaged: boolean

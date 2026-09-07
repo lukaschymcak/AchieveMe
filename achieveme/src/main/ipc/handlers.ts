@@ -27,6 +27,7 @@ import {
   normalizeOpenableAbsolutePath
 } from '../../shared/libraryContextMenuUtils.ts'
 import { getStoreCoverUrl } from '../achievement/steamApiClient'
+import { getGameHunterStats } from '../achievement/gameHunterStatsService'
 import { cacheCoverUrl, cacheHeroUrl } from '../../shared/imageCacheUrls'
 import { loadSettings, saveSettings, normalizeSettings } from '../settings'
 import {
@@ -250,6 +251,19 @@ export function registerIpcHandlers(): void {
       achievements,
       cover_url: remoteCover ? cacheCoverUrl(appid) : '',
       backdrop_url: cacheHeroUrl(appid)
+    }
+  })
+
+  ipcMain.handle('get-game-hunter-stats', async (_event, appid: string) => {
+    try {
+      return await getGameHunterStats(getDb(), String(appid ?? ''))
+    } catch {
+      return {
+        reviewPercent: null,
+        reviewCount: null,
+        metacritic: null,
+        hasAny: false
+      }
     }
   })
 

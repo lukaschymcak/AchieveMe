@@ -3,6 +3,7 @@ import type {
   ProfileStats,
   GameSummary,
   GameDetail,
+  GameHunterStats,
   AppSettings,
   SteamSearchResult,
   GoldbergApplyRequest,
@@ -78,6 +79,9 @@ contextBridge.exposeInMainWorld('api', {
 
   getGameDetail: (appid: string): Promise<GameDetail | null> =>
     ipcRenderer.invoke('get-game-detail', appid),
+
+  getGameHunterStats: (appid: string): Promise<GameHunterStats> =>
+    ipcRenderer.invoke('get-game-hunter-stats', appid),
 
   getSettings: (): Promise<AppSettings> =>
     ipcRenderer.invoke('get-settings'),
