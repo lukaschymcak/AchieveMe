@@ -4,7 +4,7 @@ import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { initDb, getDb } from './db/database'
 import { loadSettings } from './settings'
 import { startWatcher } from './achievement/watcherService'
-import { startPlaytimeTracker, stopPlaytimeTracker } from './achievement/playtimeService'
+import { startPlaytimeTracker, stopPlaytimeTracker, setPlaytimeMainWindow } from './achievement/playtimeService'
 import { setUnlockNavigationHandler, cleanupUnlockNotifications } from './achievement/unlockNotifyService'
 import { setSessionRecapMainWindow } from './achievement/sessionRecapService'
 import { registerIpcHandlers } from './ipc/handlers'
@@ -113,6 +113,7 @@ function bootApp(): void {
     initTray(() => mainWindow)
     setUnlockNavigationHandler(showMainWindowAndNavigate)
     setSessionRecapMainWindow(() => mainWindow)
+    setPlaytimeMainWindow(() => mainWindow)
 
     app.on('activate', () => {
       if (BrowserWindow.getAllWindows().length === 0) createWindow()
