@@ -57,6 +57,7 @@ declare global {
       ): Promise<ResolveGameExecutablesResult>
       setGameLaunchConfig(request: SetGameLaunchConfigRequest): Promise<void>
       launchGame(appid: string): Promise<void>
+      openPath(absolutePath: string): Promise<void>
       browseSteamlessFolder(): Promise<string | null>
       browseSteamlessExe(): Promise<string | null>
       runSteamless(exePath: string, appid?: string): Promise<SteamlessRunResult>

@@ -1,4 +1,4 @@
-import { ipcMain, dialog, BrowserWindow } from 'electron'
+import { ipcMain, dialog, BrowserWindow, shell } from 'electron'
 import fs from 'node:fs'
 import https from 'node:https'
 import path from 'node:path'
@@ -20,6 +20,10 @@ import {
 } from '../db/repository'
 import { parseManifestGidsJson, pickManifestGids } from '../../shared/manifestUpdateUtils'
 import { hasStoredManifestGids } from '../../shared/libraryRetentionUtils'
+import {
+  dirnameOfPath,
+  normalizeOpenableAbsolutePath
+} from '../../shared/libraryContextMenuUtils.ts'
 import { getStoreCoverUrl } from '../achievement/steamApiClient'
 import { cacheCoverUrl, cacheHeroUrl } from '../../shared/imageCacheUrls'
 import { loadSettings, saveSettings, normalizeSettings } from '../settings'
@@ -464,6 +468,29 @@ export function registerIpcHandlers(): void {
         throw new Error(`${LAUNCH_NEEDS_EXE}: Select a game executable to play.`)
       }
       throw err
+    }
+  })
+
+  /**
+   * Opens a folder in the OS file manager (Explorer). Accepts a directory or file path;
+   * files open their parent directory.
+   */
+  ipcMain.handle('open-path', async (_event, targetPath: string): Promise<void> => {
+    const normalized = normalizeOpenableAbsolutePath(String(targetPath ?? ''))
+    if (!normalized) {
+      throw new Error('Invalid path.')
+    }
+    const resolved = path.resolve(normalized)
+    if (!fs.existsSync(resolved)) {
+      throw new Error(`Path was not found: ${resolved}`)
+    }
+    const folder = fs.statSync(resolved).isDirectory() ? resolved : dirnameOfPath(resolved)
+    if (!folder || !fs.existsSync(folder)) {
+      throw new Error(`Folder was not found: ${folder || resolved}`)
+    }
+    const err = await shell.openPath(folder)
+    if (err?.trim()) {
+      throw new Error(err.trim())
     }
   })
 
