@@ -450,15 +450,6 @@ export type DepotPhase =
   | 'complete'
   | 'canceled'
   | 'failed'
-  | 'importing'
-
-/** Register an on-disk install with Hubcap GIDs (no DepotDownloader run). */
-export interface ImportExistingInstallRequest {
-  appid: string
-  gameName: string
-  installPath: string
-  gids: Record<string, string>
-}
 
 /** One candidate from Tools → Scan for installed games. */
 export interface ScannedInstallCandidate {
@@ -566,8 +557,6 @@ export interface ActiveDepotSession {
   gameName: string
   headerImageUrl?: string
   phase: DepotPhase
-  /** When true, wizard imports an existing folder instead of downloading. */
-  importMode?: boolean
   gameData: GameData | null
   selectedDepots: string[]
   outputPath: string

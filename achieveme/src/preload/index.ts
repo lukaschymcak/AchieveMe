@@ -22,7 +22,6 @@ import type {
   ManifestCheckGameResult,
   NewsPayload,
   GetNewsOptions,
-  ImportExistingInstallRequest,
   ImportScannedInstallRequest,
   ScannedInstallCandidate
 } from '../shared/types'
@@ -225,9 +224,6 @@ contextBridge.exposeInMainWorld('api', {
     installPath?: string
   ): Promise<void> =>
     ipcRenderer.invoke('manifest:save-gids', appid, gids, gameName, installPath),
-
-  importExistingInstall: (request: ImportExistingInstallRequest): Promise<void> =>
-    ipcRenderer.invoke('library:import-install', request),
 
   scanInstalledGames: (
     roots?: string[],

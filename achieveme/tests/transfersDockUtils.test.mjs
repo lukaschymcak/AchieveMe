@@ -101,10 +101,6 @@ test('update reapply and error phases stay in dock when not busy', () => {
   )
 })
 
-test('importMode depot sessions are excluded from dock', () => {
-  assert.equal(shouldShowDepotInDock(makeDepot({ importMode: true, phase: 'depots' })), false)
-})
-
 test('pick_depots update phase is excluded until busy', () => {
   assert.equal(
     shouldShowUpdateInDock(makeUpdate({ busy: false, phase: 'pick_depots' })),

@@ -9,7 +9,8 @@ dist-electron/
 out/
 release/
 build/
-.cursor/skills/
+.cursor/
+.superpowers/
 # Vite cache
 .vite/
 goldberg-files

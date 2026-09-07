@@ -65,7 +65,6 @@ import type {
   ManifestCheckGameResult,
   NewsPayload,
   GetNewsOptions,
-  ImportExistingInstallRequest,
   ImportScannedInstallRequest,
   ScannedInstallCandidate
 } from '../../shared/types'
@@ -121,7 +120,6 @@ import {
   cancelDownload,
   startDownload
 } from '../achievement/depotRunnerService'
-import { importExistingInstall } from '../achievement/libraryImportService'
 import {
   assertScannedInstallPath,
   scanInstalledGamesWithDb
@@ -958,13 +956,6 @@ export function registerIpcHandlers(): void {
 
       // Repair only — do not change manifest_gids or update_status
       notifyLibraryUpdated(clean)
-    }
-  )
-
-  ipcMain.handle(
-    'library:import-install',
-    (_event, request: ImportExistingInstallRequest): void => {
-      importExistingInstall(getDb(), request)
     }
   )
 

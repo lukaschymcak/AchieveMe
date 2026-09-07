@@ -3,7 +3,8 @@ import test from 'node:test'
 import {
   bucketDepotsForScan,
   classifyDepotDescription,
-  classifyDepotForScan
+  classifyDepotForScan,
+  depotScanChipLabel
 } from '../src/shared/depotOsClassifyUtils.ts'
 
 test('classifyDepotDescription drops linux/mac/osx', () => {
@@ -48,4 +49,12 @@ test('bucketDepotsForScan ignores depots without manifest GIDs', () => {
   assert.deepEqual(buckets.autoKeepIds.sort(), ['1'])
   assert.deepEqual(buckets.dropIds.sort(), ['2'])
   assert.deepEqual(buckets.unsureIds.sort(), ['3'])
+})
+
+test('depotScanChipLabel returns Windows DLC Unsure or null', () => {
+  assert.equal(depotScanChipLabel('1', 'Content (Windows)', new Set()), 'Windows')
+  assert.equal(depotScanChipLabel('2', 'Season Pass DLC', new Set()), 'DLC')
+  assert.equal(depotScanChipLabel('3', 'Extra Content', new Set(['3'])), 'DLC')
+  assert.equal(depotScanChipLabel('4', 'Mystery Pack', new Set()), 'Unsure')
+  assert.equal(depotScanChipLabel('5', 'Linux Client', new Set()), null)
 })

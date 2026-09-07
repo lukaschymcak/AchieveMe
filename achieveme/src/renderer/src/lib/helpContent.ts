@@ -83,7 +83,7 @@ export const TOOLTIPS = {
   settingsLudusavi:
     'Link ludusavi.exe to back up or restore emulator save files for library games only. Auto-backup is off by default. On Game Detail, the floppy icon opens Back up saves (keeps up to 5 full snapshots when saves change) or Install backup (pick a snapshot; restore overwrites current saves). Optional rclone cloud: AchieveMe uses its own Ludusavi config under app userData (not your Ludusavi GUI). Connect a provider, toggle Upload after backup, and resolve conflicts only with Upload / Download. Bulk Settings backup is backup-only.',
   settingsDepotDownloader:
-    'Hubcap API key authenticates manifest downloads. Default download folder is used when starting a Depot Downloader run from Tools. Import existing folder only needs the Hubcap fetch — it does not download game files.',
+    'Hubcap API key authenticates manifest downloads. Default download folder is used when starting a Depot Downloader run from Tools.',
   settingsNotifications:
     'Unlock toasts use a Steam-style layout with bronze/silver/gold accents by rarity, plus a platinum toast when a game first hits 100%. They fire on live save changes only. Optional sound uses the Windows default chime or a custom .wav/.mp3 with adjustable volume.',
   settingsTray:
@@ -379,7 +379,6 @@ export const HELP_SECTIONS: HelpSection[] = [
       'Tools sits between News and Settings. Link a Steamless release folder in Settings → External tools (must include Steamless.CLI.exe and Plugins).',
       'Open the Steamless wizard to pick a library game, then choose the .exe from the install folder (same list as Select executable — never auto-runs launch_exe or a previous Game.exe.unpacked.exe). Or Search for executable on disk, then run Steamless.CLI. Output is typically Game.exe.unpacked.exe beside the original; Play is not changed automatically.',
       'Depot Downloader searches Steam, fetches a Hubcap manifest ZIP, lets you pick depots, and runs DepotDownloader.dll (dotnet required). Closing the wizard during a download keeps it running — reopen from the Transfers dock. After download you can optionally set up Goldberg achievements (DLL scan, emulator install, Denuvo preserve).',
-      'Import existing folder registers a game already on disk: Hubcap manifest only (no DepotDownloader), pick the install folder and depots you have, then AchieveMe stores GIDs + install_path for version checks. Set up achievements later from Game Detail if needed.',
       'Scan for installed games walks Settings → Install scan folders (separate from Custom Watch Folders, depth ≤ 8) for steam_appid.txt or numeric folders that contain steam_api*.dll. Add selected sets install_path (and a suggested exe when ranked), then fetches Hubcap manifest GIDs — Windows and DLC depots auto-keep; Linux/mac depots are dropped; ambiguous depots queue a depot picker. Does not open Set up achievements — use Game Detail. Refresh keeps rows that have an install path.',
       'Update / Validate / Check for update and build status appear on Game Detail only when depot GIDs are stored. Successful Steamless (from Tools, with a library game selected) or Goldberg apply stores flags and last paths. After a successful Update, if either flag is set, the Update transfer modal asks to reapply — you pick paths and Apply; Steamless runs before Goldberg, stops on failure, and offers Retry. Existing games stay unset until those tools succeed again.'
     ]
@@ -400,7 +399,7 @@ export const HELP_SECTIONS: HelpSection[] = [
     paragraphs: [
       'Long-press or right-click → Delete removes the library entry and deletes Goldberg/GSE save folders from disk.',
       'The AppID is added to an ignore list so leftover CODEX/RUNE (or other) saves do not re-add the game on Refresh. Those read-only files are not deleted.',
-      'Add Game, Depot Downloader, Import existing, or Scan for installed games clears the ignore so the title can return.',
+      'Add Game, Depot Downloader, or Scan for installed games clears the ignore so the title can return.',
       'If you delete save files externally and Refresh, the game disappears from the library but no extra disk delete runs.',
       'Disabling a source and Refreshing removes games only found via that source (unless they have depot GIDs or an install path).'
     ]
@@ -420,8 +419,8 @@ export const HELP_SECTIONS: HelpSection[] = [
     bullets: [
       'Missing icons/names? Add API key and Refresh.',
       'Empty achievement list? Need a Steam API key; or Steam has not published schema yet (try Refresh later); or the game has no achievements.',
-      'Deleted game keeps coming back? Delete ignores the AppID; leftover CODEX/RUNE files are not removed. Re-add via Add Game or Import existing to clear the ignore.',
-      'Game on disk missing from library? Tools → Scan for installed games (path + Hubcap GIDs on Add selected) or Import existing folder (Hubcap GIDs only, no re-download).',
+      'Deleted game keeps coming back? Delete ignores the AppID; leftover CODEX/RUNE files are not removed. Re-add via Add Game or Scan for installed games to clear the ignore.',
+      'Game on disk missing from library? Tools → Scan for installed games (path + Hubcap GIDs on Add selected).',
       'Save backups? Link Ludusavi in Settings → Save backups. Library titles only; floppy on Game Detail chooses Back up (keeps 5 full snapshots when saves change) or Install backup (pick a snapshot). Not in Ludusavi means no matching Steam AppID. Install overwrites current saves.',
       'Live updates? Save file edits propagate in ~1s via the file watcher.',
       'Keyboard: Enter/Space on a focused card opens it; ContextMenu / Shift+F10 opens actions; Escape closes the menu.',

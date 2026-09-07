@@ -73,3 +73,28 @@ export function bucketDepotsForScan(
 
   return { autoKeepIds, unsureIds, dropIds }
 }
+
+/** Chip label for scan depot picker rows. */
+export type DepotScanChip = 'Windows' | 'DLC' | 'Unsure'
+
+/**
+ * Picker chip for a depot that is not dropped.
+ *
+ * @param depotId - Hubcap depot id.
+ * @param description - Hubcap depot description text.
+ * @param dlcIds - Set of DLC app ids from the Hubcap ZIP.
+ * @returns Chip text, or null when the depot is dropped.
+ */
+export function depotScanChipLabel(
+  depotId: string,
+  description: string,
+  dlcIds: ReadonlySet<string>
+): DepotScanChip | null {
+  const cls = classifyDepotForScan(depotId, description, dlcIds)
+  if (cls === 'drop') return null
+  if (cls === 'unsure') return 'Unsure'
+  const text = String(description || '')
+  if (DLC_RE.test(text) || dlcIds.has(String(depotId || '').trim())) return 'DLC'
+  return 'Windows'
+}
+

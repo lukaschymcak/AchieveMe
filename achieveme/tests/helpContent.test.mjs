@@ -77,11 +77,11 @@ describe('helpContent', () => {
     assert.match(body, /CODEX|RUNE/i)
   })
 
-  it('Tools section documents import existing', () => {
+  it('Tools section documents depot downloader and scan', () => {
     const section = HELP_SECTIONS.find((s) => s.id === 'tools')
     assert.ok(section)
     const body = (section.paragraphs ?? []).join(' ')
-    assert.match(body, /import existing/i)
+    assert.match(body, /Depot Downloader/i)
     assert.match(body, /GIDs|manifest/i)
     assert.match(body, /reapply/i)
     assert.match(body, /Steamless/i)

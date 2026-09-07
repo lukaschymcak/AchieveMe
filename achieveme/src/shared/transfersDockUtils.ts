@@ -47,7 +47,6 @@ const DEPOT_DOCK_PHASES: ReadonlySet<DepotPhase> = new Set([
  */
 export function shouldShowDepotInDock(session: ActiveDepotSession | null | undefined): boolean {
   if (!session) return false
-  if (session.importMode) return false
   return DEPOT_DOCK_PHASES.has(session.phase)
 }
 

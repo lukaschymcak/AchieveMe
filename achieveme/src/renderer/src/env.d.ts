@@ -21,7 +21,6 @@ import type {
   ManifestCheckGameResult,
   NewsPayload,
   GetNewsOptions,
-  ImportExistingInstallRequest,
   ImportScannedInstallRequest,
   ScannedInstallCandidate
 } from '../../shared/types'
@@ -97,7 +96,6 @@ declare global {
         gameName?: string,
         installPath?: string
       ): Promise<void>
-      importExistingInstall(request: ImportExistingInstallRequest): Promise<void>
       scanInstalledGames(
         roots?: string[],
         options?: { includeIgnored?: boolean }

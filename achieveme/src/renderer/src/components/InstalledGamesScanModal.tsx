@@ -1,5 +1,8 @@
 import React, { useEffect, useState } from 'react'
-import { bucketDepotsForScan } from '../../../shared/depotOsClassifyUtils'
+import {
+  bucketDepotsForScan,
+  depotScanChipLabel
+} from '../../../shared/depotOsClassifyUtils'
 import { pickManifestGids } from '../../../shared/manifestUpdateUtils'
 import type { GameData, ScannedInstallCandidate } from '../../../shared/types'
 import { Chip } from './app'
@@ -16,6 +19,20 @@ type PickerQueueItem = {
 interface Props {
   onClose: () => void
   onImported: () => void
+}
+
+/**
+ * Formats a byte size for depot picker meta (matches Depot Wizard).
+ *
+ * @param bytes - Size in bytes from Hubcap setManifestid.
+ */
+function formatBytes(bytes: number): string {
+  if (!bytes || bytes <= 0) return '—'
+  const gb = bytes / (1024 * 1024 * 1024)
+  if (gb >= 1) return `${gb.toFixed(2)} GB`
+  const mb = bytes / (1024 * 1024)
+  if (mb >= 1) return `${mb.toFixed(1)} MB`
+  return `${Math.round(bytes / 1024)} KB`
 }
 
 /**
@@ -247,6 +264,9 @@ export default function InstalledGamesScanModal({
   const pickerDepotIds = pickerItem
     ? [...new Set([...pickerItem.autoKeepIds, ...pickerItem.unsureIds])].sort()
     : []
+  const pickerDlcIds = pickerItem
+    ? new Set(Object.keys(pickerItem.gameData.dlcs || {}))
+    : new Set<string>()
 
   const combinedError = [
     ...batchErrors,
@@ -290,7 +310,13 @@ export default function InstalledGamesScanModal({
             <ul className="install-scan-modal__picker-list" aria-label="Depots to include">
               {pickerDepotIds.map((depotId) => {
                 const depot = pickerItem.gameData.depots[depotId]
-                const label = depot?.description ?? depotId
+                const title = depot?.description?.trim() || `Depot ${depotId}`
+                const sizeLabel = formatBytes(Number(depot?.size || 0))
+                const chip = depotScanChipLabel(
+                  depotId,
+                  depot?.description ?? '',
+                  pickerDlcIds
+                )
                 return (
                   <li key={depotId} className="install-scan-modal__row">
                     <label className="install-scan-modal__row-label">
@@ -298,10 +324,22 @@ export default function InstalledGamesScanModal({
                         type="checkbox"
                         checked={Boolean(pickerChecked[depotId])}
                         onChange={() => togglePickerDepot(depotId)}
+                        aria-label={`${title} Depot ${depotId} ${sizeLabel}${chip ? ` ${chip}` : ''}`}
                       />
                       <span className="install-scan-modal__row-main">
-                        <span className="install-scan-modal__name">{label}</span>
-                        <span className="install-scan-modal__meta">Depot {depotId}</span>
+                        <span className="install-scan-modal__picker-title-row">
+                          <span className="install-scan-modal__name">{title}</span>
+                          {chip ? (
+                            <span
+                              className={`install-scan-modal__picker-chip install-scan-modal__picker-chip--${chip.toLowerCase()}`}
+                            >
+                              {chip}
+                            </span>
+                          ) : null}
+                        </span>
+                        <span className="install-scan-modal__meta">
+                          Depot {depotId} · {sizeLabel}
+                        </span>
                       </span>
                     </label>
                   </li>
