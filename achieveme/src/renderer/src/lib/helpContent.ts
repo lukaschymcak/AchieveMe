@@ -64,7 +64,7 @@ export const TOOLTIPS = {
   libraryCompletion: 'Average completion percentage across games that have achievements.',
   unlocksPerGame: 'Total unlocked achievements divided by games in your library.',
   playtimeStat:
-    'Tracked playtime for games added via Add Game when their install-folder .exe is running.',
+    'Tracked playtime for games with an install folder or launch exe when that process is running.',
   hiddenFilter:
     'Toggle descriptions for unearned hidden achievements. Earned hidden achievements always show their text.',
   tierFilter: 'Filter the list by trophy tier. Counts show how many you have earned in that tier.',

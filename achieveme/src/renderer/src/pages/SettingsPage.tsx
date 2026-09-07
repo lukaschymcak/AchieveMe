@@ -510,7 +510,9 @@ export default function SettingsPage({ page, onNavigate }: Props): React.ReactEl
                 onChange={(e) => toggleSetting('playtimeTrackingEnabled', e.target.checked)}
                 className="settings-page__checkbox"
               />
-              <span className="settings-page__source-name">Track playtime for games added via Add Game</span>
+              <span className="settings-page__source-name">
+                Track playtime for games with an install path or launch exe
+              </span>
             </label>
           </div>
         </section>
