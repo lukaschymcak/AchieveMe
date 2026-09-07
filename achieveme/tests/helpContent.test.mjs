@@ -103,6 +103,17 @@ describe('helpContent', () => {
     assert.match(body, /Transfers dock/i)
   })
 
+  it('Game detail section documents hunter stats strip without HLTB hours', () => {
+    const section = HELP_SECTIONS.find((s) => s.id === 'game-detail')
+    assert.ok(section)
+    const body = (section.paragraphs ?? []).join(' ')
+    assert.match(body, /Metacritic/i)
+    assert.match(body, /Reviews/i)
+    assert.match(body, /not a storefront|storefront/i)
+    assert.match(body, /HowLongToBeat|not included yet/i)
+    assert.doesNotMatch(body, /Main story|hours to beat|HLTB shows/i)
+  })
+
   it('Tools section documents depot update chrome gated by GIDs', () => {
     const section = HELP_SECTIONS.find((s) => s.id === 'tools')
     assert.ok(section)

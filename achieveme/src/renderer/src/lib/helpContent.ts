@@ -340,6 +340,7 @@ export const HELP_SECTIONS: HelpSection[] = [
       'Unearned achievements with progress counters show a partial progress bar (Goldberg/GSE saves).',
       'Hidden toggle reveals descriptions for unearned hidden achievements only. Global rarity is Steam-wide, not friends-only.',
       'Edge arrows move through the library in your current sort/search order.',
+      'A fail-soft hunter strip under the hero shows Steam Store stats when available — Reviews (percent and count when Steam publishes them) and Metacritic score. Missing fields are omitted; fake or Store-miss appids show no strip. Reference info only — not a storefront or download link. Playtime hours (HowLongToBeat) are not included yet.',
       'Update / Validate / Check for update and build status show only when depot GIDs are stored. Update and Validate open a transfer modal (pick depots, live progress). Closing hides the modal; reopen from the Transfers dock on any page. After a successful Update, Steamless/Goldberg reapply (when previously applied) is a phase of that same modal so leaving Game Detail cannot drop the prompt.'
     ]
   },

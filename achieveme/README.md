@@ -27,6 +27,8 @@ AchieveMe can run in the **system tray** after you close the window (Settings �
 
 **Progress bars** on game detail show partial achievement progress from Goldberg/GSE `progress` / `max_progress` fields in `achievements.json`.
 
+**Hunter stats:** Under the game detail hero, a compact strip shows Steam Store Metacritic and recommendation stats when available (loaded asynchronously — achievements and Play are not blocked). Reference only, not a storefront; HowLongToBeat hours are deferred.
+
 **Achievement icons** are downloaded into `%APPDATA%\achieveme\images\{appid}\icon\` on first use (and prefetched after enrich). Display uses the `achieveme-img://` protocol; SQLite still stores Steam CDN URLs / hashes. Legacy `steamcdn-a.akamaihd.net` schema URLs are normalized to `shared.akamai.steamstatic.com/community_assets/...` before download.
 
 **Library cover art:** grid cards and list thumbs use Steam Store API `header_image` (~460×215), cached under `images\{appid}\cover\`. Cards use `aspect-ratio: 2 / 1` (slightly taller than the header); `object-fit: cover` fills the frame with light side crop, no letterboxing. Game detail uses the same cover plus `library_hero` (cached under `images\{appid}\hero\`) for the backdrop.
