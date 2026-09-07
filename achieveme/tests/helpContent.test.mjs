@@ -161,4 +161,15 @@ describe('helpContent', () => {
     assert.match(body, /userData|GUI config/i)
     assert.match(body, /Upload to cloud|Download from cloud|never auto/i)
   })
+
+  it('tray section documents installed Setup vs portable login items', () => {
+    assert.match(SETTINGS_HINTS.tray, /installed Setup/i)
+    assert.match(SETTINGS_HINTS.tray, /Portable/i)
+    assert.match(TOOLTIPS.settingsTray, /installed Setup/i)
+    const section = HELP_SECTIONS.find((s) => s.id === 'tray')
+    assert.ok(section)
+    const body = [...(section.paragraphs ?? []), ...(section.bullets ?? [])].join(' ')
+    assert.match(body, /installed Setup/i)
+    assert.match(body, /Portable/i)
+  })
 })

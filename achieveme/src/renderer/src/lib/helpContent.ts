@@ -85,7 +85,7 @@ export const TOOLTIPS = {
   settingsNotifications:
     'Unlock toasts use a Steam-style layout with bronze/silver/gold accents by rarity, plus a platinum toast when a game first hits 100%. They fire on live save changes only. Optional sound uses the Windows default chime or a custom .wav/.mp3 with adjustable volume.',
   settingsTray:
-    'Close the window to keep AchieveMe in the system tray while it watches save folders. Optionally launch when Windows starts, and start minimized to the tray on login only.',
+    'Close the window to keep AchieveMe in the system tray while it watches save folders. Launch when Windows starts is registered only for the installed Setup — Save required. Start minimized applies to login launch only. Portable and development builds never register a startup entry.',
   settingsPlaySessions:
     'Playtime is tracked when a known game executable under the resolved game folder is running. Session recap appears under Notifications.',
   settingsPlaytime:
@@ -167,7 +167,7 @@ export const SETTINGS_HINTS = {
   notifications:
     'Steam-style unlock toasts (rarity accents; platinum at 100%) with optional sound and volume when new achievements appear in save files. Toasts load achievement icons from the on-disk image cache (`achieveme-img://`); missing schema icons use a fallback glyph. Refresh and first library scan never trigger toasts.',
   tray:
-    'Keep AchieveMe in the system tray after closing the window. Optionally launch on Windows startup and start minimized to the tray on login only.',
+    'Keep AchieveMe in the system tray after closing the window. Launch on Windows startup is available on the installed Setup only (click Save). Start minimized applies to login launch only. Portable and development builds never add a startup entry and clear one if present.',
   playSessions:
     'Track playtime for games added via the Add Game wizard when their executable is running.',
   customSound:
@@ -300,12 +300,14 @@ export const HELP_SECTIONS: HelpSection[] = [
     title: 'Tray & startup',
     paragraphs: [
       'Close the window to hide AchieveMe in the system tray — it keeps watching save folders. Use Show from the tray icon to reopen.',
-      'Optionally launch AchieveMe when Windows starts. With start minimized enabled, a login launch stays in the tray only; opening the app yourself still shows the window.'
+      'On the installed Setup, you can launch AchieveMe when Windows starts (click Save). With start minimized enabled, a login launch stays in the tray only; opening the app yourself still shows the window.',
+      'Portable and development builds never register a Windows startup entry and clear one if present. Save again from the installed Setup to restore Launch when Windows starts.'
     ],
     bullets: [
       'Close to tray — app stays running in the background',
-      'Launch on startup — optional Windows login launch',
-      'Start minimized on login — tray only when Windows starts the app'
+      'Launch on startup — installed Setup only; Save required',
+      'Start minimized on login — tray only when Windows starts the app',
+      'Portable / npm run dev — never register a startup entry'
     ]
   },
   {
