@@ -4,8 +4,10 @@ import { LAUNCH_NEEDS_EXE } from '../../../shared/types'
 import { formatPlaytimeCompact } from '../../../shared/playtimeUtils'
 import SteamApiKeyForm from '../components/SteamApiKeyForm'
 import AddGameModal from '../components/AddGameModal'
-import GameCardMenu, { type GameCardMenuMode } from '../components/GameCardMenu'
-import GameCardHoldOverlay from '../components/GameCardHoldOverlay'
+import GameCardMenu, {
+  type GameCardMenuMode,
+  type MenuPosition
+} from '../components/GameCardMenu'
 import HelpTip from '../components/HelpTip'
 import LibraryCoachMark from '../components/LibraryCoachMark'
 import {
@@ -17,10 +19,14 @@ import {
   Chip
 } from '../components/app'
 import { shouldShowLongPressHint } from '../lib/helpStorage'
-import { useLongPress } from '../hooks/useLongPress'
+import { useLongPress, type PointerPosition } from '../hooks/useLongPress'
 import type { AppPage } from '../lib/appNavigation'
 import { filterAndSortGames, type SortOption } from '../lib/libraryUtils'
 import { EMPTY_STATES, TOOLTIPS } from '../lib/helpContent'
+import {
+  resolveLibraryOpenFolder,
+  shouldShowOpenFolder
+} from '../../../shared/libraryContextMenuUtils'
 
 type ViewMode = 'grid' | 'list'
 
@@ -65,6 +71,7 @@ export default function LibraryPage({
   const [sort, setSort] = useState<SortOption>('unlocked-desc')
   const [menuAppid, setMenuAppid] = useState<string | null>(null)
   const [menuMode, setMenuMode] = useState<GameCardMenuMode>('actions')
+  const [menuPosition, setMenuPosition] = useState<MenuPosition | null>(null)
   const [deletingAppid, setDeletingAppid] = useState<string | null>(null)
   const [refreshingAppid, setRefreshingAppid] = useState<string | null>(null)
   const [viewMode, setViewMode] = useState<ViewMode>(readStoredViewMode)
@@ -171,11 +178,24 @@ export default function LibraryPage({
   function closeMenu(): void {
     setMenuAppid(null)
     setMenuMode('actions')
+    setMenuPosition(null)
   }
 
-  function openMenu(appid: string): void {
+  function openMenu(appid: string, position: MenuPosition): void {
     setMenuAppid(appid)
     setMenuMode('actions')
+    setMenuPosition(position)
+  }
+
+  async function handleOpenFolder(game: GameSummary): Promise<void> {
+    const folder = resolveLibraryOpenFolder(game.install_path ?? '', game.launch_exe ?? '')
+    if (!folder) return
+    try {
+      await window.api.openPath(folder)
+      closeMenu()
+    } catch {
+      // Keep menu open; path may be missing on disk
+    }
   }
 
   async function reloadGames(): Promise<void> {
@@ -354,17 +374,19 @@ export default function LibraryPage({
               game={game}
               menuOpen={menuAppid === game.appid}
               menuMode={menuAppid === game.appid ? menuMode : 'actions'}
+              menuPosition={menuAppid === game.appid ? menuPosition : null}
               deleting={deletingAppid === game.appid}
               refreshing={refreshingAppid === game.appid}
               showPlay={settings?.playGamesFromLauncher ?? true}
               launching={launchingAppid === game.appid}
-              onOpenMenu={() => openMenu(game.appid)}
+              onOpenMenu={(position) => openMenu(game.appid, position)}
               onCloseMenu={closeMenu}
               onOpen={() => {
                 closeMenu()
                 onSelect(game.appid)
               }}
               onPlay={() => void handleLibraryPlay(game)}
+              onOpenFolder={() => void handleOpenFolder(game)}
               onRefresh={() => handleRefreshGame(game.appid)}
               onDelete={() => setMenuMode('confirm-delete')}
               onConfirmDelete={() => handleDelete(game.appid)}
@@ -380,17 +402,19 @@ export default function LibraryPage({
               game={game}
               menuOpen={menuAppid === game.appid}
               menuMode={menuAppid === game.appid ? menuMode : 'actions'}
+              menuPosition={menuAppid === game.appid ? menuPosition : null}
               deleting={deletingAppid === game.appid}
               refreshing={refreshingAppid === game.appid}
               showPlay={settings?.playGamesFromLauncher ?? true}
               launching={launchingAppid === game.appid}
-              onOpenMenu={() => openMenu(game.appid)}
+              onOpenMenu={(position) => openMenu(game.appid, position)}
               onCloseMenu={closeMenu}
               onOpen={() => {
                 closeMenu()
                 onSelect(game.appid)
               }}
               onPlay={() => void handleLibraryPlay(game)}
+              onOpenFolder={() => void handleOpenFolder(game)}
               onRefresh={() => handleRefreshGame(game.appid)}
               onDelete={() => setMenuMode('confirm-delete')}
               onConfirmDelete={() => handleDelete(game.appid)}
@@ -425,6 +449,7 @@ function GameCard({
   game,
   menuOpen,
   menuMode,
+  menuPosition,
   deleting,
   refreshing,
   showPlay,
@@ -433,6 +458,7 @@ function GameCard({
   onCloseMenu,
   onOpen,
   onPlay,
+  onOpenFolder,
   onRefresh,
   onDelete,
   onConfirmDelete,
@@ -441,14 +467,16 @@ function GameCard({
   game: GameSummary
   menuOpen: boolean
   menuMode: GameCardMenuMode
+  menuPosition: MenuPosition | null
   deleting: boolean
   refreshing: boolean
   showPlay: boolean
   launching: boolean
-  onOpenMenu: () => void
+  onOpenMenu: (position: MenuPosition) => void
   onCloseMenu: () => void
   onOpen: () => void
   onPlay: () => void
+  onOpenFolder: () => void
   onRefresh: () => void
   onDelete: () => void
   onConfirmDelete: () => void
@@ -458,46 +486,62 @@ function GameCard({
   const hasPlatinum = game.has_platinum
   const hasExe = Boolean(game.launch_exe?.trim())
   const playLabel = launching ? 'Starting…' : hasExe ? 'Play' : 'Set up Play'
+  const showFolder = shouldShowOpenFolder(game.install_path ?? '', game.launch_exe ?? '')
 
-  const { isHolding, holdDurationMs, ...longPressHandlers } = useLongPress({
-    onLongPress: onOpenMenu,
+  const { ...longPressHandlers } = useLongPress({
+    onLongPress: (position: PointerPosition) => onOpenMenu(position),
     onShortPress: onOpen,
     disabled: menuOpen
   })
+
+  function handleContextMenu(e: React.MouseEvent): void {
+    e.preventDefault()
+    e.stopPropagation()
+    onOpenMenu({ x: e.clientX, y: e.clientY })
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent): void {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault()
+      onOpen()
+      return
+    }
+    if (e.key === 'ContextMenu' || (e.key === 'F10' && e.shiftKey)) {
+      e.preventDefault()
+      const rect = e.currentTarget.getBoundingClientRect()
+      onOpenMenu({ x: rect.left, y: rect.bottom })
+    }
+  }
 
   return (
     <article
       className={`library-card${hasPlatinum ? ' library-card--platinum' : ''}${
         menuOpen ? ' library-card--menu-open' : ''
-      }${isHolding ? ' library-card--holding' : ''}${deleting ? ' library-card--deleting' : ''}`}
+      }${deleting ? ' library-card--deleting' : ''}`}
       {...longPressHandlers}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault()
-          onOpen()
-        }
-      }}
+      onContextMenu={handleContextMenu}
+      onKeyDown={handleKeyDown}
       role="button"
       tabIndex={0}
       aria-label={`${game.name}, ${game.unlocked_achievements} of ${game.total_achievements} achievements, ${formatPlaytimeCompact(game.playtime_seconds ?? 0)} playtime, ${completionPct} percent complete${
         game.has_depot_gids && game.update_status === 'update_available' ? ', update available' : ''
       }`}
     >
-      <GameCardHoldOverlay
-        classPrefix="library-card"
-        isHolding={isHolding}
-        menuOpen={menuOpen}
-        holdDurationMs={holdDurationMs}
-      />
-
-      {menuOpen && (
+      {menuOpen && menuPosition && (
         <GameCardMenu
           gameName={game.name}
           mode={menuMode}
           deleting={deleting}
           refreshing={refreshing}
+          launching={launching}
+          showPlay={showPlay}
+          hasExe={hasExe}
+          showOpenFolder={showFolder}
+          position={menuPosition}
           classPrefix="library-card"
+          onPlay={onPlay}
           onOpen={onOpen}
+          onOpenFolder={onOpenFolder}
           onRefresh={onRefresh}
           onDelete={onDelete}
           onConfirmDelete={onConfirmDelete}
@@ -522,6 +566,9 @@ function GameCard({
           <div className="library-card__main">
             <h3 className="library-card__title">{game.name}</h3>
             <div className="library-card__stats">
+              {game.has_depot_gids && game.update_status === 'update_available' && (
+                <span className="library-card__update-chip">↑ Update</span>
+              )}
               <span className="library-card__fraction">
                 {game.unlocked_achievements}/{game.total_achievements}
               </span>
@@ -529,9 +576,6 @@ function GameCard({
                 · {formatPlaytimeCompact(game.playtime_seconds ?? 0)}
               </span>
               {hasPlatinum && <span className="library-card__platinum">✦ Platinum</span>}
-              {game.has_depot_gids && game.update_status === 'update_available' && (
-                <span className="library-card__update-chip">↑ Update</span>
-              )}
             </div>
             <div
               className="library-card__progress"
@@ -565,6 +609,7 @@ function GameCard({
               onPlay()
             }}
             onPointerDown={(e) => e.stopPropagation()}
+            onContextMenu={(e) => e.stopPropagation()}
           >
             {playLabel}
           </button>
@@ -578,6 +623,7 @@ function GameListRow({
   game,
   menuOpen,
   menuMode,
+  menuPosition,
   deleting,
   refreshing,
   showPlay,
@@ -586,6 +632,7 @@ function GameListRow({
   onCloseMenu,
   onOpen,
   onPlay,
+  onOpenFolder,
   onRefresh,
   onDelete,
   onConfirmDelete,
@@ -594,14 +641,16 @@ function GameListRow({
   game: GameSummary
   menuOpen: boolean
   menuMode: GameCardMenuMode
+  menuPosition: MenuPosition | null
   deleting: boolean
   refreshing: boolean
   showPlay: boolean
   launching: boolean
-  onOpenMenu: () => void
+  onOpenMenu: (position: MenuPosition) => void
   onCloseMenu: () => void
   onOpen: () => void
   onPlay: () => void
+  onOpenFolder: () => void
   onRefresh: () => void
   onDelete: () => void
   onConfirmDelete: () => void
@@ -611,44 +660,60 @@ function GameListRow({
   const hasPlatinum = game.has_platinum
   const hasExe = Boolean(game.launch_exe?.trim())
   const playLabel = launching ? 'Starting…' : hasExe ? 'Play' : 'Set up'
+  const showFolder = shouldShowOpenFolder(game.install_path ?? '', game.launch_exe ?? '')
 
-  const { isHolding, holdDurationMs, ...longPressHandlers } = useLongPress({
-    onLongPress: onOpenMenu,
+  const { ...longPressHandlers } = useLongPress({
+    onLongPress: (position: PointerPosition) => onOpenMenu(position),
     onShortPress: onOpen,
     disabled: menuOpen
   })
+
+  function handleContextMenu(e: React.MouseEvent): void {
+    e.preventDefault()
+    e.stopPropagation()
+    onOpenMenu({ x: e.clientX, y: e.clientY })
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent): void {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault()
+      onOpen()
+      return
+    }
+    if (e.key === 'ContextMenu' || (e.key === 'F10' && e.shiftKey)) {
+      e.preventDefault()
+      const rect = e.currentTarget.getBoundingClientRect()
+      onOpenMenu({ x: rect.left, y: rect.bottom })
+    }
+  }
 
   return (
     <li
       className={`library-list-row${hasPlatinum ? ' library-list-row--platinum' : ''}${
         menuOpen ? ' library-list-row--menu-open' : ''
-      }${isHolding ? ' library-list-row--holding' : ''}${deleting ? ' library-list-row--deleting' : ''}`}
+      }${deleting ? ' library-list-row--deleting' : ''}`}
       {...longPressHandlers}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault()
-          onOpen()
-        }
-      }}
+      onContextMenu={handleContextMenu}
+      onKeyDown={handleKeyDown}
       role="button"
       tabIndex={0}
       aria-label={`${game.name}, ${game.unlocked_achievements} of ${game.total_achievements} achievements, ${formatPlaytimeCompact(game.playtime_seconds ?? 0)} playtime, ${completionPct} percent complete`}
     >
-      <GameCardHoldOverlay
-        classPrefix="library-list-row"
-        isHolding={isHolding}
-        menuOpen={menuOpen}
-        holdDurationMs={holdDurationMs}
-      />
-
-      {menuOpen && (
+      {menuOpen && menuPosition && (
         <GameCardMenu
           gameName={game.name}
           mode={menuMode}
           deleting={deleting}
           refreshing={refreshing}
+          launching={launching}
+          showPlay={showPlay}
+          hasExe={hasExe}
+          showOpenFolder={showFolder}
+          position={menuPosition}
           classPrefix="library-list-row"
+          onPlay={onPlay}
           onOpen={onOpen}
+          onOpenFolder={onOpenFolder}
           onRefresh={onRefresh}
           onDelete={onDelete}
           onConfirmDelete={onConfirmDelete}
@@ -710,6 +775,7 @@ function GameListRow({
             onPlay()
           }}
           onPointerDown={(e) => e.stopPropagation()}
+          onContextMenu={(e) => e.stopPropagation()}
         >
           {playLabel}
         </button>

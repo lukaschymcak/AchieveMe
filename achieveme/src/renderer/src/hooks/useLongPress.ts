@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useRef, useState, type PointerEvent } from 'react'
 import { computeHoldDurationMs } from './longPressUtils'
 
+export type PointerPosition = { x: number; y: number }
+
 interface Options {
-  onLongPress: () => void
+  onLongPress: (position: PointerPosition) => void
   onShortPress: () => void
   threshold?: number
   gracePeriod?: number
@@ -10,6 +12,10 @@ interface Options {
   disabled?: boolean
 }
 
+/**
+ * Long-press / short-press pointer handlers for library cards and rows.
+ * Exposes last pointer coords so the context menu can open at the hold point.
+ */
 export function useLongPress({
   onLongPress,
   onShortPress,
@@ -20,6 +26,7 @@ export function useLongPress({
 }: Options): {
   isHolding: boolean
   holdDurationMs: number
+  lastPointerPosition: PointerPosition | null
   onPointerDown: (e: PointerEvent) => void
   onPointerMove: (e: PointerEvent) => void
   onPointerUp: (e: PointerEvent) => void
@@ -28,9 +35,11 @@ export function useLongPress({
 } {
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const graceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const startRef = useRef<{ x: number; y: number } | null>(null)
+  const startRef = useRef<PointerPosition | null>(null)
+  const lastPointerRef = useRef<PointerPosition | null>(null)
   const longPressedRef = useRef(false)
   const [isHolding, setIsHolding] = useState(false)
+  const [lastPointerPosition, setLastPointerPosition] = useState<PointerPosition | null>(null)
   const holdDurationMs = computeHoldDurationMs(threshold, gracePeriod)
 
   const clearLongPressTimer = useCallback(() => {
@@ -73,7 +82,10 @@ export function useLongPress({
     (e: PointerEvent) => {
       if (disabled || e.button !== 0) return
       longPressedRef.current = false
-      startRef.current = { x: e.clientX, y: e.clientY }
+      const pos = { x: e.clientX, y: e.clientY }
+      startRef.current = pos
+      lastPointerRef.current = pos
+      setLastPointerPosition(pos)
       clearTimers()
 
       graceTimerRef.current = setTimeout(() => {
@@ -85,7 +97,8 @@ export function useLongPress({
 
       longPressTimerRef.current = setTimeout(() => {
         longPressedRef.current = true
-        onLongPress()
+        const anchor = lastPointerRef.current ?? pos
+        onLongPress(anchor)
         longPressTimerRef.current = null
       }, threshold)
     },
@@ -95,6 +108,9 @@ export function useLongPress({
   const onPointerMove = useCallback(
     (e: PointerEvent) => {
       if (!startRef.current) return
+      const pos = { x: e.clientX, y: e.clientY }
+      lastPointerRef.current = pos
+      setLastPointerPosition(pos)
       const dx = e.clientX - startRef.current.x
       const dy = e.clientY - startRef.current.y
       if (Math.hypot(dx, dy) > moveThreshold) {
@@ -127,6 +143,7 @@ export function useLongPress({
   return {
     isHolding,
     holdDurationMs,
+    lastPointerPosition,
     onPointerDown,
     onPointerMove,
     onPointerUp,

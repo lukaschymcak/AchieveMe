@@ -1,15 +1,26 @@
-import React from 'react'
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { DELETE_CONFIRM, TOOLTIPS } from '../lib/helpContent'
+import { playMenuLabel } from '../../../shared/libraryContextMenuUtils'
 
 export type GameCardMenuMode = 'actions' | 'confirm-delete'
+
+export type MenuPosition = { x: number; y: number }
 
 interface Props {
   gameName: string
   mode: GameCardMenuMode
   deleting?: boolean
   refreshing?: boolean
+  launching?: boolean
+  showPlay?: boolean
+  hasExe?: boolean
+  showOpenFolder?: boolean
+  position: MenuPosition
   classPrefix: 'library-card' | 'library-list-row'
+  onPlay?: () => void
   onOpen: () => void
+  onOpenFolder?: () => void
   onRefresh: () => void
   onDelete: () => void
   onConfirmDelete: () => void
@@ -17,13 +28,23 @@ interface Props {
   onClose: () => void
 }
 
+/**
+ * Pointer-anchored library game context menu (Play / Open / Open folder / Refresh / Delete).
+ */
 export default function GameCardMenu({
   gameName,
   mode,
   deleting = false,
   refreshing = false,
+  launching = false,
+  showPlay = false,
+  hasExe = false,
+  showOpenFolder = false,
+  position,
   classPrefix,
+  onPlay,
   onOpen,
+  onOpenFolder,
   onRefresh,
   onDelete,
   onConfirmDelete,
@@ -31,13 +52,51 @@ export default function GameCardMenu({
   onClose
 }: Props): React.ReactElement {
   const base = `${classPrefix}__menu`
+  const panelRef = useRef<HTMLDivElement>(null)
+  const [coords, setCoords] = useState(position)
 
-  return (
+  useLayoutEffect(() => {
+    const el = panelRef.current
+    if (!el) {
+      setCoords(position)
+      return
+    }
+    const pad = 8
+    const rect = el.getBoundingClientRect()
+    const maxX = window.innerWidth - rect.width - pad
+    const maxY = window.innerHeight - rect.height - pad
+    setCoords({
+      x: Math.max(pad, Math.min(position.x, maxX)),
+      y: Math.max(pad, Math.min(position.y, maxY))
+    })
+  }, [position, mode, showPlay, showOpenFolder])
+
+  useEffect(() => {
+    function handlePointerDown(e: PointerEvent): void {
+      const target = e.target as Node | null
+      if (panelRef.current && target && !panelRef.current.contains(target)) {
+        onClose()
+      }
+    }
+    window.addEventListener('pointerdown', handlePointerDown, true)
+    return () => window.removeEventListener('pointerdown', handlePointerDown, true)
+  }, [onClose])
+
+  const playLabel = playMenuLabel(hasExe, launching)
+
+  const menu = (
     <div
-      className={base}
+      ref={panelRef}
+      className={`${base} library-game-menu`}
+      style={{ left: coords.x, top: coords.y }}
+      data-library-game-menu="true"
       onClick={(e) => e.stopPropagation()}
       onPointerDown={(e) => e.stopPropagation()}
-      role="dialog"
+      onContextMenu={(e) => {
+        e.preventDefault()
+        e.stopPropagation()
+      }}
+      role={mode === 'actions' ? 'menu' : 'dialog'}
       aria-label={mode === 'actions' ? 'Game actions' : 'Confirm delete game'}
     >
       <button
@@ -50,12 +109,39 @@ export default function GameCardMenu({
       </button>
 
       {mode === 'actions' ? (
-        <div className={`${base}-actions`} role="toolbar" aria-label="Game actions">
-          <button type="button" className="library-menu-chip library-menu-chip--primary" onClick={onOpen}>
-            Open
-          </button>
+        <div className={`${base}-actions`} role="none">
+          {showPlay && (
+            <button
+              type="button"
+              role="menuitem"
+              className="library-menu-chip library-menu-chip--primary"
+              onClick={onPlay}
+              disabled={launching}
+            >
+              {playLabel}
+            </button>
+          )}
           <button
             type="button"
+            role="menuitem"
+            className={`library-menu-chip${showPlay ? '' : ' library-menu-chip--primary'}`}
+            onClick={onOpen}
+          >
+            Open
+          </button>
+          {showOpenFolder && (
+            <button
+              type="button"
+              role="menuitem"
+              className="library-menu-chip"
+              onClick={onOpenFolder}
+            >
+              Open folder
+            </button>
+          )}
+          <button
+            type="button"
+            role="menuitem"
             className="library-menu-chip"
             onClick={onRefresh}
             disabled={refreshing}
@@ -63,7 +149,12 @@ export default function GameCardMenu({
           >
             {refreshing ? 'Refreshing…' : 'Refresh'}
           </button>
-          <button type="button" className="library-menu-chip library-menu-chip--danger" onClick={onDelete}>
+          <button
+            type="button"
+            role="menuitem"
+            className="library-menu-chip library-menu-chip--danger"
+            onClick={onDelete}
+          >
             Delete
           </button>
         </div>
@@ -94,4 +185,6 @@ export default function GameCardMenu({
       )}
     </div>
   )
+
+  return createPortal(menu, document.body)
 }
