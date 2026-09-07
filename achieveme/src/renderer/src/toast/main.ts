@@ -28,7 +28,7 @@ const EXIT_MS = 280
 const XP_COUNT_MS = 600
 
 const TEXT_FADE_SELECTOR =
-  '.unlock-toast__game, .unlock-toast__name, .unlock-toast__description, .unlock-toast__points'
+  '.unlock-toast__name, .unlock-toast__description, .unlock-toast__points'
 
 const rootEl = document.getElementById('root')
 if (!rootEl) {
@@ -230,13 +230,6 @@ function renderToast(payload: UnlockToastPayload): void {
 
   const body = document.createElement('span')
   body.className = 'unlock-toast__body'
-
-  if (gameName) {
-    const gameEl = document.createElement('span')
-    gameEl.className = 'unlock-toast__game'
-    gameEl.textContent = gameName
-    body.appendChild(gameEl)
-  }
 
   const nameEl = document.createElement('span')
   nameEl.className = 'unlock-toast__name'
