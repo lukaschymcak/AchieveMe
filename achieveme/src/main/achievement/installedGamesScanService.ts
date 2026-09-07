@@ -56,9 +56,11 @@ export function scanInstalledGames(
     if (!trimmed || isRefusedScanRoot(trimmed)) continue
     if (!fs.existsSync(trimmed) || !fs.statSync(trimmed).isDirectory()) continue
 
+    // UE / Unity nests often bury steam_settings under Plugins or Engine/.../Steamworks
+    // (e.g. depth 5–8 from steamapps/common). Depth 4 missed those installs.
     const dirs = walkDirsBounded(trimmed, {
-      maxDepth: 4,
-      maxDirs: 5000,
+      maxDepth: 8,
+      maxDirs: 8000,
       shouldSkip: shouldSkipScanDirName
     })
 

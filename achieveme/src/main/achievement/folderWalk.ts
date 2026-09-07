@@ -7,9 +7,9 @@ export interface CollectedFile {
 }
 
 export interface WalkDirsBoundedOptions {
-  /** Max depth from root (root = 0). Default 4. */
+  /** Max depth from root (root = 0). Default 8. */
   maxDepth?: number
-  /** Max directories visited per root. Default 5000. */
+  /** Max directories visited per root. Default 8000. */
   maxDirs?: number
   /** Return true to skip descending into this directory basename. */
   shouldSkip?: (dirName: string) => boolean
@@ -75,8 +75,8 @@ export function walkDirsBounded(
   root: string,
   options: WalkDirsBoundedOptions = {}
 ): string[] {
-  const maxDepth = options.maxDepth ?? 4
-  const maxDirs = options.maxDirs ?? 5000
+  const maxDepth = options.maxDepth ?? 8
+  const maxDirs = options.maxDirs ?? 8000
   const shouldSkip = options.shouldSkip ?? (() => false)
 
   const resolved = path.resolve(root)
