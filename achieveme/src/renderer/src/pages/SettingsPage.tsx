@@ -25,6 +25,7 @@ const CLOUD_OVERWRITE_CONFIRM =
 
 export default function SettingsPage({ page, onNavigate }: Props): React.ReactElement {
   const [settings, setSettings] = useState<AppSettings | null>(null)
+  const [loginItemsSupported, setLoginItemsSupported] = useState(true)
   const [saved, setSaved] = useState(false)
   const [saveHint, setSaveHint] = useState(false)
   const [newFolder, setNewFolder] = useState('')
@@ -45,7 +46,12 @@ export default function SettingsPage({ page, onNavigate }: Props): React.ReactEl
   }
 
   useEffect(() => {
-    window.api.getSettings().then(setSettings)
+    void Promise.all([window.api.getSettings(), window.api.getAppRuntime()]).then(
+      ([nextSettings, runtime]) => {
+        setSettings(nextSettings)
+        setLoginItemsSupported(runtime.loginItemsSupported)
+      }
+    )
     refreshCloudStatus()
   }, [])
 
@@ -441,28 +447,42 @@ export default function SettingsPage({ page, onNavigate }: Props): React.ReactEl
               />
               <span className="settings-page__source-name">Close to system tray (keep watching saves)</span>
             </label>
-            <label className="settings-page__source-label">
+            <label
+              className={`settings-page__source-label${loginItemsSupported ? '' : ' settings-page__source-label--disabled'}`}
+            >
               <input
                 type="checkbox"
                 checked={settings.openAtLogin}
+                disabled={!loginItemsSupported}
                 onChange={(e) => toggleSetting('openAtLogin', e.target.checked)}
                 className="settings-page__checkbox"
               />
               <span className="settings-page__source-name">Launch AchieveMe when Windows starts</span>
             </label>
             <label
-              className={`settings-page__source-label${settings.openAtLogin ? '' : ' settings-page__source-label--disabled'}`}
+              className={`settings-page__source-label${
+                loginItemsSupported && settings.openAtLogin
+                  ? ''
+                  : ' settings-page__source-label--disabled'
+              }`}
             >
               <input
                 type="checkbox"
                 checked={settings.startMinimizedToTray}
-                disabled={!settings.openAtLogin}
+                disabled={!loginItemsSupported || !settings.openAtLogin}
                 onChange={(e) => toggleSetting('startMinimizedToTray', e.target.checked)}
                 className="settings-page__checkbox"
               />
               <span className="settings-page__source-name">Start minimized to tray on login</span>
             </label>
           </div>
+          {!loginItemsSupported && (
+            <p className="settings-page__note">
+              Windows startup is registered only for the installed Setup. Portable and development
+              builds never add a startup entry and clear one if present. Save on an installed Setup
+              build to apply Launch when Windows starts.
+            </p>
+          )}
         </section>
 
         <section className="settings-page__section" aria-labelledby="settings-play-sessions">
