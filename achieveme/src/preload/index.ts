@@ -81,6 +81,12 @@ contextBridge.exposeInMainWorld('api', {
   getSettings: (): Promise<AppSettings> =>
     ipcRenderer.invoke('get-settings'),
 
+  getAppRuntime: (): Promise<{
+    isPackaged: boolean
+    isPortable: boolean
+    loginItemsSupported: boolean
+  }> => ipcRenderer.invoke('get-app-runtime'),
+
   saveSettings: (settings: AppSettings): Promise<void> =>
     ipcRenderer.invoke('save-settings', settings),
 

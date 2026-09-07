@@ -23,7 +23,11 @@ import { hasStoredManifestGids } from '../../shared/libraryRetentionUtils'
 import { getStoreCoverUrl } from '../achievement/steamApiClient'
 import { cacheCoverUrl, cacheHeroUrl } from '../../shared/imageCacheUrls'
 import { loadSettings, saveSettings, normalizeSettings } from '../settings'
-import { syncLoginItemSettings } from '../loginItemService'
+import {
+  detectAppRuntime,
+  loginItemsSupported,
+  syncLoginItemSettings
+} from '../loginItemService'
 import { startPlaytimeTracker, stopPlaytimeTracker } from '../achievement/playtimeService'
 import { startWatcher, pruneOrphanedGames } from '../achievement/watcherService'
 import { scanAllSources } from '../achievement/discoveryService'
@@ -214,6 +218,21 @@ export function registerIpcHandlers(): void {
   ipcMain.handle('get-settings', (): AppSettings => {
     return loadSettings()
   })
+
+  ipcMain.handle(
+    'get-app-runtime',
+    (): {
+      isPackaged: boolean
+      isPortable: boolean
+      loginItemsSupported: boolean
+    } => {
+      const runtime = detectAppRuntime()
+      return {
+        ...runtime,
+        loginItemsSupported: loginItemsSupported(runtime)
+      }
+    }
+  )
 
   ipcMain.handle('save-settings', async (_event, settings: AppSettings): Promise<void> => {
     const normalized = normalizeSettings(settings)

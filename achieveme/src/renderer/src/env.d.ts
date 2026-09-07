@@ -33,6 +33,11 @@ declare global {
       getAllGames(): Promise<GameSummary[]>
       getGameDetail(appid: string): Promise<GameDetail | null>
       getSettings(): Promise<AppSettings>
+      getAppRuntime(): Promise<{
+        isPackaged: boolean
+        isPortable: boolean
+        loginItemsSupported: boolean
+      }>
       saveSettings(settings: AppSettings): Promise<void>
       refresh(): Promise<void>
       refreshGame(appid: string): Promise<void>
