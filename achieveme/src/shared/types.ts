@@ -176,6 +176,8 @@ export interface Game {
   install_path: string
   /** Absolute path to the chosen game .exe for Play, or empty. */
   launch_exe: string
+  /** Optional CLI args for Play (spawn path). Empty when none. */
+  launch_args: string
   /** Epoch ms when the current play session started, or 0 when idle. */
   playtime_session_started_at: number
   /** Epoch ms of the last playtime flush during an open session, or 0 when idle. */
@@ -340,6 +342,8 @@ export interface GameExecutable {
   name: string
   relativePath: string
   absolutePath: string
+  /** True when ranking suggests this exe for Play (not redist/crash tools). */
+  suggested?: boolean
 }
 
 /** Config payload when saving Play install/exe paths. */
@@ -347,6 +351,8 @@ export interface SetGameLaunchConfigRequest {
   appid: string
   installPath?: string
   launchExe: string
+  /** Optional CLI args string; omit to leave unchanged. */
+  launchArgs?: string
 }
 
 /**

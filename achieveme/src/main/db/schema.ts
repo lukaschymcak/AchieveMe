@@ -59,6 +59,9 @@ export function migrateSchema(db: Database.Database): void {
   if (!columnExists(db, 'games', 'playtime_last_flush_at')) {
     db.exec('ALTER TABLE games ADD COLUMN playtime_last_flush_at INTEGER NOT NULL DEFAULT 0')
   }
+  if (!columnExists(db, 'games', 'launch_args')) {
+    db.exec("ALTER TABLE games ADD COLUMN launch_args TEXT NOT NULL DEFAULT ''")
+  }
   db.exec(`
     CREATE TABLE IF NOT EXISTS ignored_appids (
       appid       TEXT    PRIMARY KEY,
@@ -81,6 +84,7 @@ export function createTables(db: Database.Database): void {
       playtime_seconds      INTEGER NOT NULL DEFAULT 0,
       install_path          TEXT    NOT NULL DEFAULT '',
       launch_exe            TEXT    NOT NULL DEFAULT '',
+      launch_args           TEXT    NOT NULL DEFAULT '',
       manifest_gids         TEXT    NOT NULL DEFAULT '',
       update_status         TEXT    NOT NULL DEFAULT '',
       backup_status         TEXT    NOT NULL DEFAULT '',

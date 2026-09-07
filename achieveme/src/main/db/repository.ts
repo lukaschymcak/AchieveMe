@@ -2,7 +2,7 @@ import type Database from 'better-sqlite3'
 import type { Game, Achievement, SaveLocation, UpdateStatus } from '../../shared/types'
 
 const GAME_COLUMNS =
-  'appid, name, total_achievements, unlocked_achievements, completion_pct, has_platinum, last_unlocked_at, schema_fetched_at, playtime_seconds, install_path, launch_exe, playtime_session_started_at, playtime_last_flush_at, manifest_gids, update_status, backup_status, backup_at, backup_error, ludusavi_title, steamless_applied, goldberg_applied, steamless_exe, goldberg_dll_path'
+  'appid, name, total_achievements, unlocked_achievements, completion_pct, has_platinum, last_unlocked_at, schema_fetched_at, playtime_seconds, install_path, launch_exe, launch_args, playtime_session_started_at, playtime_last_flush_at, manifest_gids, update_status, backup_status, backup_at, backup_error, ludusavi_title, steamless_applied, goldberg_applied, steamless_exe, goldberg_dll_path'
 
 function normalizeGameRow(row: Game | undefined): Game | undefined {
   if (!row) return undefined
@@ -11,6 +11,7 @@ function normalizeGameRow(row: Game | undefined): Game | undefined {
     playtime_seconds: row.playtime_seconds ?? 0,
     install_path: row.install_path ?? '',
     launch_exe: row.launch_exe ?? '',
+    launch_args: row.launch_args ?? '',
     playtime_session_started_at: row.playtime_session_started_at ?? 0,
     playtime_last_flush_at: row.playtime_last_flush_at ?? 0,
     manifest_gids: row.manifest_gids ?? '',
@@ -33,6 +34,7 @@ export function upsertGame(db: Database.Database, game: Game): void {
   const playtimeSeconds = game.playtime_seconds ?? existing?.playtime_seconds ?? 0
   const installPath = game.install_path ?? existing?.install_path ?? ''
   const launchExe = game.launch_exe ?? existing?.launch_exe ?? ''
+  const launchArgs = game.launch_args ?? existing?.launch_args ?? ''
   const manifestGids = game.manifest_gids ?? existing?.manifest_gids ?? ''
   const updateStatus = game.update_status ?? existing?.update_status ?? ''
   const backupStatus = game.backup_status ?? existing?.backup_status ?? ''
@@ -48,14 +50,14 @@ export function upsertGame(db: Database.Database, game: Game): void {
     INSERT INTO games (
       appid, name, total_achievements, unlocked_achievements,
       completion_pct, has_platinum, last_unlocked_at, schema_fetched_at,
-      playtime_seconds, install_path, launch_exe, manifest_gids, update_status,
+      playtime_seconds, install_path, launch_exe, launch_args, manifest_gids, update_status,
       backup_status, backup_at, backup_error, ludusavi_title,
       steamless_applied, goldberg_applied, steamless_exe, goldberg_dll_path
     )
     VALUES (
       @appid, @name, @total_achievements, @unlocked_achievements,
       @completion_pct, @has_platinum, @last_unlocked_at, @schema_fetched_at,
-      @playtime_seconds, @install_path, @launch_exe, @manifest_gids, @update_status,
+      @playtime_seconds, @install_path, @launch_exe, @launch_args, @manifest_gids, @update_status,
       @backup_status, @backup_at, @backup_error, @ludusavi_title,
       @steamless_applied, @goldberg_applied, @steamless_exe, @goldberg_dll_path
     )
@@ -79,6 +81,10 @@ export function upsertGame(db: Database.Database, game: Game): void {
       launch_exe            = CASE
         WHEN excluded.launch_exe != '' THEN excluded.launch_exe
         ELSE games.launch_exe
+      END,
+      launch_args           = CASE
+        WHEN excluded.launch_args != '' THEN excluded.launch_args
+        ELSE games.launch_args
       END,
       manifest_gids         = CASE
         WHEN excluded.manifest_gids != '' THEN excluded.manifest_gids
@@ -104,6 +110,7 @@ export function upsertGame(db: Database.Database, game: Game): void {
     playtime_seconds: playtimeSeconds,
     install_path: installPath,
     launch_exe: launchExe,
+    launch_args: launchArgs,
     manifest_gids: manifestGids,
     update_status: updateStatus,
     backup_status: backupStatus,
@@ -295,6 +302,17 @@ export function updateGameInstallPath(db: Database.Database, appid: string, inst
  */
 export function updateGameLaunchExe(db: Database.Database, appid: string, launchExe: string): void {
   db.prepare('UPDATE games SET launch_exe = ? WHERE appid = ?').run(launchExe, appid)
+}
+
+/**
+ * Persists optional CLI arguments used by Play (spawn path).
+ *
+ * @param db - Open SQLite database.
+ * @param appid - Steam AppID.
+ * @param launchArgs - Raw args string (may be empty to clear).
+ */
+export function updateGameLaunchArgs(db: Database.Database, appid: string, launchArgs: string): void {
+  db.prepare('UPDATE games SET launch_args = ? WHERE appid = ?').run(launchArgs, appid)
 }
 
 export interface GameBackupStatusUpdate {
