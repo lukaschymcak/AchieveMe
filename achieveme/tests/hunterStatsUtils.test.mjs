@@ -36,16 +36,53 @@ test('parseSteamAppdetailsStats keeps reviewPercent only when present', () => {
     '570': {
       success: true,
       data: {
-        // Hypothetical field — parser must only read known optional paths if we define them.
-        // If Store never sends %, this fixture documents optional `review_score` / skip.
-        recommendations: { total: 10 },
-        // Intentionally no percent field
+        recommendations: { total: 10 }
       }
     }
   })
   const stats = parseSteamAppdetailsStats(body, '570')
   assert.equal(stats.reviewPercent, null)
   assert.equal(stats.reviewCount, 10)
+})
+
+test('parseSteamAppdetailsStats maps reviews.percent to reviewPercent', () => {
+  const body = JSON.stringify({
+    '570': {
+      success: true,
+      data: {
+        reviews: { percent: 92 }
+      }
+    }
+  })
+  const stats = parseSteamAppdetailsStats(body, '570')
+  assert.equal(stats.reviewPercent, 92)
+})
+
+test('parseSteamAppdetailsStats maps review_score to reviewPercent', () => {
+  const body = JSON.stringify({
+    '570': {
+      success: true,
+      data: {
+        review_score: 88
+      }
+    }
+  })
+  const stats = parseSteamAppdetailsStats(body, '570')
+  assert.equal(stats.reviewPercent, 88)
+})
+
+test('parseSteamAppdetailsStats prefers reviews.percent over review_score', () => {
+  const body = JSON.stringify({
+    '570': {
+      success: true,
+      data: {
+        reviews: { percent: 92 },
+        review_score: 88
+      }
+    }
+  })
+  const stats = parseSteamAppdetailsStats(body, '570')
+  assert.equal(stats.reviewPercent, 92)
 })
 
 test('parseSteamAppdetailsStats returns empty on success false', () => {
