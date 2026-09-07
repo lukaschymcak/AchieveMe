@@ -9,10 +9,10 @@
   --ink-muted: oklch(70% 0.014 275);
   --ink-subtle: oklch(58% 0.012 275);
 
-  --tier-bronze: oklch(62% 0.13 58);
-  --tier-silver: oklch(76% 0.025 260);
-  --tier-gold: oklch(78% 0.15 88);
-  --tier-platinum: oklch(84% 0.07 285);
+  --tier-bronze: oklch(74% 0.12 48);
+  --tier-silver: oklch(88% 0.014 250);
+  --tier-gold: oklch(86% 0.15 82);
+  --tier-platinum: oklch(92% 0.035 280);
 
   --color-progress: oklch(60% 0.12 230);
   --color-progress-platinum: var(--tier-platinum);

@@ -2,17 +2,20 @@
  * Toast overlay width clamp helpers (main + renderer).
  */
 
-/** Fixed toast window height in CSS pixels (fits 72px icon + text stack). */
-export const TOAST_HEIGHT = 132
+/** Fixed toast window height — 12+72+12+4 border card + 10+10 root pad. */
+export const TOAST_HEIGHT = 120
 
 /** Narrowest overlay after content measure (icon phase + short copy). */
-export const TOAST_MIN_WIDTH = 380
+export const TOAST_MIN_WIDTH = 360
 
 /** Widest overlay — measure headroom and long-description cap. */
 export const TOAST_MAX_WIDTH = 680
 
-/** Horizontal `#root` padding (6px each side) included when sizing the window. */
-export const TOAST_ROOT_PAD_X = 12
+/** Horizontal `#root` padding (10px each side) included when sizing the window. */
+export const TOAST_ROOT_PAD_X = 20
+
+/** Vertical `#root` padding (10px each side) — keep in sync with toast.css `#root`. */
+export const TOAST_ROOT_PAD_Y = 20
 
 /**
  * Clamps a measured toast width into the allowed window range.

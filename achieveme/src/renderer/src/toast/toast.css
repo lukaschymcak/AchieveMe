@@ -1,16 +1,17 @@
 :root {
   --surface-1: oklch(18% 0.014 275);
   --surface-2: oklch(22% 0.016 275);
+  --surface-3: oklch(28% 0.018 275);
   --border-subtle: oklch(34% 0.02 275);
   --ink: oklch(93% 0.01 275);
   --ink-muted: oklch(70% 0.014 275);
-  --tier-bronze: oklch(62% 0.13 58);
-  --tier-silver: oklch(76% 0.025 260);
-  --tier-gold: oklch(78% 0.15 88);
-  --tier-platinum: oklch(84% 0.07 285);
+  --tier-bronze: oklch(74% 0.12 48);
+  --tier-silver: oklch(88% 0.014 250);
+  --tier-gold: oklch(86% 0.15 82);
+  --tier-platinum: oklch(92% 0.035 280);
   --toast-accent: var(--tier-bronze);
   --toast-icon-size: 72px;
-  --toast-icon-phase: 92px;
+  --toast-pad: 12px;
   --font-stats: 'Rajdhani', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-ui: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
@@ -40,24 +41,36 @@ body {
   justify-content: center;
   width: 100%;
   height: 100%;
-  padding: 10px 6px;
+  padding: 10px;
   background: transparent !important;
 }
 
+/**
+ * Compact achievement-row toast — same surfaces as game detail,
+ * not a pure-black billboard.
+ */
 .unlock-toast {
   --toast-accent: var(--tier-bronze);
+  --toast-border-w: 2px;
+  --toast-collapsed-w: calc(
+    var(--toast-icon-size) + var(--toast-pad) * 2 + var(--toast-border-w) * 2
+  );
   position: relative;
   display: flex;
   align-items: center;
   justify-content: flex-start;
-  width: var(--toast-icon-phase);
-  max-width: var(--toast-icon-phase);
-  height: calc(100% - 4px);
+  gap: 10px;
+  width: var(--toast-collapsed-w);
+  max-width: var(--toast-collapsed-w);
+  height: auto;
   margin: 0;
-  padding: 0;
-  background: color-mix(in oklch, var(--surface-1) 94%, black);
-  border: 1px solid var(--border-subtle);
-  border-radius: 4px;
+  padding: var(--toast-pad);
+  background: var(--surface-1);
+  border: var(--toast-border-w) solid color-mix(in oklch, var(--toast-accent) 72%, var(--border-subtle));
+  border-radius: 8px;
+  box-shadow:
+    0 0 0 1px color-mix(in oklch, var(--toast-accent) 22%, transparent),
+    0 0 8px 0 color-mix(in oklch, var(--toast-accent) 28%, transparent);
   overflow: hidden;
   cursor: pointer;
   color: var(--ink);
@@ -66,7 +79,7 @@ body {
   appearance: none;
   -webkit-appearance: none;
   opacity: 0;
-  transform: scale(0.96);
+  transform: scale(0.98);
   transform-origin: left center;
   transition:
     opacity 150ms var(--ease-out),
@@ -102,7 +115,6 @@ body {
   overflow: visible;
 }
 
-/** Off-screen natural-width measure before main resizes the overlay. */
 .unlock-toast--measure {
   width: max-content;
   max-width: none;
@@ -132,11 +144,11 @@ body {
 }
 
 .unlock-toast--exit {
-  width: var(--toast-icon-phase);
-  max-width: var(--toast-icon-phase);
+  width: var(--toast-collapsed-w);
+  max-width: var(--toast-collapsed-w);
   overflow: hidden;
   opacity: 0;
-  transform: scale(0.96);
+  transform: scale(0.98);
   transform-origin: left center;
   transition:
     opacity 280ms var(--ease-out),
@@ -145,21 +157,21 @@ body {
 
 .unlock-toast__points {
   position: absolute;
-  top: -8px;
+  top: 6px;
   right: 8px;
   z-index: 2;
   display: none;
   align-items: center;
-  padding: 2px 9px;
+  padding: 3px 10px;
   border-radius: 999px;
-  background: oklch(98% 0 0);
-  color: oklch(18% 0.02 275);
+  background: oklch(16% 0.014 275 / 0.92);
+  color: var(--ink);
+  border: 1px solid var(--border-subtle);
   font-family: var(--font-stats);
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 700;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.04em;
   line-height: 1.15;
-  box-shadow: 0 2px 8px oklch(0% 0 0 / 0.35);
   pointer-events: none;
   opacity: 0;
   transition: opacity 420ms var(--ease-out);
@@ -168,7 +180,7 @@ body {
 .unlock-toast--xp .unlock-toast__points {
   display: inline-flex;
   opacity: 1;
-  animation: toast-xp-drop 480ms var(--ease-out) 60ms both;
+  animation: toast-xp-drop 420ms var(--ease-out) 40ms both;
 }
 
 .unlock-toast__icon-wrap {
@@ -176,54 +188,46 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: var(--toast-icon-phase);
-  flex: 0 0 var(--toast-icon-phase);
+  flex: 0 0 auto;
+  padding: 0;
+  width: var(--toast-icon-size);
+  height: var(--toast-icon-size);
+  line-height: 0;
 }
 
 .unlock-toast__icon,
 .unlock-toast__icon-fallback {
   position: relative;
+  display: block;
   width: var(--toast-icon-size);
   height: var(--toast-icon-size);
-  border-radius: 4px;
-  border: 2px solid var(--toast-accent);
+  flex-shrink: 0;
+  border-radius: 6px;
+  border: none;
+  box-shadow: 0 0 0 1px color-mix(in oklch, var(--border-subtle) 80%, transparent);
   overflow: hidden;
 }
 
 .unlock-toast__icon {
   object-fit: cover;
+  background: var(--surface-3);
 }
 
 .unlock-toast__icon-fallback {
-  background: color-mix(in oklch, var(--toast-accent) 16%, var(--surface-2));
+  background: var(--surface-3);
+}
+
+.unlock-toast--pulse {
+  overflow: visible;
 }
 
 .unlock-toast--pulse .unlock-toast__icon,
 .unlock-toast--pulse .unlock-toast__icon-fallback {
-  animation: toast-rarity-pulse 720ms var(--ease-out);
+  animation: toast-rarity-pulse 700ms var(--ease-out);
 }
 
-/* Light sweep across rarity border during icon hold (on wrap — img cannot use ::after). */
 .unlock-toast--shimmer .unlock-toast__icon-wrap::after {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: var(--toast-icon-size);
-  height: var(--toast-icon-size);
-  margin: calc(var(--toast-icon-size) / -2) 0 0 calc(var(--toast-icon-size) / -2);
-  border-radius: 4px;
-  background: linear-gradient(
-    110deg,
-    transparent 30%,
-    color-mix(in oklch, white 70%, var(--toast-accent)) 48%,
-    transparent 66%
-  );
-  transform: translateX(-120%);
-  animation: toast-border-shimmer 750ms var(--ease-out) forwards;
-  pointer-events: none;
-  mix-blend-mode: soft-light;
-  z-index: 1;
+  content: none;
 }
 
 .unlock-toast__body {
@@ -232,9 +236,8 @@ body {
   min-width: 0;
   flex-direction: column;
   justify-content: center;
-  gap: 4px;
-  padding: 6px 48px 6px 10px;
-  /* Content wipe: reveal L→R as the bar expands. */
+  gap: 3px;
+  padding: 0 52px 0 0;
   clip-path: inset(0 100% 0 0);
   transition: clip-path 675ms cubic-bezier(0.33, 1, 0.32, 1);
 }
@@ -255,24 +258,24 @@ body {
 }
 
 .unlock-toast--expanded .unlock-toast__description {
-  animation: toast-fade-in 420ms var(--ease-out) 120ms both;
+  animation: toast-fade-in 420ms var(--ease-out) 100ms both;
 }
 
 .unlock-toast__name {
-  font-size: 18px;
+  font-size: 17px;
   font-weight: 700;
   line-height: 1.2;
-  color: color-mix(in oklch, var(--toast-accent) 88%, white);
+  color: var(--ink);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .unlock-toast__description {
-  font-size: 14px;
-  font-weight: 500;
-  line-height: 1.35;
-  color: oklch(92% 0.008 275);
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.4;
+  color: var(--ink-muted);
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
@@ -282,7 +285,7 @@ body {
 @keyframes toast-fade-in {
   from {
     opacity: 0;
-    transform: translateY(3px);
+    transform: translateY(2px);
   }
   to {
     opacity: 1;
@@ -293,7 +296,7 @@ body {
 @keyframes toast-xp-drop {
   from {
     opacity: 0;
-    transform: translateY(-12px);
+    transform: translateY(-4px);
   }
   to {
     opacity: 1;
@@ -302,23 +305,12 @@ body {
 }
 
 @keyframes toast-rarity-pulse {
-  0% {
-    transform: scale(1);
-    box-shadow: 0 0 0 0 color-mix(in oklch, var(--toast-accent) 0%, transparent);
-  }
-  45% {
-    transform: scale(1.07);
-    box-shadow: 0 0 0 4px color-mix(in oklch, var(--toast-accent) 45%, transparent);
-  }
+  0%,
   100% {
     transform: scale(1);
-    box-shadow: 0 0 0 0 color-mix(in oklch, var(--toast-accent) 0%, transparent);
   }
-}
-
-@keyframes toast-border-shimmer {
-  to {
-    transform: translateX(120%);
+  50% {
+    transform: scale(1.1);
   }
 }
 
@@ -357,8 +349,7 @@ body {
   }
 
   .unlock-toast--pulse .unlock-toast__icon,
-  .unlock-toast--pulse .unlock-toast__icon-fallback,
-  .unlock-toast--shimmer .unlock-toast__icon-wrap::after {
+  .unlock-toast--pulse .unlock-toast__icon-fallback {
     animation: none;
   }
 
