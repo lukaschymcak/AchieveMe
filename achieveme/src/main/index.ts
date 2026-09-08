@@ -16,7 +16,6 @@ import {
   registerImageCacheProtocol,
   registerImageCacheSchemes
 } from './achievement/imageCacheProtocol'
-import { getNews } from './achievement/steamNewsService'
 import { scheduleLibraryBackup } from './achievement/ludusaviBackupQueue'
 
 // Allow unlock-sound Audio.play() from the hidden sound window without a user gesture.
@@ -102,7 +101,6 @@ function bootApp(): void {
     initDb()
     registerImageCacheProtocol()
     registerIpcHandlers()
-    void getNews(getDb(), false).catch(() => {})
     const settings = loadSettings()
     syncLoginItemSettings(settings)
     startWatcher(settings).catch(() => {})

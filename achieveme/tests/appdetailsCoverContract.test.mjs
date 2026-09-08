@@ -15,10 +15,11 @@ const gameHunterStatsServicePath = path.join(
 )
 
 test('hunter stats cache type is distinct from cover appdetails', async () => {
-  const { HUNTER_STATS_CACHE_TYPE } = await import(
+  const { HUNTER_STATS_CACHE_TYPE, HUNTER_METACRITIC_CACHE_TYPE } = await import(
     '../src/main/achievement/gameHunterStatsService.ts'
   )
-  assert.equal(HUNTER_STATS_CACHE_TYPE, 'appdetails_stats')
+  assert.equal(HUNTER_METACRITIC_CACHE_TYPE, 'hunter_metacritic')
+  assert.equal(HUNTER_STATS_CACHE_TYPE, 'hunter_metacritic')
   assert.notEqual(HUNTER_STATS_CACHE_TYPE, 'appdetails')
 })
 

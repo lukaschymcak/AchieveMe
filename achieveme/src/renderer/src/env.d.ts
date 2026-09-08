@@ -23,7 +23,9 @@ import type {
   NewsPayload,
   GetNewsOptions,
   ImportScannedInstallRequest,
-  ScannedInstallCandidate
+  ScannedInstallCandidate,
+  BootWarmProgress,
+  BootWarmResult
 } from '../../shared/types'
 import type { LudusaviSnapshot } from '../../shared/ludusaviApiUtils'
 
@@ -31,10 +33,21 @@ declare global {
   interface Window {
     api: {
       getNews(options?: GetNewsOptions | boolean): Promise<NewsPayload>
+      runBootWarm(): Promise<BootWarmResult>
+      onBootWarmProgress(cb: (progress: BootWarmProgress) => void): void
+      offBootWarmProgress(): void
       getProfileStats(): Promise<ProfileStats | null>
       getAllGames(): Promise<GameSummary[]>
       getGameDetail(appid: string): Promise<GameDetail | null>
-      getGameHunterStats(appid: string): Promise<GameHunterStats>
+      getGameHunterStats(
+        appid: string,
+        options?: { forceRefresh?: boolean }
+      ): Promise<GameHunterStats>
+      warmHunterLibrary(): Promise<{
+        warmed: number
+        skipped: number
+        failed: number
+      }>
       getSettings(): Promise<AppSettings>
       getAppRuntime(): Promise<{
         isPackaged: boolean

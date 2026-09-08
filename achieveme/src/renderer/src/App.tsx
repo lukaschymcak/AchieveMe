@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react'
 import type {
   ActiveDepotSession,
   ActiveUpdateSession,
+  BootWarmProgress,
   DepotProgressEvent,
   GameSummary,
   NewsPayload,
@@ -15,6 +16,7 @@ import SettingsPage from './pages/SettingsPage'
 import ToolsPage from './pages/ToolsPage'
 import HelpPage from './pages/HelpPage'
 import FirstRunWelcome from './components/FirstRunWelcome'
+import BootSplash from './components/BootSplash'
 import SessionRecapModal from './components/SessionRecapModal'
 import DepotWizard from './components/DepotWizard'
 import TransfersDock from './components/TransfersDock'
@@ -33,6 +35,9 @@ import { nextUpdatePhaseAfterSuccess } from '../../shared/updateTransferUtils'
 type TransitionDir = 'next' | 'prev' | null
 
 export default function App(): React.ReactElement {
+  const [bootReady, setBootReady] = useState(false)
+  const [bootProgress, setBootProgress] = useState<BootWarmProgress | null>(null)
+  const [bootError, setBootError] = useState<string | null>(null)
   const [page, setPage] = useState<AppPage>('dashboard')
   const [selectedAppid, setSelectedAppid] = useState<string | null>(null)
   const [refreshing, setRefreshing] = useState(false)
@@ -58,6 +63,34 @@ export default function App(): React.ReactElement {
   const depotSessionRef = useRef<ActiveDepotSession | null>(null)
   const updateSessionRef = useRef<ActiveUpdateSession | null>(null)
   const updateJobRunningRef = useRef(false)
+
+  useEffect(() => {
+    let cancelled = false
+    window.api.onBootWarmProgress((progress) => {
+      if (!cancelled) setBootProgress(progress)
+    })
+    void window.api
+      .runBootWarm()
+      .then((result) => {
+        if (cancelled) return
+        if (!result.ok && result.errorMessage) {
+          setBootError(result.errorMessage)
+        }
+        setBootReady(true)
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return
+        setBootError(err instanceof Error ? err.message : String(err))
+        setBootReady(true)
+      })
+      .finally(() => {
+        window.api.offBootWarmProgress()
+      })
+    return () => {
+      cancelled = true
+      window.api.offBootWarmProgress()
+    }
+  }, [])
 
   useEffect(() => {
     depotSessionRef.current = activeDepotSession
@@ -86,6 +119,7 @@ export default function App(): React.ReactElement {
   )
 
   useEffect(() => {
+    if (!bootReady) return
     let cancelled = false
     void window.api
       .getNews({ forceRefresh: false })
@@ -103,7 +137,7 @@ export default function App(): React.ReactElement {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [bootReady])
 
   const handleDepotSessionChange = useCallback((session: ActiveDepotSession | null): void => {
     depotSessionRef.current = session
@@ -476,6 +510,10 @@ export default function App(): React.ReactElement {
     </>
   )
 
+  if (!bootReady) {
+    return <BootSplash progress={bootProgress} />
+  }
+
   if (selectedAppid) {
     const currentIdx = libraryGames.findIndex((g) => g.appid === selectedAppid)
     const prevAppid = currentIdx > 0 ? libraryGames[currentIdx - 1].appid : null
@@ -621,6 +659,22 @@ export default function App(): React.ReactElement {
       <>
         {recapOverlay}
         {depotOverlay}
+        {bootError ? (
+          <div className="boot-warm-banner" role="status">
+            <span>
+              Startup warm had issues — library may show incomplete network data until you
+              Refresh. ({bootError})
+            </span>
+            <button
+              type="button"
+              className="boot-warm-banner__dismiss"
+              aria-label="Dismiss startup warning"
+              onClick={() => setBootError(null)}
+            >
+              Dismiss
+            </button>
+          </div>
+        ) : null}
         {showFirstRun && <FirstRunWelcome onDismiss={() => setShowFirstRun(false)} />}
         <div className="app-shell">
           <main className="app-main">

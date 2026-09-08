@@ -27,7 +27,9 @@ AchieveMe can run in the **system tray** after you close the window (Settings �
 
 **Progress bars** on game detail show partial achievement progress from Goldberg/GSE `progress` / `max_progress` fields in `achievements.json`.
 
-**Hunter stats:** Under the game detail hero, a compact strip shows Steam Store Metacritic and recommendation stats when available (loaded asynchronously — achievements and Play are not blocked). Reference only, not a storefront; HowLongToBeat hours are deferred.
+**Hunter stats:** Under the game detail hero, a compact strip shows a Metacritic score box and Steam review sentiment (e.g. Very Positive) with Steam-like colors when available. Metacritic and review summary are cached in SQLite (`hunter_metacritic` / `hunter_reviews`, ~7 days). Game Detail reads cache only (instant strip). Reviews refresh on boot warm, when you open Library (missing/stale fill), and on Refresh. Titles without a Steam Metacritic score omit the box. Reference only, not a storefront; HowLongToBeat hours are deferred.
+
+**Boot splash & caches:** Cold start shows AchieveMe until AppData prune + network warm finish (concurrency 3). Durable: settings, SQLite library, profile, schema/appdetails/steamdb (~7d), on-disk images, Metacritic, Steam review summary. Always refreshed at boot: global rarities, news, and hunter reviews (rewritten into cache). Prune deletes obsolete `api_cache` types (old hunter blobs, percentages, news rows) and orphan `images/{appid}` folders not in the library. Chromium `GPUCache` is not auto-deleted.
 
 **Achievement icons** are downloaded into `%APPDATA%\achieveme\images\{appid}\icon\` on first use (and prefetched after enrich). Display uses the `achieveme-img://` protocol; SQLite still stores Steam CDN URLs / hashes. Legacy `steamcdn-a.akamaihd.net` schema URLs are normalized to `shared.akamai.steamstatic.com/community_assets/...` before download.
 
@@ -117,7 +119,8 @@ Run the portable exe directly; no installer or uninstaller. After install (or fr
 
 ## Manual test checklist
 
-1. **Refresh prune** — Delete `achievements.json` for a game, click Refresh; the game should disappear from the library.
+1. **Boot splash** — Cold start: branded AchieveMe splash with status (Pruning → Warming games n/N → Ready); UI opens with covers/schemas ready; Detail hunter strip without a long second wait; News matches a forced refresh. Large libraries take longer (concurrency 3).
+2. **Refresh prune** — Delete `achievements.json` for a game, click Refresh; the game should disappear from the library.
 2. **Add game** — Open Add Game, pick a title, browse for `steam_api.dll` or `steam_api64.dll`, then on the Emulator step leave “Also apply the Goldberg emulator?” unchecked and apply. Confirm `steam_settings` is installed and the game DLL is unchanged. Repeat with the option checked and confirm `steam_api(64).dll.bak` plus the regular emu DLL. For Denuvo offline-activated games: check that option, note the backup warning, apply against a folder that already has `steam_settings` with custom `configs.user.ini` / `configs.overlay.ini` / `configs.app.ini` / `configs.main.ini` — those four files must keep their old contents while other generator files update.
 3. **Library game menu** — Left-click a library card to open game detail. Right-click (or hold ~0.5s / Shift+F10) for Play / Open / Open folder / Refresh / Delete. Delete confirms inline; Refresh updates that game only.
 4. **Library search/sort** — Search by name and switch sort modes (least complete, most unlocked, recently unlocked). Grid cards use ~2:1 aspect with Steam headers filling via cover (light side crop, no black bars).

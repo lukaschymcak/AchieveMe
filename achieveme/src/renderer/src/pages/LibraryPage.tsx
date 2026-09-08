@@ -93,7 +93,10 @@ export default function LibraryPage({
         setLoading(true)
         window.api
           .getAllGames()
-          .then(setGames)
+          .then((list) => {
+            setGames(list)
+            void window.api.warmHunterLibrary().catch(() => undefined)
+          })
           .finally(() => setLoading(false))
       }
     })
@@ -171,7 +174,10 @@ export default function LibraryPage({
     setLoading(true)
     window.api
       .getAllGames()
-      .then(setGames)
+      .then((list) => {
+        setGames(list)
+        void window.api.warmHunterLibrary().catch(() => undefined)
+      })
       .finally(() => setLoading(false))
   }
 

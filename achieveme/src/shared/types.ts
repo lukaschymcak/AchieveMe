@@ -324,9 +324,17 @@ export interface GameHunterStats {
   readonly reviewPercent: number | null
   readonly reviewCount: number | null
   readonly metacritic: number | null
+  /** Steam `review_score_desc` e.g. "Very Positive" when available. */
+  readonly reviewSummary: string | null
   /** True when at least one display field is present. */
   readonly hasAny: boolean
 }
+
+/** Steam review sentiment tone for colored UI. */
+export type SteamReviewTone = 'positive' | 'mixed' | 'negative' | 'neutral'
+
+/** Metacritic score color band. */
+export type MetacriticBand = 'high' | 'mid' | 'low'
 
 export interface GoldbergApplyRequest {
   appid: string
@@ -554,6 +562,22 @@ export interface NewsPayload {
 /** Options for `get-news` / `window.api.getNews`. */
 export interface GetNewsOptions {
   forceRefresh?: boolean
+}
+
+/** Boot splash warm progress (main → renderer via `boot:warm-progress`). */
+export interface BootWarmProgress {
+  phase: 'prune' | 'library' | 'games' | 'news' | 'done' | 'error'
+  current: number
+  total: number
+  label: string
+}
+
+/** Result of `boot:run-warm`. */
+export interface BootWarmResult {
+  ok: boolean
+  gamesWarmed: number
+  gamesFailed: number
+  errorMessage?: string
 }
 
 /**

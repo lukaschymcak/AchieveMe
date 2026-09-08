@@ -594,6 +594,32 @@ export function deleteCacheEntry(db: Database.Database, appid: string, type: str
   db.prepare('DELETE FROM api_cache WHERE appid = ? AND type = ?').run(appid, type)
 }
 
+/**
+ * Deletes all api_cache rows whose type equals the given type (any appid).
+ */
+export function deleteCacheEntriesByType(db: Database.Database, type: string): number {
+  const result = db.prepare('DELETE FROM api_cache WHERE type = ?').run(type)
+  return Number(result.changes ?? 0)
+}
+
+/**
+ * Deletes api_cache rows whose type starts with the given prefix (e.g. `news:`).
+ */
+export function deleteCacheEntriesByTypePrefix(db: Database.Database, prefix: string): number {
+  const result = db
+    .prepare('DELETE FROM api_cache WHERE type LIKE ?')
+    .run(`${prefix}%`)
+  return Number(result.changes ?? 0)
+}
+
+/**
+ * Returns distinct appids present in the games table.
+ */
+export function getAllGameAppids(db: Database.Database): string[] {
+  const rows = db.prepare('SELECT appid FROM games').all() as Array<{ appid: string }>
+  return rows.map((r) => r.appid)
+}
+
 // ─── Save Locations ───────────────────────────────────────────────────────────
 
 export function upsertSaveLocation(db: Database.Database, row: SaveLocation): void {

@@ -11,7 +11,6 @@ import type {
 import { LAUNCH_NEEDS_EXE } from '../../../shared/types'
 import { hasStoredManifestGids } from '../../../shared/libraryRetentionUtils'
 import {
-  formatHunterStatsLine,
   shouldShowHunterStatsStrip
 } from '../../../shared/hunterStatsUtils.ts'
 import { formatPlaytimePlayed } from '../../../shared/playtimeUtils'
@@ -23,6 +22,7 @@ import {
   type LudusaviSnapshot
 } from '../../../shared/ludusaviApiUtils.ts'
 import HelpTip from '../components/HelpTip'
+import GameHunterStatsStrip from '../components/GameHunterStatsStrip'
 import { TOOLTIPS, getEmptyAchievementsMessage } from '../lib/helpContent'
 import {
   type ActiveFilter,
@@ -824,21 +824,27 @@ export default function GameDetailPage({
   useEffect(() => {
     let cancelled = false
     setHunterStats(null)
-    void window.api
-      .getGameHunterStats(appid)
-      .then((stats) => {
-        if (!cancelled) setHunterStats(stats)
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setHunterStats({
-            reviewPercent: null,
-            reviewCount: null,
-            metacritic: null,
-            hasAny: false
-          })
-        }
-      })
+
+    function loadHunterStats(): void {
+      void window.api
+        .getGameHunterStats(appid)
+        .then((stats) => {
+          if (!cancelled) setHunterStats(stats)
+        })
+        .catch(() => {
+          if (!cancelled) {
+            setHunterStats({
+              reviewPercent: null,
+              reviewCount: null,
+              metacritic: null,
+              reviewSummary: null,
+              hasAny: false
+            })
+          }
+        })
+    }
+
+    loadHunterStats()
     return () => {
       cancelled = true
     }
@@ -855,6 +861,7 @@ export default function GameDetailPage({
           setLaunchArgsDraft(next?.game.launch_args ?? '')
         })
         .catch(() => setError('Could not load game details. Try Refresh all from the toolbar.'))
+      void window.api.getGameHunterStats(appid).then(setHunterStats).catch(() => undefined)
     }
 
     window.api.onLibraryUpdated(handleLibraryUpdated)
@@ -1225,9 +1232,7 @@ export default function GameDetailPage({
               </header>
 
               {hunterStats && shouldShowHunterStatsStrip(hunterStats) && (
-                <p className="game-detail__hunter-stats" aria-label="Store ratings">
-                  {formatHunterStatsLine(hunterStats)}
-                </p>
+                <GameHunterStatsStrip stats={hunterStats} />
               )}
 
               <div className="game-detail__body">

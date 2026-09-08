@@ -20,7 +20,6 @@ export type { SteamSchemaAchievement }
 export { buildAchievementRecords, resolveAchievementSchema }
 
 const SCHEMA_TTL = 604800
-const PERCENTAGES_TTL = 86400
 const APPDETAILS_TTL = 604800
 
 function httpGet(url: string): Promise<string> {
@@ -139,13 +138,10 @@ interface SteamPercentResponse {
 async function fetchPercentages(
   db: Database.Database,
   appid: string,
-  forceRefresh: boolean
+  _forceRefresh: boolean
 ): Promise<Record<string, number> | null> {
-  if (!forceRefresh) {
-    const cached = readCache(db, appid, 'percentages', PERCENTAGES_TTL)
-    if (cached) return cached as Record<string, number>
-  }
-
+  // Rarities are not durable — always fetch live (db unused; kept for call-site symmetry).
+  void db
   try {
     const url =
       `https://api.steampowered.com/ISteamUserStats/GetGlobalAchievementPercentagesForApp/v2/` +
@@ -157,7 +153,6 @@ async function fetchPercentages(
     for (const item of list) {
       map[item.name] = item.percent
     }
-    writeCache(db, appid, 'percentages', map)
     return map
   } catch {
     return null

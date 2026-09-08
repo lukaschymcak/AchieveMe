@@ -1,10 +1,15 @@
-import type { GameHunterStats } from './types'
+import type {
+  GameHunterStats,
+  MetacriticBand,
+  SteamReviewTone
+} from './types'
 
 /** Empty hunter stats shape for parse failures and Store misses. */
 export const EMPTY_HUNTER_STATS: GameHunterStats = {
   reviewPercent: null,
   reviewCount: null,
   metacritic: null,
+  reviewSummary: null,
   hasAny: false
 }
 
@@ -36,14 +41,52 @@ const finiteCountNonNegative = (value: unknown): number | null => {
   return value
 }
 
-const buildHunterStats = (
+/**
+ * Builds a GameHunterStats object and sets hasAny from present fields.
+ */
+export const buildHunterStats = (
   reviewPercent: number | null,
   reviewCount: number | null,
-  metacritic: number | null
+  metacritic: number | null,
+  reviewSummary: string | null = null
 ): GameHunterStats => {
+  const summary =
+    typeof reviewSummary === 'string' && reviewSummary.trim()
+      ? reviewSummary.trim()
+      : null
   const hasAny =
-    reviewPercent !== null || reviewCount !== null || metacritic !== null
-  return { reviewPercent, reviewCount, metacritic, hasAny }
+    reviewPercent !== null ||
+    reviewCount !== null ||
+    metacritic !== null ||
+    summary !== null
+  return {
+    reviewPercent,
+    reviewCount,
+    metacritic,
+    reviewSummary: summary,
+    hasAny
+  }
+}
+
+/**
+ * Maps Steam review_score_desc to a UI tone class.
+ */
+export const steamReviewTone = (summary: string | null | undefined): SteamReviewTone => {
+  if (!summary || !summary.trim()) return 'neutral'
+  const s = summary.trim().toLowerCase()
+  if (s === 'mixed') return 'mixed'
+  if (s.includes('negative')) return 'negative'
+  if (s.includes('positive')) return 'positive'
+  return 'neutral'
+}
+
+/**
+ * Metacritic color band: high ≥75, mid 50–74, low ≤49.
+ */
+export const metacriticBand = (score: number): MetacriticBand => {
+  if (score >= 75) return 'high'
+  if (score >= 50) return 'mid'
+  return 'low'
 }
 
 /**
@@ -108,7 +151,86 @@ export const parseSteamAppdetailsStats = (
   const reviewScore = finiteScore0to100(dataRecord.review_score)
   const reviewPercent = reviewsPercent ?? reviewScore
 
-  return buildHunterStats(reviewPercent, reviewCount, metacriticScore)
+  return buildHunterStats(reviewPercent, reviewCount, metacriticScore, null)
+}
+
+export type AppreviewsSummary = {
+  reviewSummary: string | null
+  reviewCount: number | null
+  reviewPercent: number | null
+}
+
+/**
+ * Parses Steam `appreviews` JSON `query_summary` for sentiment + counts.
+ */
+export const parseSteamAppreviewsSummary = (body: string): AppreviewsSummary => {
+  const empty: AppreviewsSummary = {
+    reviewSummary: null,
+    reviewCount: null,
+    reviewPercent: null
+  }
+
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(body)
+  } catch {
+    return empty
+  }
+
+  if (typeof parsed !== 'object' || parsed === null) {
+    return empty
+  }
+
+  const root = parsed as Record<string, unknown>
+  const summary = root.query_summary
+  if (typeof summary !== 'object' || summary === null) {
+    return empty
+  }
+
+  const qs = summary as Record<string, unknown>
+  const desc =
+    typeof qs.review_score_desc === 'string' && qs.review_score_desc.trim()
+      ? qs.review_score_desc.trim()
+      : null
+
+  const totalReviews = finiteCountNonNegative(qs.total_reviews)
+  const totalPositive = finiteCountNonNegative(qs.total_positive)
+
+  let reviewPercent: number | null = null
+  if (
+    totalReviews !== null &&
+    totalReviews > 0 &&
+    totalPositive !== null
+  ) {
+    reviewPercent = Math.round((totalPositive / totalReviews) * 100)
+    if (reviewPercent < 0 || reviewPercent > 100) {
+      reviewPercent = null
+    }
+  }
+
+  return {
+    reviewSummary: desc,
+    reviewCount: totalReviews,
+    reviewPercent
+  }
+}
+
+/**
+ * Merges Store appdetails stats with appreviews summary (reviews win when present).
+ */
+export const mergeHunterStats = (
+  fromAppdetails: GameHunterStats,
+  fromReviews: AppreviewsSummary
+): GameHunterStats => {
+  const reviewSummary = fromReviews.reviewSummary ?? fromAppdetails.reviewSummary
+  const reviewCount = fromReviews.reviewCount ?? fromAppdetails.reviewCount
+  const reviewPercent = fromReviews.reviewPercent ?? fromAppdetails.reviewPercent
+  return buildHunterStats(
+    reviewPercent,
+    reviewCount,
+    fromAppdetails.metacritic,
+    reviewSummary
+  )
 }
 
 const formatCompactCount = (count: number): string => {
@@ -120,12 +242,20 @@ const formatCompactCount = (count: number): string => {
 }
 
 /**
- * Formats hunter stats as a single hunter strip line (HLTB deferred).
+ * Formats hunter stats as a single hunter strip line (a11y / fallback).
  */
 export const formatHunterStatsLine = (stats: GameHunterStats): string => {
   const segments: string[] = []
 
-  if (stats.reviewPercent !== null && stats.reviewCount !== null) {
+  if (stats.reviewSummary) {
+    if (stats.reviewCount !== null) {
+      segments.push(
+        `${stats.reviewSummary} (${formatCompactCount(stats.reviewCount)})`
+      )
+    } else {
+      segments.push(stats.reviewSummary)
+    }
+  } else if (stats.reviewPercent !== null && stats.reviewCount !== null) {
     segments.push(
       `Reviews ${stats.reviewPercent}% (${formatCompactCount(stats.reviewCount)})`
     )
@@ -141,6 +271,12 @@ export const formatHunterStatsLine = (stats: GameHunterStats): string => {
 
   return segments.join(' · ')
 }
+
+/**
+ * Compact review count for UI chips.
+ */
+export const formatHunterReviewCount = (count: number): string =>
+  formatCompactCount(count)
 
 /**
  * Returns true when the hunter strip should render for the given stats.

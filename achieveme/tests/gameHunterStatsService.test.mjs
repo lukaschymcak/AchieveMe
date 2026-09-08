@@ -6,8 +6,12 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 const rootDir = path.dirname(fileURLToPath(import.meta.url))
 const {
   getGameHunterStats,
+  needsHunterReviewsWarm,
+  HUNTER_METACRITIC_CACHE_TYPE,
+  HUNTER_REVIEWS_CACHE_TYPE,
   HUNTER_STATS_CACHE_TYPE,
-  HUNTER_STATS_TTL_SECONDS
+  HUNTER_METACRITIC_TTL_SECONDS,
+  HUNTER_REVIEWS_TTL_SECONDS
 } = await import(
   pathToFileURL(
     path.join(rootDir, '../src/main/achievement/gameHunterStatsService.ts')
@@ -19,13 +23,11 @@ const { EMPTY_HUNTER_STATS } = await import(
 
 const mockDb = {}
 
-/**
- * @param {object} [options]
- * @param {(url: string) => Promise<string>} [options.httpGet]
- */
 function makeDeps(options = {}) {
   const cache = new Map()
   let httpCalls = 0
+  /** @type {string[]} */
+  const urls = []
 
   const getCache = (appid, type) => {
     const key = `${appid}:${type}`
@@ -50,6 +52,7 @@ function makeDeps(options = {}) {
 
   const httpGet = async (url) => {
     httpCalls += 1
+    urls.push(url)
     if (options.httpGet) {
       return options.httpGet(url)
     }
@@ -59,112 +62,82 @@ function makeDeps(options = {}) {
   return {
     deps: { httpGet, getCache, setCache },
     httpCalls: () => httpCalls,
+    capturedUrls: () => urls,
     seedCache,
     cache
   }
 }
 
-test('non-numeric appid returns EMPTY_HUNTER_STATS without http', async () => {
+const detailsBody = JSON.stringify({
+  570: {
+    success: true,
+    data: {
+      metacritic: { score: 90 },
+      recommendations: { total: 5000 }
+    }
+  }
+})
+
+const reviewsBody = JSON.stringify({
+  success: 1,
+  query_summary: {
+    review_score_desc: 'Very Positive',
+    total_positive: 4500,
+    total_negative: 500,
+    total_reviews: 5000
+  }
+})
+
+test('non-numeric appid returns EMPTY without http', async () => {
   const { deps, httpCalls } = makeDeps()
   const result = await getGameHunterStats(mockDb, 'not-a-game', deps)
   assert.deepEqual(result, EMPTY_HUNTER_STATS)
   assert.equal(httpCalls(), 0)
 })
 
-test('fresh cache hit skips http', async () => {
-  const stats = {
-    reviewPercent: 90,
-    reviewCount: 1000,
-    metacritic: 85,
-    hasAny: true
-  }
+test('cache-only reads both caches with zero HTTP', async () => {
   const now = Math.floor(Date.now() / 1000)
-  const { deps, httpCalls, seedCache } = makeDeps()
-  seedCache('570', HUNTER_STATS_CACHE_TYPE, stats, now - 100)
+  const { deps, httpCalls, seedCache } = makeDeps({
+    httpGet: async () => {
+      throw new Error('should not http')
+    }
+  })
+  seedCache('570', HUNTER_METACRITIC_CACHE_TYPE, { metacritic: 84 }, now - 100)
+  seedCache(
+    '570',
+    HUNTER_REVIEWS_CACHE_TYPE,
+    {
+      reviewSummary: 'Very Positive',
+      reviewCount: 5000,
+      reviewPercent: 90
+    },
+    now - 100
+  )
 
-  const result = await getGameHunterStats(mockDb, '570', deps)
+  const result = await getGameHunterStats(mockDb, '570', deps, {
+    forceRefresh: false
+  })
 
-  assert.deepEqual(result, stats)
   assert.equal(httpCalls(), 0)
-})
-
-test('cache miss fetches appdetails with hunter filters', async () => {
-  const body = JSON.stringify({
-    570: {
-      success: true,
-      data: {
-        metacritic: { score: 90 },
-        recommendations: { total: 5000 }
-      }
-    }
-  })
-  let capturedUrl = ''
-  const { deps, httpCalls } = makeDeps({
-    httpGet: async (url) => {
-      capturedUrl = url
-      return body
-    }
-  })
-
-  const result = await getGameHunterStats(mockDb, '570', deps)
-
-  assert.equal(httpCalls(), 1)
-  assert.match(capturedUrl, /appids=570/)
-  assert.match(capturedUrl, /filters=basic,metacritic,recommendations/)
-  assert.equal(result.metacritic, 90)
+  assert.equal(result.metacritic, 84)
+  assert.equal(result.reviewSummary, 'Very Positive')
   assert.equal(result.reviewCount, 5000)
   assert.equal(result.hasAny, true)
 })
 
-test('http failure returns stale cache when present', async () => {
-  const stats = {
-    reviewPercent: 80,
-    reviewCount: 200,
-    metacritic: 70,
-    hasAny: true
-  }
-  const staleAt =
-    Math.floor(Date.now() / 1000) - HUNTER_STATS_TTL_SECONDS - 100
-  const { deps, httpCalls, seedCache } = makeDeps({
-    httpGet: async () => {
-      throw new Error('network')
-    }
-  })
-  seedCache('570', HUNTER_STATS_CACHE_TYPE, stats, staleAt)
-
+test('cache-only with empty caches returns EMPTY without http', async () => {
+  const { deps, httpCalls } = makeDeps()
   const result = await getGameHunterStats(mockDb, '570', deps)
-
-  assert.deepEqual(result, stats)
-  assert.equal(httpCalls(), 1)
-})
-
-test('http failure returns EMPTY when no cache', async () => {
-  const { deps, httpCalls } = makeDeps({
-    httpGet: async () => {
-      throw new Error('network')
-    }
-  })
-
-  const result = await getGameHunterStats(mockDb, '570', deps)
-
   assert.deepEqual(result, EMPTY_HUNTER_STATS)
-  assert.equal(httpCalls(), 1)
+  assert.equal(httpCalls(), 0)
 })
 
-test('successful fetch writes appdetails_stats cache only', async () => {
-  const body = JSON.stringify({
-    570: {
-      success: true,
-      data: { metacritic: { score: 88 } }
-    }
-  })
+test('forceRefresh fetches both and writes hunter_metacritic + hunter_reviews', async () => {
   const setCacheCalls = []
-  let httpCalls = 0
-
   const deps = {
-    httpGet: async () => {
-      httpCalls += 1
-      return body
+    httpGet: async (url) => {
+      if (url.includes('appreviews')) return reviewsBody
+      return detailsBody
     },
     getCache: () => null,
     setCache: (appid, type, data) => {
@@ -172,13 +145,73 @@ test('successful fetch writes appdetails_stats cache only', async () => {
     }
   }
 
-  await getGameHunterStats(mockDb, '570', deps)
+  const result = await getGameHunterStats(mockDb, '570', deps, {
+    forceRefresh: true
+  })
 
-  assert.equal(httpCalls, 1)
-  assert.equal(setCacheCalls.length, 1)
-  assert.equal(setCacheCalls[0].type, HUNTER_STATS_CACHE_TYPE)
-  assert.equal(setCacheCalls[0].type, 'appdetails_stats')
-  assert.equal(setCacheCalls[0].appid, '570')
-  assert.notEqual(setCacheCalls[0].type, 'appdetails')
-  assert.equal(setCacheCalls[0].data.metacritic, 88)
+  assert.equal(result.metacritic, 90)
+  assert.equal(result.reviewSummary, 'Very Positive')
+  assert.equal(setCacheCalls.length, 2)
+  const types = setCacheCalls.map((c) => c.type).sort()
+  assert.deepEqual(types, [HUNTER_METACRITIC_CACHE_TYPE, HUNTER_REVIEWS_CACHE_TYPE].sort())
+  assert.equal(HUNTER_STATS_CACHE_TYPE, 'hunter_metacritic')
+  const reviewsWrite = setCacheCalls.find((c) => c.type === HUNTER_REVIEWS_CACHE_TYPE)
+  assert.deepEqual(reviewsWrite.data, {
+    reviewSummary: 'Very Positive',
+    reviewCount: 5000,
+    reviewPercent: 90
+  })
+})
+
+test('forceRefresh reviews failure still returns metacritic from details', async () => {
+  const { deps } = makeDeps({
+    httpGet: async (url) => {
+      if (url.includes('appreviews')) throw new Error('network')
+      return detailsBody
+    }
+  })
+
+  const result = await getGameHunterStats(mockDb, '570', deps, {
+    forceRefresh: true
+  })
+  assert.equal(result.metacritic, 90)
+  assert.equal(result.reviewSummary, null)
+  assert.equal(result.hasAny, true)
+})
+
+test('forceRefresh both legs fail returns EMPTY', async () => {
+  const { deps } = makeDeps({
+    httpGet: async () => {
+      throw new Error('network')
+    }
+  })
+  const result = await getGameHunterStats(mockDb, '570', deps, {
+    forceRefresh: true
+  })
+  assert.deepEqual(result, EMPTY_HUNTER_STATS)
+})
+
+test('needsHunterReviewsWarm is true when missing or stale', () => {
+  const now = Math.floor(Date.now() / 1000)
+  const { deps, seedCache } = makeDeps()
+  assert.equal(needsHunterReviewsWarm(mockDb, '570', deps), true)
+  seedCache(
+    '570',
+    HUNTER_REVIEWS_CACHE_TYPE,
+    { reviewSummary: 'Mixed', reviewCount: 1, reviewPercent: null },
+    now - 100
+  )
+  assert.equal(needsHunterReviewsWarm(mockDb, '570', deps), false)
+  seedCache(
+    '570',
+    HUNTER_REVIEWS_CACHE_TYPE,
+    { reviewSummary: 'Mixed', reviewCount: 1, reviewPercent: null },
+    now - HUNTER_REVIEWS_TTL_SECONDS - 10
+  )
+  assert.equal(needsHunterReviewsWarm(mockDb, '570', deps), true)
+})
+
+test('TTL constants are seven days', () => {
+  assert.equal(HUNTER_METACRITIC_TTL_SECONDS, 604800)
+  assert.equal(HUNTER_REVIEWS_TTL_SECONDS, 604800)
 })

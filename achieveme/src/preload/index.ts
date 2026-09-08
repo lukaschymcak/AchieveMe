@@ -24,7 +24,9 @@ import type {
   NewsPayload,
   GetNewsOptions,
   ImportScannedInstallRequest,
-  ScannedInstallCandidate
+  ScannedInstallCandidate,
+  BootWarmProgress,
+  BootWarmResult
 } from '../shared/types'
 import type { LudusaviSnapshot } from '../shared/ludusaviApiUtils'
 
@@ -71,6 +73,19 @@ contextBridge.exposeInMainWorld('api', {
     return ipcRenderer.invoke('get-news', options)
   },
 
+  runBootWarm: (): Promise<BootWarmResult> =>
+    ipcRenderer.invoke('boot:run-warm'),
+
+  onBootWarmProgress: (cb: (progress: BootWarmProgress) => void): void => {
+    ipcRenderer.on('boot:warm-progress', (_event: IpcRendererEvent, progress: BootWarmProgress) => {
+      cb(progress)
+    })
+  },
+
+  offBootWarmProgress: (): void => {
+    ipcRenderer.removeAllListeners('boot:warm-progress')
+  },
+
   getProfileStats: (): Promise<ProfileStats | null> =>
     ipcRenderer.invoke('get-profile-stats'),
 
@@ -80,8 +95,17 @@ contextBridge.exposeInMainWorld('api', {
   getGameDetail: (appid: string): Promise<GameDetail | null> =>
     ipcRenderer.invoke('get-game-detail', appid),
 
-  getGameHunterStats: (appid: string): Promise<GameHunterStats> =>
-    ipcRenderer.invoke('get-game-hunter-stats', appid),
+  getGameHunterStats: (
+    appid: string,
+    options?: { forceRefresh?: boolean }
+  ): Promise<GameHunterStats> =>
+    ipcRenderer.invoke('get-game-hunter-stats', appid, options),
+
+  warmHunterLibrary: (): Promise<{
+    warmed: number
+    skipped: number
+    failed: number
+  }> => ipcRenderer.invoke('hunter:warm-library'),
 
   getSettings: (): Promise<AppSettings> =>
     ipcRenderer.invoke('get-settings'),

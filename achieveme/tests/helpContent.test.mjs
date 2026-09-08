@@ -108,9 +108,10 @@ describe('helpContent', () => {
     assert.ok(section)
     const body = (section.paragraphs ?? []).join(' ')
     assert.match(body, /Metacritic/i)
-    assert.match(body, /Reviews/i)
+    assert.match(body, /Very Positive|review sentiment|Steam-like/i)
     assert.match(body, /not a storefront|storefront/i)
     assert.match(body, /HowLongToBeat|not included yet/i)
+    assert.match(body, /cache|instant/i)
     assert.doesNotMatch(body, /Main story|hours to beat|HLTB shows/i)
   })
 
@@ -132,11 +133,20 @@ describe('helpContent', () => {
   })
 
   it('defines news refresh tooltip and empty states', () => {
-    assert.match(TOOLTIPS.refreshNews, /cache/i)
+    assert.match(TOOLTIPS.refreshNews, /Force-refetch|refetch/i)
     assert.match(TOOLTIPS.refreshNews, /wishlist/i)
     assert.match(EMPTY_STATES.noNewsReleases, /popular/i)
     assert.match(EMPTY_STATES.noNewsReleasesFiltered, /genre/i)
     assert.match(EMPTY_STATES.noLibraryNews, /library/i)
+  })
+
+  it('Sync section documents boot splash warm and durable cache', () => {
+    const section = HELP_SECTIONS.find((s) => s.id === 'sync')
+    assert.ok(section)
+    const body = (section.paragraphs ?? []).join(' ')
+    assert.match(body, /splash/i)
+    assert.match(body, /rarities|reviews|news/i)
+    assert.match(body, /Refresh/i)
   })
 
   it('getEmptyAchievementsMessage distinguishes key / steam-empty / fetch-failed', () => {

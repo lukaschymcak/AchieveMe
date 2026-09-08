@@ -1,5 +1,5 @@
 :root {
-  /* Tinted neutrals â hue 275: Steam-adjacent dark shell, PS trophy metals as accent */
+  /* Tinted neutrals Ã¢ÂÂ hue 275: Steam-adjacent dark shell, PS trophy metals as accent */
   --bg-base: oklch(15% 0.012 275);
   --surface-1: oklch(18% 0.014 275);
   --surface-2: oklch(22% 0.016 275);
@@ -26,14 +26,14 @@
   --space-5: 24px;
   --space-6: 32px;
 
-  /* Centered page column â game detail, dashboard, help, settings */
+  /* Centered page column Ã¢ÂÂ game detail, dashboard, help, settings */
   --app-content-max: 1120px;
 
   --radius-sm: 6px;
   --radius-md: 8px;
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
 
-  /* Game detail typography â Option B: Bebas title, Rajdhani stats, system UI list */
+  /* Game detail typography Ã¢ÂÂ Option B: Bebas title, Rajdhani stats, system UI list */
   --font-display: 'Bebas Neue', 'Franklin Gothic Medium', 'Arial Narrow', sans-serif;
   --font-stats: 'Rajdhani', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-ui: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -49,6 +49,139 @@
   padding: 0;
 }
 
+/* Boot splash — full window until warm completes */
+.boot-splash {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  width: 100%;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse 80% 60% at 50% 20%, oklch(28% 0.04 275), transparent 70%),
+    var(--bg-base);
+  color: var(--ink);
+  font-family: var(--font-ui);
+}
+
+.boot-splash__glow {
+  position: absolute;
+  inset: 20% 10% auto;
+  height: 40%;
+  background: radial-gradient(circle, oklch(45% 0.08 230 / 0.35), transparent 70%);
+  pointer-events: none;
+  animation: boot-splash-pulse 2.4s var(--ease-out) infinite;
+}
+
+.boot-splash__content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-6);
+  text-align: center;
+}
+
+.boot-splash__brand {
+  font-family: var(--font-display);
+  font-size: clamp(2.75rem, 8vw, 4.5rem);
+  letter-spacing: 0.06em;
+  line-height: 1;
+  color: var(--ink);
+}
+
+.boot-splash__status {
+  font-family: var(--font-stats);
+  font-size: 1.1rem;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  color: var(--ink-muted);
+  min-height: 1.4em;
+}
+
+.boot-splash__count {
+  font-size: 0.85rem;
+  color: var(--ink-subtle);
+}
+
+.boot-splash__bar {
+  margin-top: var(--space-2);
+  width: min(240px, 60vw);
+  height: 3px;
+  border-radius: 999px;
+  background: var(--surface-3);
+  overflow: hidden;
+}
+
+.boot-splash__bar-fill {
+  height: 100%;
+  width: 40%;
+  border-radius: inherit;
+  background: var(--color-action);
+  animation: boot-splash-bar 1.2s var(--ease-out) infinite;
+}
+
+@keyframes boot-splash-pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+}
+
+@keyframes boot-splash-bar {
+  0% {
+    transform: translateX(-120%);
+  }
+  100% {
+    transform: translateX(320%);
+  }
+}
+
+.boot-warm-banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 80;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-4);
+  background: color-mix(in srgb, var(--color-error) 22%, var(--surface-2));
+  border-bottom: 1px solid var(--border-subtle);
+  color: var(--ink);
+  font-size: 0.85rem;
+}
+
+.boot-warm-banner__dismiss {
+  flex-shrink: 0;
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-1);
+  color: var(--ink);
+  border-radius: var(--radius-sm);
+  padding: 4px 10px;
+  cursor: pointer;
+  font: inherit;
+}
+
+.boot-warm-banner__dismiss:hover {
+  background: var(--surface-3);
+}
+
+.boot-warm-banner__dismiss:focus-visible {
+  outline: 2px solid var(--color-action);
+  outline-offset: 2px;
+}
+
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   background: var(--bg-base);
@@ -58,7 +191,7 @@ body {
   scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
 }
 
-/* Themed scrollbars (WebKit / Chromium â includes Electron) */
+/* Themed scrollbars (WebKit / Chromium Ã¢ÂÂ includes Electron) */
 * {
   scrollbar-width: thin;
   scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
@@ -215,7 +348,7 @@ button:focus-visible {
   background: var(--surface-2) !important;
 }
 
-/* Game detail â trophy showcase */
+/* Game detail Ã¢ÂÂ trophy showcase */
 .game-detail {
   position: relative;
   box-sizing: border-box;
@@ -805,13 +938,76 @@ button:focus-visible {
 .game-detail__hunter-stats {
   max-width: var(--app-content-max);
   margin: 0 auto;
-  padding: 0 clamp(var(--space-5), 5vw, 48px) var(--space-2);
+  padding: 0 clamp(var(--space-5), 5vw, 48px) var(--space-3);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
   font-family: var(--font-stats);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 500;
-  line-height: 1.4;
+  line-height: 1.3;
   color: var(--ink-muted);
   font-variant-numeric: tabular-nums;
+}
+
+.game-detail__metacritic {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2rem;
+  height: 2rem;
+  padding: 0 0.35rem;
+  border-radius: 3px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 0.02em;
+}
+
+.game-detail__metacritic--high {
+  background: #6c3;
+}
+
+.game-detail__metacritic--mid {
+  background: #fc3;
+  color: #1a1a1a;
+}
+
+.game-detail__metacritic--low {
+  background: #f00;
+}
+
+.game-detail__hunter-reviews {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.35em;
+  flex-wrap: wrap;
+}
+
+.game-detail__review-tone {
+  font-weight: 600;
+}
+
+.game-detail__review-tone--positive {
+  color: #66c0f4;
+}
+
+.game-detail__review-tone--mixed {
+  color: #b9a404;
+}
+
+.game-detail__review-tone--negative {
+  color: #c35c2b;
+}
+
+.game-detail__review-tone--neutral {
+  color: var(--ink-muted);
+}
+
+.game-detail__hunter-count {
+  color: var(--ink-muted);
+  font-weight: 500;
 }
 
 .game-detail__body {
@@ -835,7 +1031,7 @@ button:focus-visible {
   stroke: oklch(100% 0 0 / 0.18);
 }
 
-/* Achievement rows â readable over full-page cover */
+/* Achievement rows Ã¢ÂÂ readable over full-page cover */
 .game-detail .achievement-row[data-earned='true'][data-tier='bronze'] {
   background: color-mix(in oklch, var(--tier-bronze) 12%, oklch(16% 0.014 275 / 0.92));
   border: 1px solid color-mix(in oklch, var(--tier-bronze) 32%, oklch(34% 0.02 275 / 0.5));
@@ -1526,7 +1722,7 @@ button:focus-visible {
   }
 }
 
-/* Library â unified chrome + showcase cards */
+/* Library Ã¢ÂÂ unified chrome + showcase cards */
 .visually-hidden {
   position: absolute;
   width: 1px;
@@ -1539,7 +1735,7 @@ button:focus-visible {
   border: 0;
 }
 
-/* ââ App shell (canonical .app-*; legacy .library-* aliases) ââ */
+/* Ã¢ÂÂÃ¢ÂÂ App shell (canonical .app-*; legacy .library-* aliases) Ã¢ÂÂÃ¢ÂÂ */
 
 .app-page,
 .library {
@@ -2016,18 +2212,21 @@ button:focus-visible {
   align-self: center;
   padding: 6px 12px;
   border-radius: var(--radius-sm);
-  border: 1px solid oklch(50% 0.08 145 / 0.55);
-  background: oklch(28% 0.06 145 / 0.88);
-  color: oklch(96% 0.02 145);
+  border: 1px solid oklch(34% 0.02 275 / 0.4);
+  background: oklch(12% 0.014 275 / 0.62);
+  color: var(--ink);
   font: inherit;
   font-size: 0.75rem;
   font-weight: 600;
   letter-spacing: 0.03em;
   cursor: pointer;
+  backdrop-filter: blur(24px) saturate(1.2);
+  -webkit-backdrop-filter: blur(24px) saturate(1.2);
 }
 
 .library-list-row__play:hover:not(:disabled) {
-  background: oklch(34% 0.07 145 / 0.95);
+  background: oklch(14% 0.014 275 / 0.72);
+  border-color: oklch(40% 0.02 275 / 0.48);
 }
 
 .library-list-row__play:disabled {
@@ -2522,7 +2721,7 @@ button:focus-visible {
 
 .library-card {
   position: relative;
-  /* Slightly taller than Steam header (460Ã215 â 2.14:1); cover crops sides lightly */
+  /* Slightly taller than Steam header (460ÃÂ215 Ã¢ÂÂ 2.14:1); cover crops sides lightly */
   aspect-ratio: 2 / 1;
   border-radius: var(--radius-md);
   border: 2px solid var(--border-subtle);
@@ -2646,18 +2845,21 @@ button:focus-visible {
   right: var(--space-2);
   padding: 6px 12px;
   border-radius: var(--radius-sm);
-  border: 1px solid oklch(50% 0.08 145 / 0.55);
-  background: oklch(28% 0.06 145 / 0.88);
-  color: oklch(96% 0.02 145);
+  border: 1px solid oklch(34% 0.02 275 / 0.4);
+  background: oklch(12% 0.014 275 / 0.62);
+  color: var(--ink);
   font: inherit;
   font-size: 0.75rem;
   font-weight: 600;
   letter-spacing: 0.03em;
   cursor: pointer;
+  backdrop-filter: blur(24px) saturate(1.2);
+  -webkit-backdrop-filter: blur(24px) saturate(1.2);
 }
 
 .library-card__play:hover:not(:disabled) {
-  background: oklch(34% 0.07 145 / 0.95);
+  background: oklch(14% 0.014 275 / 0.72);
+  border-color: oklch(40% 0.02 275 / 0.48);
 }
 
 .library-card__play:disabled {
@@ -2844,7 +3046,7 @@ button:focus-visible {
   }
 }
 
-/* ââ Help & guidance ââ */
+/* Ã¢ÂÂÃ¢ÂÂ Help & guidance Ã¢ÂÂÃ¢ÂÂ */
 
 .help-tip {
   position: relative;
@@ -4282,7 +4484,7 @@ button.dashboard-near__row:focus-visible {
   /* position set inline via HelpTip */
 }
 
-/* ââ Tools / Steamless ââ */
+/* Ã¢ÂÂÃ¢ÂÂ Tools / Steamless Ã¢ÂÂÃ¢ÂÂ */
 .tools-page {
   padding-top: var(--space-2);
   padding-bottom: calc(var(--space-6) + var(--space-5));
@@ -5368,7 +5570,7 @@ button.dashboard-near__row:focus-visible {
   color: oklch(68% 0.01 275);
 }
 
-/* âââ News page âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ */
+/* Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂ News page Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ */
 
 .news-page {
   padding-top: var(--space-2);
@@ -5799,7 +6001,7 @@ button.dashboard-near__row:focus-visible {
 }
 
 
-/* Tools ï¿½ Scan for installed games modal */
+/* Tools Ã¯Â¿Â½ Scan for installed games modal */
 .install-scan-modal-backdrop {
   position: fixed;
   inset: 0;

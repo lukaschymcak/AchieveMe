@@ -95,7 +95,7 @@ export const TOOLTIPS = {
   settingsSessionRecap:
     'After a play session of at least one minute, shows time played, unlocks, and XP.',
   refreshNews:
-    'Refetch popular Steam releases and library announcements, ignoring the one-hour cache. Popularity uses Steam’s popular-wishlist chart (exact wishlist counts are not public).'
+    'Force-refetch popular Steam releases and library announcements. Popularity uses Steam’s popular-wishlist chart (exact wishlist counts are not public). Startup also refreshes news during the splash warm.'
 } as const
 
 export const EMPTY_STATES = {
@@ -257,8 +257,9 @@ export const HELP_SECTIONS: HelpSection[] = [
     id: 'sync',
     title: 'Sync: automatic vs Refresh',
     paragraphs: [
+      'On every launch, a branded splash prunes obsolete AppData caches, then warms the library over the network (schema and covers when stale, images when missing, Metacritic when stale, rarities / reviews / news always fresh). The UI opens only when that warm finishes (fail-soft on individual failures).',
       'The file watcher updates the library within about a second when achievement save files change on disk. No Refresh needed during normal play.',
-      'Library Refresh rescans all sources, re-reads every save file, refetches Steam metadata (bypassing cache), and removes games whose saves are gone.',
+      'Library Refresh rescans all sources, re-reads every save file, refetches Steam metadata (bypassing durable cache), and removes games whose saves are gone.',
       'Game detail Refresh does the same full-library sync. For one game only, right-click its card → Refresh.'
     ]
   },
@@ -340,7 +341,7 @@ export const HELP_SECTIONS: HelpSection[] = [
       'Unearned achievements with progress counters show a partial progress bar (Goldberg/GSE saves).',
       'Hidden toggle reveals descriptions for unearned hidden achievements only. Global rarity is Steam-wide, not friends-only.',
       'Edge arrows move through the library in your current sort/search order.',
-      'A fail-soft hunter strip under the hero shows Steam Store stats when available — Reviews (percent and count when Steam publishes them) and Metacritic score. Missing fields are omitted; fake or Store-miss appids show no strip. Reference info only — not a storefront or download link. Playtime hours (HowLongToBeat) are not included yet.',
+      'A fail-soft hunter strip under the hero shows a Metacritic score box (green / yellow / red bands) and Steam review sentiment (for example Very Positive) in Steam-like colors, plus review count when available. Metacritic and reviews are read from local cache on Detail open (instant). They refresh during boot warm, when you open Library (missing or stale entries), and on Refresh. Missing Metacritic from Steam omits the box. Reference info only — not a storefront or download link. Playtime hours (HowLongToBeat) are not included yet.',
       'Update / Validate / Check for update and build status show only when depot GIDs are stored. Update and Validate open a transfer modal (pick depots, live progress). Closing hides the modal; reopen from the Transfers dock on any page. After a successful Update, Steamless/Goldberg reapply (when previously applied) is a phase of that same modal so leaving Game Detail cannot drop the prompt.'
     ]
   },
@@ -370,7 +371,7 @@ export const HELP_SECTIONS: HelpSection[] = [
     title: 'News (popular releases & library announcements)',
     paragraphs: [
       'News sits between Library and Tools. Popular releases lists Steam titles on the public popular-wishlist chart that are due this week or this month (exact wishlist counts are not published by Steam). Use genre chips to OR-filter by Steam tags (Action, RPG, Indie, and more); with none selected, everything in the window is shown. In-library titles sort to the top; Released chips mark titles that already shipped. Library news shows Steam community announcements for up to 20 games already in your library.',
-      'Release titles already in your library open game detail; others open the Steam Store. In Library news, the game name opens detail and Open on Steam opens the announcement. Refresh ignores the one-hour cache. AchieveMe does not scrape third-party repack or crack sites.'
+      'Release titles already in your library open game detail; others open the Steam Store. In Library news, the game name opens detail and Open on Steam opens the announcement. Startup always force-refreshes news during the splash warm; the News page Refresh button also force-refetches. AchieveMe does not scrape third-party repack or crack sites.'
     ]
   },
   {

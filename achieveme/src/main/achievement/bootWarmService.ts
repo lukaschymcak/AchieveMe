@@ -1,0 +1,133 @@
+/**
+ * Orchestrates boot prune + network warm so the splash exits with data ready.
+ */
+
+import type Database from 'better-sqlite3'
+import {
+  BOOT_WARM_CONCURRENCY,
+  rawFromPersistedAchievements,
+  runBootWarmCore,
+  type BootWarmCoreDeps,
+  type BootWarmProgressListener
+} from '../../shared/bootWarmUtils.ts'
+import type { BootWarmResult } from '../../shared/types.ts'
+import { iconFilenameFromSteamValue } from '../../shared/imageCacheUrls.ts'
+import {
+  getSteamLibraryHeroUrl,
+  normalizeSteamIconUrl
+} from '../../shared/steamUrls.ts'
+import {
+  getAchievementsForGame,
+  getAllGameAppids,
+  replaceAchievementsForGame,
+  upsertGame
+} from '../db/repository.ts'
+import { loadSettings } from '../settings.ts'
+import { pruneObsoleteAppData } from './appDataPruneService.ts'
+import { getGameHunterStats } from './gameHunterStatsService.ts'
+import {
+  getDefaultImageCacheDeps,
+  getImagesCacheRoot
+} from './imageCacheProtocol.ts'
+import { prefetchGameImages } from './imageCacheService.ts'
+import { regenerateProfileStats } from './profileStatsService.ts'
+import { enrichApp, getStoreCoverUrl } from './steamApiClient.ts'
+import { getNews } from './steamNewsService.ts'
+
+export type { BootWarmProgressListener }
+export { rawFromPersistedAchievements }
+
+/**
+ * Warms one library game: schema/covers if stale, rarities always, images, hunter.
+ */
+export async function warmLibraryGame(
+  db: Database.Database,
+  appid: string,
+  apiKey: string
+): Promise<void> {
+  const previous = getAchievementsForGame(db, appid)
+  const mergedRaw = rawFromPersistedAchievements(previous)
+  const enriched = await enrichApp(appid, apiKey, mergedRaw, db, false)
+  upsertGame(db, enriched.game)
+  replaceAchievementsForGame(db, appid, enriched.achievements)
+
+  const coverRemoteUrl = await getStoreCoverUrl(db, appid, false)
+  const icons: { filename: string; remoteUrl: string }[] = []
+  for (const ach of enriched.achievements) {
+    for (const value of [ach.icon_url, ach.icon_gray_url]) {
+      if (!value) continue
+      const filename = iconFilenameFromSteamValue(value)
+      const remoteUrl = normalizeSteamIconUrl(appid, value)
+      if (!filename || !remoteUrl) continue
+      icons.push({ filename, remoteUrl })
+    }
+  }
+
+  await prefetchGameImages(getDefaultImageCacheDeps(), appid, {
+    coverRemoteUrl,
+    heroRemoteUrl: getSteamLibraryHeroUrl(appid),
+    icons,
+    forceRefresh: false
+  })
+
+  await getGameHunterStats(db, appid, undefined, { forceRefresh: true })
+}
+
+function buildDefaultCoreDeps(db: Database.Database): BootWarmCoreDeps {
+  return {
+    prune: () => {
+      pruneObsoleteAppData(db, getImagesCacheRoot())
+    },
+    listAppids: () => getAllGameAppids(db),
+    getApiKey: () => loadSettings().steamApiKey ?? '',
+    warmGame: (appid, apiKey) => warmLibraryGame(db, appid, apiKey),
+    warmNews: async () => {
+      await getNews(db, true)
+    },
+    regenerateProfile: () => {
+      regenerateProfileStats(db)
+    },
+    concurrency: BOOT_WARM_CONCURRENCY
+  }
+}
+
+/**
+ * Runs prune → library warm → news forceRefresh with real AppData deps.
+ */
+export async function runBootWarm(
+  db: Database.Database,
+  onProgress?: BootWarmProgressListener,
+  depsPartial?: Partial<BootWarmCoreDeps>
+): Promise<BootWarmResult> {
+  const deps: BootWarmCoreDeps = { ...buildDefaultCoreDeps(db), ...depsPartial }
+  return runBootWarmCore(onProgress, deps)
+}
+
+let inflight: Promise<BootWarmResult> | null = null
+
+/**
+ * Coalesces concurrent boot warm requests into one run.
+ */
+export function startBootWarm(
+  db: Database.Database,
+  onProgress?: BootWarmProgressListener,
+  depsPartial?: Partial<BootWarmCoreDeps>
+): Promise<BootWarmResult> {
+  if (inflight) return inflight
+  inflight = runBootWarm(db, onProgress, depsPartial)
+    .catch((err: unknown): BootWarmResult => ({
+      ok: false,
+      gamesWarmed: 0,
+      gamesFailed: 0,
+      errorMessage: err instanceof Error ? err.message : String(err)
+    }))
+    .finally(() => {
+      inflight = null
+    })
+  return inflight
+}
+
+/** Test helper — clears coalesce lock. */
+export function resetBootWarmInflightForTest(): void {
+  inflight = null
+}

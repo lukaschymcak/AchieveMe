@@ -18,7 +18,8 @@ import {
   ignoreAppid,
   getIgnoredAppids,
   updateGameBackupStatus,
-  upsertScannedInstall
+  upsertScannedInstall,
+  getAllGameAppids
 } from '../db/repository'
 import { parseManifestGidsJson, pickManifestGids } from '../../shared/manifestUpdateUtils'
 import { hasStoredManifestGids } from '../../shared/libraryRetentionUtils'
@@ -27,7 +28,7 @@ import {
   normalizeOpenableAbsolutePath
 } from '../../shared/libraryContextMenuUtils.ts'
 import { getStoreCoverUrl } from '../achievement/steamApiClient'
-import { getGameHunterStats } from '../achievement/gameHunterStatsService'
+import { getGameHunterStats, startWarmHunterLibrary } from '../achievement/gameHunterStatsService'
 import { cacheCoverUrl, cacheHeroUrl } from '../../shared/imageCacheUrls'
 import { loadSettings, saveSettings, normalizeSettings } from '../settings'
 import {
@@ -67,9 +68,12 @@ import type {
   NewsPayload,
   GetNewsOptions,
   ImportScannedInstallRequest,
-  ScannedInstallCandidate
+  ScannedInstallCandidate,
+  BootWarmProgress,
+  BootWarmResult
 } from '../../shared/types'
 import { getNews } from '../achievement/steamNewsService'
+import { startBootWarm } from '../achievement/bootWarmService'
 import {
   LAUNCH_NEEDS_EXE,
   launchGame,
@@ -200,6 +204,14 @@ export function registerIpcHandlers(): void {
     }
   )
 
+  ipcMain.handle('boot:run-warm', async (event): Promise<BootWarmResult> => {
+    return startBootWarm(getDb(), (progress: BootWarmProgress) => {
+      if (!event.sender.isDestroyed()) {
+        event.sender.send('boot:warm-progress', progress)
+      }
+    })
+  })
+
   ipcMain.handle('get-profile-stats', (): ProfileStats | null => {
     const statsPath = path.join(app.getPath('userData'), 'profile_stats.json')
     try {
@@ -254,17 +266,39 @@ export function registerIpcHandlers(): void {
     }
   })
 
-  ipcMain.handle('get-game-hunter-stats', async (_event, appid: string) => {
-    try {
-      return await getGameHunterStats(getDb(), String(appid ?? ''))
-    } catch {
-      return {
-        reviewPercent: null,
-        reviewCount: null,
-        metacritic: null,
-        hasAny: false
+  ipcMain.handle(
+    'get-game-hunter-stats',
+    async (
+      _event,
+      appid: string,
+      options?: { forceRefresh?: boolean }
+    ) => {
+      try {
+        return await getGameHunterStats(
+          getDb(),
+          String(appid ?? ''),
+          undefined,
+          { forceRefresh: Boolean(options?.forceRefresh) }
+        )
+      } catch {
+        return {
+          reviewPercent: null,
+          reviewCount: null,
+          metacritic: null,
+          reviewSummary: null,
+          hasAny: false
+        }
       }
     }
+  )
+
+  ipcMain.handle('hunter:warm-library', async () => {
+    const db = getDb()
+    const result = await startWarmHunterLibrary(db, getAllGameAppids(db))
+    if (result.warmed > 0) {
+      notifyLibraryUpdated()
+    }
+    return result
   })
 
   ipcMain.handle('get-settings', (): AppSettings => {
@@ -334,6 +368,9 @@ export function registerIpcHandlers(): void {
   ipcMain.handle('refresh-game', async (_event, appid: string): Promise<void> => {
     const settings = loadSettings()
     await processAppId(appid, settings, true, true)
+    await getGameHunterStats(getDb(), String(appid ?? ''), undefined, {
+      forceRefresh: true
+    }).catch(() => undefined)
   })
 
   ipcMain.handle('refresh', async (): Promise<void> => {
@@ -349,11 +386,17 @@ export function registerIpcHandlers(): void {
     )
     for (const appid of appids) {
       await processAppId(appid, settings, true, true)
+      await getGameHunterStats(db, appid, undefined, { forceRefresh: true }).catch(
+        () => undefined
+      )
     }
     const dbGames = getAllGames(db)
     for (const game of dbGames) {
       if (!appids.includes(game.appid) && !ignored.has(game.appid)) {
         await processAppId(game.appid, settings, true, true)
+        await getGameHunterStats(db, game.appid, undefined, {
+          forceRefresh: true
+        }).catch(() => undefined)
       }
     }
 

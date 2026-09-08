@@ -61,3 +61,79 @@ GameDetailPage → get-game-hunter-stats → gameHunterStatsService
 - Enrich / Refresh name + cover via existing `appdetails`
 - Hubcap Store fetch (independent URL/filters)
 - Play / redist / context menu / scan
+
+---
+
+## Addendum — Metacritic box + Steam sentiment (2026-09-08)
+
+**Status:** Approved
+
+### Goal
+
+Replace the plain-text hunter line with Steam-like chrome: Metacritic score **box** (MC color bands) and colored `review_score_desc` text from Steam `appreviews`.
+
+### Locked
+
+| Decision | Choice |
+|---|---|
+| Sentiment | `appreviews?json=1&…&num_per_page=0` → `query_summary.review_score_desc` |
+| Metacritic | Still from Store `appdetails` metacritic filter |
+| Cache | `hunter_metacritic` (7d TTL, Metacritic only); reviews never durable; never write cover `appdetails` |
+| MC bands | green ≥75, yellow 50–74, red ≤49 |
+| Sentiment colors | positive `#66C0F4`, mixed `#B9A404`, negative `#C35C2B` |
+| Cover `fetchAppDetails` | Untouched |
+
+### Architecture (updated)
+
+```
+GameDetailPage → get-game-hunter-stats (forceRefresh false) → cache only
+  → api_cache 'hunter_metacritic' + 'hunter_reviews'
+  → GameHunterStatsStrip
+
+Boot / Library warm / Refresh → get-game-hunter-stats (forceRefresh true)
+  → parallel Steam appdetails + appreviews → write both caches
+```
+
+---
+
+## Addendum — Boot splash warm + durable cache (2026-09-08)
+
+**Status:** Approved
+
+### Goal
+
+Cold start shows a branded splash until prune + library network warm complete so Detail/News open ready.
+
+### Locked cache policy
+
+| Data | Persist? | Boot |
+|---|---|---|
+| schema / appdetails / steamdb / images | Yes (~7d / on disk) | Warm if missing/stale |
+| Metacritic | Yes — `hunter_metacritic` ~7d | Force write on boot warm |
+| Rarities (`percentages`) | No | Always live fetch |
+| Reviews (`appreviews`) | Yes — `hunter_reviews` ~7d | Force write on boot warm; Detail reads cache only |
+| News | No | Always `forceRefresh` |
+
+### Boot flow
+
+Prune obsolete `api_cache` (percentages, news rows, old `appdetails_stats*`) + orphan images → warm all numeric library appids (concurrency 3) → news forceRefresh → show shell. Fail-soft; never infinite splash. Cover `fetchAppDetails` (`filters=basic`) unchanged.
+
+---
+
+## Addendum — Reviews cache + Detail read-only (2026-09-08)
+
+**Status:** Approved
+
+### Goal
+
+Game Detail never live-fetches hunter stats. Strip is instant from cache.
+
+### Locked
+
+| Decision | Choice |
+|---|---|
+| Detail | `forceRefresh: false` — zero HTTP |
+| Reviews cache | `hunter_reviews` ~7d |
+| Library open | `hunter:warm-library` fills missing/stale (concurrency 3) |
+| Refresh | `forceRefresh: true` after `processAppId` |
+| Metacritic scrape | Out of scope — Steam only; omit when missing |
