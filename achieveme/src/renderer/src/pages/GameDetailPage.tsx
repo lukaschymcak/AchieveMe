@@ -10,9 +10,6 @@ import type {
 } from '../../../shared/types'
 import { LAUNCH_NEEDS_EXE } from '../../../shared/types'
 import { hasStoredManifestGids } from '../../../shared/libraryRetentionUtils'
-import {
-  shouldShowHunterStatsStrip
-} from '../../../shared/hunterStatsUtils.ts'
 import { formatPlaytimePlayed } from '../../../shared/playtimeUtils'
 import { cacheHeroUrl } from '../../../shared/imageCacheUrls'
 import { formatBackupStatusLabel } from '../../../shared/backupStatusUtils.ts'
@@ -1231,8 +1228,8 @@ export default function GameDetailPage({
                 </div>
               </header>
 
-              {hunterStats && shouldShowHunterStatsStrip(hunterStats) && (
-                <GameHunterStatsStrip stats={hunterStats} />
+              {hunterStats && (
+                <GameHunterStatsStrip appid={appid} stats={hunterStats} />
               )}
 
               <div className="game-detail__body">

@@ -34,3 +34,10 @@ export function getSteamLibraryHeroUrl(appid: string): string {
   if (!appid) return ''
   return `https://cdn.cloudflare.steamstatic.com/steam/apps/${appid}/library_hero.jpg`
 }
+
+/** Steam Store product page for a numeric AppID. */
+export function getSteamStoreAppUrl(appid: string): string {
+  const id = String(appid ?? '').trim()
+  if (!/^\d+$/.test(id)) return ''
+  return `https://store.steampowered.com/app/${encodeURIComponent(id)}`
+}

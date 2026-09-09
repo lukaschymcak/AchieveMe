@@ -7,28 +7,38 @@ import {
   shouldShowHunterStatsStrip,
   steamReviewTone
 } from '../../../shared/hunterStatsUtils.ts'
+import { getSteamStoreAppUrl } from '../../../shared/steamUrls.ts'
 
 interface Props {
+  appid: string
   stats: GameHunterStats
 }
 
 /**
- * Game Detail hunter strip: Metacritic score box + Steam review sentiment.
+ * Game Detail hunter strip: Metacritic, Steam review sentiment, Store link.
  */
-export default function GameHunterStatsStrip({ stats }: Props): React.ReactElement | null {
-  if (!shouldShowHunterStatsStrip(stats)) return null
+export default function GameHunterStatsStrip({
+  appid,
+  stats
+}: Props): React.ReactElement | null {
+  const storeUrl = getSteamStoreAppUrl(appid)
+  const showStats = shouldShowHunterStatsStrip(stats)
+  if (!showStats && !storeUrl) return null
 
   const tone = steamReviewTone(stats.reviewSummary)
   const band =
     stats.metacritic !== null ? metacriticBand(stats.metacritic) : null
+  const ariaLabel = showStats
+    ? `${formatHunterStatsLine(stats) || 'Store ratings'}; Open on Steam`
+    : 'Open on Steam'
 
   return (
     <div
       className="game-detail__hunter-stats"
       role="group"
-      aria-label={formatHunterStatsLine(stats) || 'Store ratings'}
+      aria-label={ariaLabel}
     >
-      {band !== null && stats.metacritic !== null && (
+      {showStats && band !== null && stats.metacritic !== null && (
         <span
           className={`game-detail__metacritic game-detail__metacritic--${band}`}
           title="Metacritic"
@@ -37,7 +47,7 @@ export default function GameHunterStatsStrip({ stats }: Props): React.ReactEleme
         </span>
       )}
 
-      {stats.reviewSummary && (
+      {showStats && stats.reviewSummary && (
         <span className="game-detail__hunter-reviews">
           <span
             className={`game-detail__review-tone game-detail__review-tone--${tone}`}
@@ -52,7 +62,7 @@ export default function GameHunterStatsStrip({ stats }: Props): React.ReactEleme
         </span>
       )}
 
-      {!stats.reviewSummary && stats.reviewCount !== null && (
+      {showStats && !stats.reviewSummary && stats.reviewCount !== null && (
         <span className="game-detail__hunter-reviews">
           <span className="game-detail__review-tone game-detail__review-tone--neutral">
             Reviews
@@ -62,6 +72,18 @@ export default function GameHunterStatsStrip({ stats }: Props): React.ReactEleme
           </span>
         </span>
       )}
+
+      {storeUrl ? (
+        <a
+          className="game-detail__steam-link"
+          href={storeUrl}
+          target="_blank"
+          rel="noreferrer"
+          aria-label="Open game on Steam Store"
+        >
+          Steam
+        </a>
+      ) : null}
     </div>
   )
 }

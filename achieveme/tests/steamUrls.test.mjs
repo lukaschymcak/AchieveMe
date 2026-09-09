@@ -4,7 +4,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 import path from 'node:path'
 
 const rootDir = path.dirname(fileURLToPath(import.meta.url))
-const { normalizeSteamIconUrl, getSteamLibraryHeroUrl } = await import(
+const { normalizeSteamIconUrl, getSteamLibraryHeroUrl, getSteamStoreAppUrl } = await import(
   pathToFileURL(path.join(rootDir, '../src/shared/steamUrls.ts')).href
 )
 
@@ -46,4 +46,10 @@ test('getSteamLibraryHeroUrl builds cloudflare steamstatic path', () => {
     getSteamLibraryHeroUrl('4570720'),
     'https://cdn.cloudflare.steamstatic.com/steam/apps/4570720/library_hero.jpg'
   )
+})
+
+test('getSteamStoreAppUrl builds store product URL', () => {
+  assert.equal(getSteamStoreAppUrl('570'), 'https://store.steampowered.com/app/570')
+  assert.equal(getSteamStoreAppUrl(''), '')
+  assert.equal(getSteamStoreAppUrl('not-numeric'), '')
 })
