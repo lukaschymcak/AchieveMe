@@ -35,9 +35,9 @@ function ach(partial) {
 
 describe('sessionRecapUtils', () => {
   it('gates recap on minimum session length', () => {
-    assert.equal(SESSION_RECAP_MIN_SECONDS, 60)
-    assert.equal(shouldOfferSessionRecap(59), false)
-    assert.equal(shouldOfferSessionRecap(60), true)
+    assert.equal(SESSION_RECAP_MIN_SECONDS, 30)
+    assert.equal(shouldOfferSessionRecap(29), false)
+    assert.equal(shouldOfferSessionRecap(30), true)
   })
 
   it('filters unlocks to the session time window', () => {

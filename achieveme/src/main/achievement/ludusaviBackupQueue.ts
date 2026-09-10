@@ -1,10 +1,14 @@
 import type { AppSettings, Game } from '../../shared/types'
 import type { LudusaviBackupResult } from './ludusaviService'
 import {
+  isChangedLudusaviBackup,
   isSafeLudusaviBackupId,
   isUnchangedLudusaviBackup,
   LUDUSAVI_UNCHANGED_SNAPSHOT_NOTE
 } from '../../shared/ludusaviApiUtils.ts'
+import { cloudSavesConfigured } from '../../shared/r2CloudSaveUtils.ts'
+import { isCloudSnapshotBackupId } from './ludusaviBackupArchive.ts'
+import { cloudSavesLog, cloudSavesWarn } from './cloudSavesDebugLog.ts'
 
 export type LudusaviBackupReason = 'startup' | 'session' | 'add' | 'manual'
 export type LudusaviQueueOp = 'backup' | 'restore'
@@ -20,16 +24,20 @@ export interface LudusaviBackupQueueDeps {
   notifyLibraryUpdated: (appid?: string) => void
   validateLudusaviPath: (ludusaviPath: string) => string
   findTitleBySteamId: (exe: string, appid: string) => Promise<string | null>
-  backupGame: (
-    exe: string,
-    title: string,
-    options?: { cloudSync?: boolean }
-  ) => Promise<LudusaviBackupResult>
+  backupGame: (exe: string, title: string) => Promise<LudusaviBackupResult>
   restoreGame: (
     exe: string,
     title: string,
     backupId?: string
   ) => Promise<LudusaviBackupResult>
+  /**
+   * Optional post-backup cloud upload. Failures must return soft notes, not throw.
+   */
+  uploadCloudSave?: (input: {
+    settings: AppSettings
+    appid: string
+    title: string
+  }) => Promise<{ ok: boolean; softNote?: string }>
   nowSeconds?: () => number
 }
 
@@ -58,10 +66,8 @@ function shouldRunForReason(settings: AppSettings, reason: LudusaviBackupReason)
   const path = String(settings.ludusaviPath || '').trim()
   if (!path) return false
   if (reason === 'manual') return true
-  if (!settings.ludusaviAutoBackup) return false
-  if (reason === 'startup') return settings.ludusaviBackupOnStartup !== false
-  if (reason === 'session') return settings.ludusaviBackupOnSessionEnd !== false
-  if (reason === 'add') return settings.ludusaviBackupOnAddGame !== false
+  // Auto-backup is session-end only (cloud auto-upload rides the same backup).
+  if (reason === 'session') return Boolean(settings.ludusaviAutoBackup)
   return false
 }
 
@@ -154,17 +160,61 @@ export function createLudusaviBackupQueue(deps: LudusaviBackupQueueDeps): Ludusa
       const result =
         op === 'restore'
           ? await deps.restoreGame(exe, title, backupId)
-          : await deps.backupGame(exe, title, {
-              cloudSync: Boolean(settings.ludusaviCloudSync)
-            })
+          : await deps.backupGame(exe, title)
+
+      cloudSavesLog(op === 'restore' ? 'queue.restore.result' : 'queue.backup.result', {
+        appid,
+        title,
+        backupId: backupId || null,
+        ok: result.ok,
+        decision: result.decision || null,
+        change: result.change || null,
+        error: result.error || null
+      })
 
       if (result.ok) {
         let softNote = ''
         if (op === 'backup') {
           if (isUnchangedLudusaviBackup(result)) {
             softNote = LUDUSAVI_UNCHANGED_SNAPSHOT_NOTE
+            cloudSavesLog('queue.auto-upload.skip', {
+              appid,
+              reason: 'unchanged-same',
+              change: result.change || null
+            })
           } else if (result.error) {
             softNote = result.error
+          } else if (
+            deps.uploadCloudSave &&
+            Number(game?.cloud_saves_enabled) === 1 &&
+            cloudSavesConfigured(settings.cloudSavesApiUrl, settings.cloudSavesApiToken)
+          ) {
+            if (!isChangedLudusaviBackup(result)) {
+              cloudSavesLog('queue.auto-upload.skip', {
+                appid,
+                reason: 'no-change-signal',
+                change: result.change || null
+              })
+            } else {
+              cloudSavesLog('queue.auto-upload.start', {
+                appid,
+                title,
+                change: result.change || null
+              })
+              const cloud = await deps.uploadCloudSave({
+                settings,
+                appid,
+                title
+              })
+              cloudSavesLog('queue.auto-upload.done', {
+                appid,
+                ok: cloud.ok,
+                softNote: cloud.softNote || null
+              })
+              if (!cloud.ok && cloud.softNote) {
+                softNote = cloud.softNote
+              }
+            }
           }
         }
         deps.updateGameBackupStatus(appid, {
@@ -217,13 +267,27 @@ export function createLudusaviBackupQueue(deps: LudusaviBackupQueueDeps): Ludusa
     scheduleGameRestore(appid, backupId) {
       try {
         const settings = deps.loadSettings()
-        if (!String(settings.ludusaviPath || '').trim()) return
+        if (!String(settings.ludusaviPath || '').trim()) {
+          cloudSavesWarn('queue.restore.skip', { appid, reason: 'no-ludusavi-path' })
+          return
+        }
         const id = String(backupId || '').trim()
-        if (!isSafeLudusaviBackupId(id)) return
+        if (!isSafeLudusaviBackupId(id)) {
+          cloudSavesWarn('queue.restore.skip', { appid, backupId: id, reason: 'unsafe-id' })
+          return
+        }
+        cloudSavesLog('queue.restore.enqueue', {
+          appid,
+          backupId: id,
+          isCloud: isCloudSnapshotBackupId(id)
+        })
         enqueue(appid, 'restore', id)
         kick()
-      } catch {
-        // Never throw to callers
+      } catch (err) {
+        cloudSavesWarn('queue.restore.enqueue-failed', {
+          appid,
+          error: err instanceof Error ? err.message : String(err)
+        })
       }
     },
     scheduleLibraryBackup(reason) {

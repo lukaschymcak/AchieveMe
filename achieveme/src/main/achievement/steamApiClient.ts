@@ -249,6 +249,7 @@ function buildGameRecord(
     backup_at: existingGame?.backup_at ?? 0,
     backup_error: existingGame?.backup_error ?? '',
     ludusavi_title: existingGame?.ludusavi_title ?? '',
+    cloud_saves_enabled: existingGame?.cloud_saves_enabled ?? 0,
     steamless_applied: existingGame?.steamless_applied ?? 0,
     goldberg_applied: existingGame?.goldberg_applied ?? 0,
     steamless_exe: existingGame?.steamless_exe ?? '',

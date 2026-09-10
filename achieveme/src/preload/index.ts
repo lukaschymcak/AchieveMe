@@ -183,23 +183,35 @@ contextBridge.exposeInMainWorld('api', {
   browseLudusaviPath: (): Promise<string | null> =>
     ipcRenderer.invoke('browse-ludusavi-path'),
 
-  browseRclonePath: (): Promise<string | null> =>
-    ipcRenderer.invoke('browse-rclone-path'),
-
   ludusaviCloudStatus: (): Promise<{
-    connected: boolean
-    label: string | null
-    configDir: string
+    configured: boolean
+    apiUrlHost: string | null
   }> => ipcRenderer.invoke('ludusavi:cloud-status'),
 
-  ludusaviCloudSet: (
-    provider: string,
-    customRemoteId?: string
+  setGameCloudSavesEnabled: (
+    appid: string,
+    enabled: boolean
   ): Promise<{ ok: boolean; error?: string }> =>
-    ipcRenderer.invoke('ludusavi:cloud-set', provider, customRemoteId),
+    ipcRenderer.invoke('games:set-cloud-saves-enabled', appid, enabled),
 
-  ludusaviCloudUpload: (): Promise<{ ok: boolean; error?: string }> =>
-    ipcRenderer.invoke('ludusavi:cloud-upload'),
+  ludusaviCloudUploadGame: (
+    appid: string,
+    backupId: string
+  ): Promise<{ ok: boolean; error?: string }> =>
+    ipcRenderer.invoke('ludusavi:cloud-upload-game', appid, backupId),
+
+  ludusaviCloudListGame: (
+    appid: string
+  ): Promise<
+    | { ok: true; artifacts: Array<{ id: string; appid: string; bytes: number; sha256: string; createdAt: string }> }
+    | { ok: false; error: string }
+  > => ipcRenderer.invoke('ludusavi:cloud-list-game', appid),
+
+  ludusaviCloudDownloadGame: (
+    appid: string,
+    artifactId?: string
+  ): Promise<{ ok: boolean; error?: string; backupId?: string }> =>
+    ipcRenderer.invoke('ludusavi:cloud-download-game', appid, artifactId),
 
   ludusaviCloudDownload: (): Promise<{ ok: boolean; error?: string }> =>
     ipcRenderer.invoke('ludusavi:cloud-download'),

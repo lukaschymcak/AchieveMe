@@ -32,9 +32,9 @@ test('normalizeAppSettings applies defaults for legacy settings files', () => {
   assert.equal(normalized.depotDownloadPath, '')
   assert.equal(normalized.ludusaviPath, '')
   assert.equal(normalized.ludusaviAutoBackup, false)
-  assert.equal(normalized.ludusaviBackupOnStartup, true)
+  assert.equal(normalized.ludusaviBackupOnStartup, false)
   assert.equal(normalized.ludusaviBackupOnSessionEnd, true)
-  assert.equal(normalized.ludusaviBackupOnAddGame, true)
+  assert.equal(normalized.ludusaviBackupOnAddGame, false)
   assert.deepEqual(normalized.installScanRoots, [])
 })
 
@@ -105,6 +105,8 @@ test('normalizeAppSettings preserves ludusavi backup fields when set', () => {
     ludusaviCloudSync: true,
     ludusaviCloudProvider: 'google-drive',
     ludusaviCloudCustomRemote: 'mydrive',
+    cloudSavesApiUrl: 'https://saves.example.com',
+    cloudSavesApiToken: 'tok',
     ludusaviAutoBackup: true,
     ludusaviBackupOnStartup: false,
     ludusaviBackupOnSessionEnd: false,
@@ -115,8 +117,21 @@ test('normalizeAppSettings preserves ludusavi backup fields when set', () => {
   assert.equal(normalized.ludusaviCloudSync, true)
   assert.equal(normalized.ludusaviCloudProvider, 'google-drive')
   assert.equal(normalized.ludusaviCloudCustomRemote, 'mydrive')
+  assert.equal(normalized.cloudSavesApiUrl, 'https://saves.example.com')
+  assert.equal(normalized.cloudSavesApiToken, 'tok')
   assert.equal(normalized.ludusaviAutoBackup, true)
   assert.equal(normalized.ludusaviBackupOnStartup, false)
   assert.equal(normalized.ludusaviBackupOnSessionEnd, false)
   assert.equal(normalized.ludusaviBackupOnAddGame, false)
+})
+
+test('normalizeAppSettings defaults cloudSaves fields and keeps legacy rclone keys', () => {
+  const normalized = normalizeAppSettings({
+    steamApiKey: 'abc',
+    enabledSources: ['goldberg'],
+    rclonePath: 'C:\\Tools\\rclone.exe'
+  })
+  assert.equal(normalized.cloudSavesApiUrl, '')
+  assert.equal(normalized.cloudSavesApiToken, '')
+  assert.equal(normalized.rclonePath, 'C:\\Tools\\rclone.exe')
 })

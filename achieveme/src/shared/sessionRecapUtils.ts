@@ -1,7 +1,7 @@
 import type { Achievement, SessionRecapUnlock, TrophyTier, ToastTier } from './types'
 
 /** Sessions shorter than this do not show a recap (launcher flashes). */
-export const SESSION_RECAP_MIN_SECONDS = 60
+export const SESSION_RECAP_MIN_SECONDS = 30
 
 function xpForTier(tier: TrophyTier | ToastTier): number {
   switch (tier) {

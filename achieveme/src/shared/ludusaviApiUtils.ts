@@ -58,6 +58,20 @@ export function isUnchangedLudusaviBackup(
 }
 
 /**
+ * Returns true when a successful Ludusavi backup reported a real save change
+ * (`New` or `Different`). Gates cloud auto-upload the same way local snapshot creation works.
+ *
+ * @param result - Parsed backup/restore game result.
+ */
+export function isChangedLudusaviBackup(
+  result: Pick<LudusaviBackupGameResult, 'ok' | 'change'>
+): boolean {
+  if (!result.ok) return false
+  const change = String(result.change || '').trim()
+  return change === 'New' || change === 'Different'
+}
+
+/**
  * Returns true when `backup_error` is the soft unchanged-snapshot note (not a failure).
  *
  * @param backupError - Stored `backup_error` column value.
@@ -177,10 +191,12 @@ export const extractOperationGameResult = extractBackupGameResult
 export interface LudusaviSnapshot {
   /** Ludusavi backup `name` / id for `--backup`. */
   id: string
-  /** Raw `when` string from the API. */
+  /** Raw `when` string from the API (or cloud marker createdAt). */
   when: string
   /** Parsed epoch ms for sorting; 0 if unparsable. */
   whenMs: number
+  /** Local Ludusavi snapshot vs AchieveMe-downloaded cloud folder. */
+  source?: 'local' | 'cloud'
 }
 
 /**
@@ -201,6 +217,23 @@ function parseWhenMs(when: unknown): number {
   if (typeof when !== 'string' || !when.trim()) return 0
   const ms = Date.parse(when)
   return Number.isFinite(ms) ? ms : 0
+}
+
+/**
+ * Reads `backupPath` from a `ludusavi backups --api` payload for one title.
+ *
+ * @param apiJson - Parsed `--api` JSON.
+ * @param title - Exact Ludusavi game title key.
+ */
+export function extractGameBackupPath(apiJson: unknown, title: string): string | null {
+  const cleanTitle = String(title || '').trim()
+  if (!cleanTitle || !apiJson || typeof apiJson !== 'object') return null
+  const games = (apiJson as { games?: Record<string, unknown> }).games
+  if (!games || typeof games !== 'object' || Array.isArray(games)) return null
+  const entry = games[cleanTitle]
+  if (!entry || typeof entry !== 'object') return null
+  const backupPath = String((entry as { backupPath?: unknown }).backupPath ?? '').trim()
+  return backupPath || null
 }
 
 /**
@@ -225,7 +258,7 @@ export function extractBackupSnapshots(apiJson: unknown, title: string): Ludusav
     const id = String((row as { name?: unknown }).name ?? '').trim()
     if (!isSafeLudusaviBackupId(id)) continue
     const when = String((row as { when?: unknown }).when ?? '').trim()
-    out.push({ id, when, whenMs: parseWhenMs(when) })
+    out.push({ id, when, whenMs: parseWhenMs(when), source: 'local' })
   }
   return out
 }

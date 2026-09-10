@@ -1,6 +1,3 @@
-import fs from 'node:fs'
-import fsp from 'node:fs/promises'
-import path from 'node:path'
 import type { BrowserWindow } from 'electron'
 import { loadSettings } from '../settings'
 import type {
@@ -8,6 +5,7 @@ import type {
   DepotSearchResult,
   HubcapUserStats
 } from '../../shared/types'
+import { downloadManifestZip } from './manifestZipDownload'
 
 const baseUrl = 'https://hubcapmanifest.com/api/v1'
 
@@ -86,53 +84,18 @@ export async function downloadManifest(
   channelId?: string,
   window?: BrowserWindow
 ): Promise<string> {
-  await fsp.mkdir(path.dirname(destinationZipPath), { recursive: true })
-  const part = `${destinationZipPath}.part`
-  const response = await fetch(`${baseUrl}/manifest/${encodeURIComponent(appId)}`, {
-    headers: await authHeaders()
+  return downloadManifestZip({
+    url: `${baseUrl}/manifest/${encodeURIComponent(appId)}`,
+    destinationZipPath,
+    resolveHeaders: authHeaders,
+    mapHttpError: mapStatusError,
+    onProgress:
+      channelId && window
+        ? (payload) => {
+            window.webContents.send(channelId, payload)
+          }
+        : undefined
   })
-  if (!response.ok || !response.body) {
-    let body: unknown = {}
-    try {
-      body = await response.json()
-    } catch {
-      /* ignore */
-    }
-    throw new Error(mapStatusError(response.status, body))
-  }
-
-  const total = Number(response.headers.get('content-length') || 0)
-  let received = 0
-  const file = fs.createWriteStream(part)
-  const finished = new Promise<void>((resolve, reject) => {
-    file.on('finish', resolve)
-    file.on('error', reject)
-  })
-  const reader = response.body.getReader()
-  try {
-    while (true) {
-      const { done, value } = await reader.read()
-      if (done) break
-      if (!value) continue
-      received += value.length
-      file.write(Buffer.from(value))
-      if (channelId && window) {
-        window.webContents.send(channelId, {
-          received,
-          total,
-          pct: total > 0 ? Math.round((received * 100) / total) : undefined
-        })
-      }
-    }
-  } finally {
-    file.end()
-  }
-  await finished
-  await fsp.rename(part, destinationZipPath)
-  if (channelId && window) {
-    window.webContents.send(channelId, { pct: 100, done: true })
-  }
-  return destinationZipPath
 }
 
 function mapStatusError(code: number, body: unknown): string {

@@ -5,8 +5,10 @@ import {
   extractBackupGameResult,
   extractBackupSnapshots,
   extractFindTitle,
+  extractGameBackupPath,
   isSafeLudusaviBackupId,
   parseLudusaviApiJson,
+  sortSnapshotsNewestFirst,
   takeNewestSnapshots,
   type LudusaviSnapshot
 } from '../../shared/ludusaviApiUtils.ts'
@@ -19,7 +21,30 @@ import {
   withLudusaviConfig,
   type LudusaviCloudProviderId
 } from '../../shared/ludusaviCloudUtils.ts'
-import { ludusaviConfigYamlPath } from './ludusaviConfigPatch.ts'
+import {
+  ludusaviConfigYamlPath,
+  syncIsolatedLudusaviConfigFromGui,
+  writeCloudSynchronizeToLudusaviConfig,
+  writeRclonePathToLudusaviConfig
+} from './ludusaviConfigPatch.ts'
+import {
+  filterExistingLudusaviSnapshots,
+  findMappingYamlInSnapshotDir,
+  isCloudSnapshotBackupId,
+  listCloudSnapshotFolders,
+  mergeGameRootMetadataIntoDir,
+  resolveLudusaviGameBackupDir,
+  resolveLudusaviSnapshotDir,
+  sanitizeLudusaviBackupTitle,
+  writeNormalizedLudusaviMappingYaml
+} from './ludusaviBackupArchive.ts'
+import {
+  cloudSavesError,
+  cloudSavesLog,
+  cloudSavesWarn,
+  listDirNamesForLog,
+  truncateCloudLogText
+} from './cloudSavesDebugLog.ts'
 
 export type { LudusaviSnapshot }
 
@@ -42,6 +67,22 @@ export function setAchieveMeLudusaviConfigDir(dir: string): void {
  */
 export function getActiveLudusaviConfigDir(): string {
   return isolatedConfigDir
+}
+
+/**
+ * Re-reads Ludusavi GUI config into the AchieveMe isolated dir (backup.path, roots,
+ * customGames, etc.) so CLI / archive paths match ludusavi.exe after the user changes settings.
+ *
+ * @param rcloneExe - Optional rclone path to keep after sync.
+ */
+export function refreshAchieveMeLudusaviConfigFromGui(rcloneExe?: string): {
+  ok: boolean
+  syncedFromGui: boolean
+} {
+  if (!isolatedConfigDir) {
+    return { ok: false, syncedFromGui: false }
+  }
+  return syncIsolatedLudusaviConfigFromGui(isolatedConfigDir, { rcloneExe })
 }
 
 function resolveLudusaviRunner(
@@ -216,31 +257,21 @@ export async function findTitleBySteamId(
 }
 
 /**
- * Runs `ludusavi backup --force --api` with optional cloud sync and `--full-limit 5`.
+ * Runs `ludusavi backup --force --api --no-cloud-sync --full-limit 5 <title>`.
+ * Cloud upload is handled separately by AchieveMe after a successful local backup.
  *
  * @param exe - Absolute path to ludusavi.exe.
  * @param title - Exact Ludusavi game title.
- * @param runCommandOrOptions - Injectable runner, or options bag.
- * @param maybeOptions - Options when the third arg is a runner.
+ * @param runCommand - Injectable runner (tests).
  */
 export async function backupGame(
   exe: string,
   title: string,
-  runCommandOrOptions?: LudusaviCommandRunner | { cloudSync?: boolean },
-  maybeOptions?: { cloudSync?: boolean }
+  runCommand?: LudusaviCommandRunner
 ): Promise<LudusaviBackupResult> {
   const cleanTitle = String(title || '').trim()
   if (!cleanTitle) {
     return { ok: false, error: 'Game title is required.' }
-  }
-
-  let runCommand: LudusaviCommandRunner | undefined
-  let cloudSync = false
-  if (typeof runCommandOrOptions === 'function') {
-    runCommand = runCommandOrOptions
-    cloudSync = Boolean(maybeOptions?.cloudSync)
-  } else if (runCommandOrOptions && typeof runCommandOrOptions === 'object') {
-    cloudSync = Boolean(runCommandOrOptions.cloudSync)
   }
 
   const runner = resolveLudusaviRunner(exe, runCommand)
@@ -248,7 +279,7 @@ export async function backupGame(
     'backup',
     '--force',
     '--api',
-    cloudSync ? '--cloud-sync' : '--no-cloud-sync',
+    '--no-cloud-sync',
     '--full-limit',
     String(LUDUSAVI_FULL_BACKUP_LIMIT),
     cleanTitle
@@ -267,19 +298,13 @@ export async function backupGame(
     }
   }
 
-  const base = extractBackupGameResult(parsed, cleanTitle)
-  const soft = ludusaviCloudSoftNoteFromApi(parsed)
-  if (soft && base.ok) {
-    return { ...base, error: soft }
-  }
-  if (soft && !base.ok && !base.error) {
-    return { ...base, error: soft }
-  }
-  return base
+  return extractBackupGameResult(parsed, cleanTitle)
 }
 
 /**
- * Lists up to five newest Ludusavi snapshots for a title.
+ * Lists up to five newest Ludusavi snapshots for a title, plus any AchieveMe
+ * cloud download folders on disk (labeled `source: 'cloud'`).
+ * Re-reads `backups --api` then drops rows whose snapshot dirs are gone on disk.
  *
  * @param exe - Absolute path to ludusavi.exe.
  * @param title - Exact Ludusavi game title.
@@ -296,27 +321,49 @@ export async function listGameBackups(
   const runner = resolveLudusaviRunner(exe, runCommand)
   const result = await runner(['backups', '--api', cleanTitle])
   const parsed = parseLudusaviApiJson(result.stdout)
-  if (!parsed) return []
-  return takeNewestSnapshots(
-    extractBackupSnapshots(parsed, cleanTitle),
-    LUDUSAVI_FULL_BACKUP_LIMIT
-  )
+  const fromApi = parsed ? extractBackupSnapshots(parsed, cleanTitle) : []
+  const configDir = getActiveLudusaviConfigDir()
+  if (!configDir) {
+    return takeNewestSnapshots(fromApi, LUDUSAVI_FULL_BACKUP_LIMIT)
+  }
+  try {
+    const gameDir = resolveLudusaviGameBackupDir(configDir, cleanTitle, {
+      apiBackupPath: parsed ? extractGameBackupPath(parsed, cleanTitle) : null
+    })
+    const localExisting = filterExistingLudusaviSnapshots(gameDir, fromApi).filter(
+      (snap) => !isCloudSnapshotBackupId(snap.id)
+    )
+    const local = takeNewestSnapshots(localExisting, LUDUSAVI_FULL_BACKUP_LIMIT).map(
+      (snap) => ({ ...snap, source: 'local' as const })
+    )
+    const cloud = listCloudSnapshotFolders(gameDir).map((snap) => ({
+      ...snap,
+      source: 'cloud' as const
+    }))
+    return sortSnapshotsNewestFirst([...local, ...cloud])
+  } catch {
+    return takeNewestSnapshots(fromApi, LUDUSAVI_FULL_BACKUP_LIMIT)
+  }
 }
 
 /**
  * Runs `ludusavi restore --force --api --no-cloud-sync` for one title.
- * When `backupId` is set, adds `--backup <id>` (required for picker restores).
+ * When `backupId` is a Ludusavi snapshot id, adds `--backup <id>`.
+ * When `backupId` is an AchieveMe `cloud-*` folder, stages it and uses `--path`
+ * (Ludusavi does not know cloud ids as --backup names).
  *
  * @param exe - Absolute path to ludusavi.exe.
  * @param title - Exact Ludusavi game title.
  * @param backupIdOrRunner - Snapshot id, or injectable runner (legacy tests).
  * @param maybeRunner - Injectable runner when backupId is a string.
+ * @param options - Required for cloud-* restores (`configDir` + `stagingRoot`).
  */
 export async function restoreGame(
   exe: string,
   title: string,
   backupIdOrRunner?: string | LudusaviCommandRunner,
-  maybeRunner?: LudusaviCommandRunner
+  maybeRunner?: LudusaviCommandRunner,
+  options?: { configDir?: string; stagingRoot?: string }
 ): Promise<LudusaviBackupResult> {
   const cleanTitle = String(title || '').trim()
   if (!cleanTitle) {
@@ -332,11 +379,48 @@ export async function restoreGame(
     runCommand = maybeRunner
   }
 
+  const id = backupId !== undefined ? String(backupId).trim() : ''
+  if (id && isCloudSnapshotBackupId(id)) {
+    const configDir = String(options?.configDir || '').trim() || getActiveLudusaviConfigDir()
+    const stagingRoot = String(options?.stagingRoot || '').trim()
+    cloudSavesLog('restore.route', {
+      mode: 'cloud-path',
+      title: cleanTitle,
+      backupId: id,
+      hasConfigDir: Boolean(configDir),
+      hasStagingRoot: Boolean(stagingRoot)
+    })
+    if (!configDir || !stagingRoot) {
+      cloudSavesError('restore.cloud.missing-dirs', {
+        hasConfigDir: Boolean(configDir),
+        hasStagingRoot: Boolean(stagingRoot)
+      })
+      return {
+        ok: false,
+        error: 'Cloud restore requires config and staging directories.'
+      }
+    }
+    return restoreCloudSnapshotGame({
+      exe,
+      title: cleanTitle,
+      cloudBackupId: id,
+      configDir,
+      stagingRoot,
+      runCommand
+    })
+  }
+
+  cloudSavesLog('restore.route', {
+    mode: id ? 'local-backup' : 'latest',
+    title: cleanTitle,
+    backupId: id || null
+  })
+
   const runner = resolveLudusaviRunner(exe, runCommand)
   const argv = ['restore', '--force', '--api', '--no-cloud-sync']
-  if (backupId !== undefined && String(backupId).trim() !== '') {
-    const id = String(backupId).trim()
+  if (id) {
     if (!isSafeLudusaviBackupId(id)) {
+      cloudSavesWarn('restore.local.invalid-id', { backupId: id })
       return { ok: false, error: 'Invalid backup id.' }
     }
     argv.push('--backup', id)
@@ -344,21 +428,175 @@ export async function restoreGame(
   argv.push(cleanTitle)
 
   const result = await runner(argv)
+  cloudSavesLog('restore.local.cli', {
+    code: result.code,
+    argv,
+    stdout: truncateCloudLogText(result.stdout),
+    stderr: truncateCloudLogText(result.stderr)
+  })
 
   const parsed = parseLudusaviApiJson(result.stdout)
   if (!parsed) {
     const stderr = result.stderr.trim()
+    const error =
+      stderr ||
+      (result.code !== 0
+        ? `Ludusavi exited with code ${result.code}.`
+        : 'Ludusavi returned no API JSON.')
+    cloudSavesError('restore.local.no-json', { error })
+    return { ok: false, error }
+  }
+
+  const extracted = extractBackupGameResult(parsed, cleanTitle)
+  cloudSavesLog('restore.local.result', {
+    ok: extracted.ok,
+    decision: extracted.decision,
+    error: extracted.error || null
+  })
+  return extracted
+}
+
+/**
+ * Stages a downloaded `cloud-*` folder as `{stagingRoot}/{title}/` and restores via `--path`.
+ */
+export async function restoreCloudSnapshotGame(input: {
+  exe: string
+  title: string
+  cloudBackupId: string
+  configDir: string
+  stagingRoot: string
+  runCommand?: LudusaviCommandRunner
+}): Promise<LudusaviBackupResult> {
+  const cleanTitle = String(input.title || '').trim()
+  if (!cleanTitle) {
+    return { ok: false, error: 'Game title is required.' }
+  }
+  const folderName = sanitizeLudusaviBackupTitle(cleanTitle)
+  const cloudId = String(input.cloudBackupId || '').trim()
+  if (!isCloudSnapshotBackupId(cloudId)) {
+    cloudSavesError('restore.cloud.invalid-id', { cloudBackupId: cloudId })
+    return { ok: false, error: 'Invalid cloud backup id.' }
+  }
+
+  const gameDir = resolveLudusaviGameBackupDir(input.configDir, cleanTitle)
+  let cloudDir: string
+  try {
+    cloudDir = resolveLudusaviSnapshotDir(gameDir, cloudId)
+  } catch (err) {
+    cloudSavesError('restore.cloud.path-resolve', {
+      gameDir,
+      cloudId,
+      error: err instanceof Error ? err.message : String(err)
+    })
+    return { ok: false, error: 'Invalid cloud backup path.' }
+  }
+  cloudSavesLog('restore.cloud.paths', {
+    configDir: input.configDir,
+    gameDir,
+    cloudDir,
+    cloudEntries: listDirNamesForLog(cloudDir),
+    gameEntries: listDirNamesForLog(gameDir)
+  })
+  if (!fs.existsSync(cloudDir) || !fs.statSync(cloudDir).isDirectory()) {
+    cloudSavesError('restore.cloud.missing-folder', { cloudDir })
+    return { ok: false, error: 'Cloud save folder was not found. Download it again.' }
+  }
+
+  const stagingRoot = path.resolve(input.stagingRoot)
+  const stagedGame = path.join(stagingRoot, folderName)
+  cloudSavesLog('restore.cloud.stage', {
+    stagingRoot,
+    stagedGame,
+    cloudHadMapping: Boolean(findMappingYamlInSnapshotDir(cloudDir))
+  })
+  await fs.promises.mkdir(stagingRoot, { recursive: true })
+  await fs.promises.rm(stagedGame, { recursive: true, force: true })
+  await fs.promises.cp(cloudDir, stagedGame, { recursive: true })
+  const mergedMeta = await mergeGameRootMetadataIntoDir(gameDir, stagedGame)
+  if (mergedMeta.length > 0) {
+    cloudSavesLog('restore.cloud.merged-game-root-meta', { mergedMeta })
+  }
+
+  const drivesHint =
+    findMappingYamlInSnapshotDir(stagedGame) ||
+    findMappingYamlInSnapshotDir(gameDir) ||
+    null
+  let mappingPath: string
+  try {
+    mappingPath = await writeNormalizedLudusaviMappingYaml(stagedGame, cleanTitle, {
+      drivesHintPath: drivesHint
+    })
+    cloudSavesLog('restore.cloud.normalized-mapping', {
+      mappingPath,
+      drivesHint: drivesHint || null
+    })
+  } catch (err) {
+    cloudSavesError('restore.cloud.normalize-mapping-failed', {
+      cloudDir,
+      gameDir,
+      stagedEntries: listDirNamesForLog(stagedGame),
+      error: err instanceof Error ? err.message : String(err)
+    })
+    await fs.promises.rm(stagedGame, { recursive: true, force: true }).catch(() => undefined)
     return {
       ok: false,
       error:
+        'Cloud save has no restorable drive-* files (or mapping could not be built). Re-upload from AchieveMe, then download again.'
+    }
+  }
+  cloudSavesLog('restore.cloud.staged', {
+    mappingPath,
+    stagedEntries: listDirNamesForLog(stagedGame),
+    stagedHasMapping: true
+  })
+
+  try {
+    const runner = resolveLudusaviRunner(input.exe, input.runCommand)
+    const argv = [
+      'restore',
+      '--force',
+      '--api',
+      '--no-cloud-sync',
+      '--backup',
+      '.',
+      '--path',
+      stagingRoot,
+      cleanTitle
+    ]
+    cloudSavesLog('restore.cloud.cli.start', { argv })
+    const result = await runner(argv)
+    cloudSavesLog('restore.cloud.cli.done', {
+      code: result.code,
+      stdout: truncateCloudLogText(result.stdout),
+      stderr: truncateCloudLogText(result.stderr)
+    })
+    const parsed = parseLudusaviApiJson(result.stdout)
+    if (!parsed) {
+      const stderr = result.stderr.trim()
+      const error =
         stderr ||
         (result.code !== 0
           ? `Ludusavi exited with code ${result.code}.`
           : 'Ludusavi returned no API JSON.')
+      cloudSavesError('restore.cloud.no-json', { error })
+      return { ok: false, error }
     }
+    const extracted = extractBackupGameResult(parsed, cleanTitle)
+    if (!extracted.ok) {
+      cloudSavesError('restore.cloud.result-failed', {
+        decision: extracted.decision || null,
+        error: extracted.error || null
+      })
+    } else {
+      cloudSavesLog('restore.cloud.result-ok', {
+        decision: extracted.decision,
+        bytes: extracted.bytes ?? null
+      })
+    }
+    return extracted
+  } finally {
+    await fs.promises.rm(stagedGame, { recursive: true, force: true }).catch(() => undefined)
   }
-
-  return extractBackupGameResult(parsed, cleanTitle)
 }
 
 export interface LudusaviCloudOpResult {
@@ -368,19 +606,26 @@ export interface LudusaviCloudOpResult {
 }
 
 /**
- * Bootstraps the isolated Ludusavi config directory via `config show`.
+ * Bootstraps the isolated Ludusavi config directory from the Ludusavi GUI config when
+ * present, otherwise via `config show`.
  *
  * @param exe - Absolute path to ludusavi.exe.
  * @param runCommand - Optional injectable runner (tests).
+ * @param rcloneExe - Optional rclone path preserved after GUI sync.
  */
 export async function ensureLudusaviConfigDir(
   exe: string,
-  runCommand?: LudusaviCommandRunner
+  runCommand?: LudusaviCommandRunner,
+  rcloneExe?: string
 ): Promise<LudusaviCloudOpResult> {
   if (!isolatedConfigDir) {
     return { ok: false, error: 'Ludusavi config directory is not configured.' }
   }
   fs.mkdirSync(isolatedConfigDir, { recursive: true })
+  const synced = syncIsolatedLudusaviConfigFromGui(isolatedConfigDir, { rcloneExe })
+  if (synced.ok && synced.syncedFromGui) {
+    return { ok: true }
+  }
   const runner = resolveLudusaviRunner(exe, runCommand)
   const result = await runner(['config', 'show'])
   if (result.code !== 0 && !fs.existsSync(ludusaviConfigYamlPath(isolatedConfigDir))) {
@@ -388,6 +633,10 @@ export async function ensureLudusaviConfigDir(
       ok: false,
       error: result.stderr.trim() || `Ludusavi exited with code ${result.code}.`
     }
+  }
+  writeCloudSynchronizeToLudusaviConfig(isolatedConfigDir, false)
+  if (rcloneExe) {
+    writeRclonePathToLudusaviConfig(isolatedConfigDir, rcloneExe)
   }
   return { ok: true }
 }

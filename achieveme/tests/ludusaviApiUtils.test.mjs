@@ -10,10 +10,12 @@ const {
   extractBackupGameResult,
   formatBackupRelativeTime,
   extractBackupSnapshots,
+  extractGameBackupPath,
   sortSnapshotsNewestFirst,
   takeNewestSnapshots,
   isSafeLudusaviBackupId,
   isUnchangedLudusaviBackup,
+  isChangedLudusaviBackup,
   isLudusaviUnchangedSnapshotNote,
   LUDUSAVI_UNCHANGED_SNAPSHOT_NOTE
 } = await import(pathToFileURL(path.join(rootDir, '../src/shared/ludusaviApiUtils.ts')).href)
@@ -102,6 +104,10 @@ test('extractBackupGameResult includes change Same', () => {
   assert.equal(isUnchangedLudusaviBackup(result), true)
   assert.equal(isUnchangedLudusaviBackup({ ok: true, change: 'Different' }), false)
   assert.equal(isUnchangedLudusaviBackup({ ok: false, change: 'Same' }), false)
+  assert.equal(isChangedLudusaviBackup({ ok: true, change: 'Different' }), true)
+  assert.equal(isChangedLudusaviBackup({ ok: true, change: 'New' }), true)
+  assert.equal(isChangedLudusaviBackup({ ok: true, change: 'Same' }), false)
+  assert.equal(isChangedLudusaviBackup({ ok: true }), false)
   assert.equal(isLudusaviUnchangedSnapshotNote(LUDUSAVI_UNCHANGED_SNAPSHOT_NOTE), true)
   assert.equal(isLudusaviUnchangedSnapshotNote('real failure'), false)
 })
@@ -198,4 +204,15 @@ test('takeNewestSnapshots sorts and limits to 5', () => {
 
 test('extractBackupSnapshots returns empty for missing title', () => {
   assert.deepEqual(extractBackupSnapshots({ games: {} }, 'Missing'), [])
+})
+
+test('extractGameBackupPath reads backups --api backupPath', () => {
+  assert.equal(
+    extractGameBackupPath(
+      { games: { Dota: { backupPath: '/backups/Dota', backups: [] } } },
+      'Dota'
+    ),
+    '/backups/Dota'
+  )
+  assert.equal(extractGameBackupPath({ games: {} }, 'Dota'), null)
 })

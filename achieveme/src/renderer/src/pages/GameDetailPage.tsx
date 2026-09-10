@@ -12,6 +12,7 @@ import { LAUNCH_NEEDS_EXE } from '../../../shared/types'
 import { hasStoredManifestGids } from '../../../shared/libraryRetentionUtils'
 import { formatPlaytimePlayed } from '../../../shared/playtimeUtils'
 import { cacheHeroUrl } from '../../../shared/imageCacheUrls'
+import { SETTINGS_COPY } from '../../../shared/settingsPageUtils'
 import { formatBackupStatusLabel } from '../../../shared/backupStatusUtils.ts'
 import {
   formatBackupRelativeTime,
@@ -133,7 +134,27 @@ function formatSnapshotPickerLabel(snap: LudusaviSnapshot): string {
           const parsed = Date.parse(snap.when)
           return Number.isFinite(parsed) ? parsed : 0
         })()
-  if (ms <= 0) return snap.when.trim() || snap.id
+  let whenLabel = snap.when.trim() || snap.id
+  if (ms > 0) {
+    const absolute = new Date(ms).toLocaleString(undefined, {
+      dateStyle: 'medium',
+      timeStyle: 'short'
+    })
+    const relative = formatBackupRelativeTime(
+      Math.floor(ms / 1000),
+      Math.floor(Date.now() / 1000)
+    )
+    whenLabel = relative ? `${absolute} · ${relative}` : absolute
+  }
+  if (snap.source === 'cloud') {
+    return `Cloud save · ${whenLabel}`
+  }
+  return whenLabel
+}
+
+function formatCloudArtifactLabel(createdAt: string, id: string): string {
+  const ms = Date.parse(createdAt)
+  if (!Number.isFinite(ms) || ms <= 0) return id.slice(0, 8)
   const absolute = new Date(ms).toLocaleString(undefined, {
     dateStyle: 'medium',
     timeStyle: 'short'
@@ -216,6 +237,36 @@ function FloppySaveIcon(): React.ReactElement {
         fill="currentColor"
         d="M17 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7l-4-4zm-5 16a3 3 0 1 1 0-6 3 3 0 0 1 0 6zm3-10H5V5h10v4z"
       />
+    </svg>
+  )
+}
+
+/** Cloud icon; `crossed` draws a strike for off / not configured. */
+function CloudSaveIcon({ crossed }: { crossed?: boolean }): React.ReactElement {
+  return (
+    <svg
+      className="game-detail__save-icon"
+      viewBox="0 0 24 24"
+      width="16"
+      height="16"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path
+        fill="currentColor"
+        d="M19.35 10.04A7.49 7.49 0 0 0 12 4C9.11 4 6.6 5.64 5.35 8.04A5.994 5.994 0 0 0 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96z"
+      />
+      {crossed ? (
+        <line
+          x1="4"
+          y1="4"
+          x2="20"
+          y2="20"
+          stroke="currentColor"
+          strokeWidth="2.5"
+          strokeLinecap="round"
+        />
+      ) : null}
     </svg>
   )
 }
@@ -536,23 +587,86 @@ export default function GameDetailPage({
   const [openingTransfer, setOpeningTransfer] = useState(false)
   const [saveModalOpen, setSaveModalOpen] = useState(false)
   const [saveModalStep, setSaveModalStep] = useState<'main' | 'pick'>('main')
+  const [savePickMode, setSavePickMode] = useState<'restore' | 'upload'>('restore')
   const [saveSnapshots, setSaveSnapshots] = useState<LudusaviSnapshot[]>([])
   const [saveSnapshotsLoading, setSaveSnapshotsLoading] = useState(false)
   const [saveSnapshotsError, setSaveSnapshotsError] = useState('')
   const [selectedBackupId, setSelectedBackupId] = useState('')
   const [ludusaviPathLinked, setLudusaviPathLinked] = useState(false)
+  const [cloudConfigured, setCloudConfigured] = useState(false)
+  const [cloudModalOpen, setCloudModalOpen] = useState(false)
+  const [cloudToggleBusy, setCloudToggleBusy] = useState(false)
+  const [cloudArtifacts, setCloudArtifacts] = useState<
+    Array<{ id: string; appid: string; bytes: number; sha256: string; createdAt: string }>
+  >([])
+  const [cloudArtifactsLoading, setCloudArtifactsLoading] = useState(false)
+  const [cloudArtifactsError, setCloudArtifactsError] = useState('')
+  const [selectedCloudArtifactId, setSelectedCloudArtifactId] = useState('')
+  const [cloudActionBusy, setCloudActionBusy] = useState(false)
+  const [cloudModalMessage, setCloudModalMessage] = useState('')
   const [hunterStats, setHunterStats] = useState<GameHunterStats | null>(null)
 
   const closeSaveModal = (): void => {
     setSaveModalOpen(false)
     setSaveModalStep('main')
+    setSavePickMode('restore')
     setSaveSnapshots([])
     setSaveSnapshotsLoading(false)
     setSaveSnapshotsError('')
     setSelectedBackupId('')
   }
 
-  const openSaveSnapshotPicker = (): void => {
+  const closeCloudModal = (): void => {
+    setCloudModalOpen(false)
+    setCloudArtifacts([])
+    setCloudArtifactsLoading(false)
+    setCloudArtifactsError('')
+    setSelectedCloudArtifactId('')
+    setCloudActionBusy(false)
+    setCloudModalMessage('')
+    setCloudToggleBusy(false)
+  }
+
+  const loadCloudArtifacts = (): void => {
+    setCloudArtifactsLoading(true)
+    setCloudArtifactsError('')
+    void window.api
+      .ludusaviCloudListGame(appid)
+      .then((result) => {
+        if (!result.ok) {
+          setCloudArtifacts([])
+          setCloudArtifactsError(result.error)
+          setSelectedCloudArtifactId('')
+          return
+        }
+        const sorted = [...result.artifacts].sort((a, b) =>
+          b.createdAt.localeCompare(a.createdAt)
+        )
+        setCloudArtifacts(sorted)
+        setSelectedCloudArtifactId(sorted[0]?.id ?? '')
+      })
+      .catch((err) => {
+        setCloudArtifacts([])
+        setCloudArtifactsError(err instanceof Error ? err.message : String(err))
+        setSelectedCloudArtifactId('')
+      })
+      .finally(() => setCloudArtifactsLoading(false))
+  }
+
+  const openCloudModal = (): void => {
+    setCloudModalMessage('')
+    setCloudArtifactsError('')
+    setCloudModalOpen(true)
+    if (cloudConfigured) {
+      loadCloudArtifacts()
+    } else {
+      setCloudArtifacts([])
+      setSelectedCloudArtifactId('')
+    }
+  }
+
+  const openSaveSnapshotPicker = (mode: 'restore' | 'upload'): void => {
+    setSavePickMode(mode)
     setSaveModalStep('pick')
     setSaveSnapshots([])
     setSaveSnapshotsError('')
@@ -809,6 +923,10 @@ export default function GameDetailPage({
         setLudusaviPathLinked(false)
       })
     window.api
+      .ludusaviCloudStatus()
+      .then((status) => setCloudConfigured(Boolean(status.configured)))
+      .catch(() => setCloudConfigured(false))
+    window.api
       .getGameDetail(appid)
       .then((next) => {
         setDetail(next)
@@ -1022,6 +1140,7 @@ export default function GameDetailPage({
                         className="game-detail__pill game-detail__save-btn"
                         onClick={() => {
                           setSaveModalStep('main')
+                          setSavePickMode('restore')
                           setSaveSnapshots([])
                           setSaveSnapshotsError('')
                           setSelectedBackupId('')
@@ -1059,6 +1178,30 @@ export default function GameDetailPage({
                         ) : (
                           <FloppySaveIcon />
                         )}
+                      </button>
+                      <button
+                        type="button"
+                        className={`game-detail__pill game-detail__save-btn${
+                          !cloudConfigured || !game?.cloud_saves_enabled
+                            ? ' game-detail__cloud-btn--off'
+                            : ''
+                        }`}
+                        disabled={cloudToggleBusy || game?.backup_status === 'running'}
+                        onClick={() => openCloudModal()}
+                        aria-label={
+                          !cloudConfigured
+                            ? 'Cloud saves — not configured'
+                            : game?.cloud_saves_enabled
+                              ? 'Cloud saves — auto-upload on'
+                              : 'Cloud saves — auto-upload off'
+                        }
+                        title={
+                          !cloudConfigured
+                            ? SETTINGS_COPY.cloudNotConfigured
+                            : 'Open cloud saves for this game'
+                        }
+                      >
+                        <CloudSaveIcon crossed={!cloudConfigured || !game?.cloud_saves_enabled} />
                       </button>
                       {showDepotUpdateUi && updateStatus === 'update_available' && hasInstallPath && (
                         <button
@@ -1368,7 +1511,8 @@ export default function GameDetailPage({
                 <p className="game-detail__exe-modal-help">
                   Back up copies this game&apos;s saves into Ludusavi (keeps up to 5 full
                   snapshots when saves change). Install backup lets you pick a snapshot and
-                  overwrites current save files with that point in time.
+                  overwrites current save files with that point in time. Use the cloud icon for
+                  per-game R2 upload and download.
                 </p>
                 <p className="game-detail__exe-modal-help" role="status">
                   {formatLastBackupModalLine(
@@ -1392,30 +1536,24 @@ export default function GameDetailPage({
                   <button
                     type="button"
                     className="game-detail__pill"
-                    disabled={
-                      !ludusaviPathLinked ||
-                      game?.backup_status === 'running' ||
-                      game?.backup_status === 'missing'
-                    }
-                    onClick={openSaveSnapshotPicker}
+                    disabled={!ludusaviPathLinked || game?.backup_status === 'running'}
+                    onClick={() => openSaveSnapshotPicker('restore')}
                   >
                     Install backup
-                  </button>
-                  <button type="button" className="game-detail__pill" onClick={closeSaveModal}>
-                    Cancel
                   </button>
                 </div>
                 {!ludusaviPathLinked && (
                   <p className="game-detail__exe-modal-help" role="status">
-                    Link ludusavi.exe in Settings → Save backups first.
+                    Link ludusavi.exe in Settings → Backups first.
                   </p>
                 )}
               </>
             ) : (
               <>
                 <p className="game-detail__exe-modal-help">
-                  Install overwrites current saves with the selected Ludusavi snapshot (newest
-                  first, up to 5). Ludusavi only adds a snapshot when save files change.
+                  {savePickMode === 'upload'
+                    ? 'Choose a local Ludusavi snapshot to upload to R2 (newest first, up to 5).'
+                    : 'Install overwrites current saves with the selected Ludusavi snapshot (newest first, up to 5). Ludusavi only adds a snapshot when save files change.'}
                 </p>
                 {saveSnapshotsLoading ? (
                   <p className="game-detail__exe-modal-help" role="status">
@@ -1469,17 +1607,26 @@ export default function GameDetailPage({
                     onClick={() => {
                       const id = selectedBackupId
                       if (!id) return
+                      if (savePickMode === 'upload') {
+                        closeSaveModal()
+                        void window.api
+                          .ludusaviCloudUploadGame(appid, id)
+                          .then(() => reloadDetail())
+                          .catch(() => reloadDetail())
+                        return
+                      }
                       closeSaveModal()
                       void window.api.ludusaviRestoreGame(appid, id)
                     }}
                   >
-                    Confirm install
+                    {savePickMode === 'upload' ? 'Confirm upload' : 'Confirm install'}
                   </button>
                   <button
                     type="button"
                     className="game-detail__pill"
                     onClick={() => {
                       setSaveModalStep('main')
+                      setSavePickMode('restore')
                       setSaveSnapshots([])
                       setSaveSnapshotsError('')
                       setSelectedBackupId('')
@@ -1488,8 +1635,179 @@ export default function GameDetailPage({
                   >
                     Back
                   </button>
-                  <button type="button" className="game-detail__pill" onClick={closeSaveModal}>
-                    Cancel
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {cloudModalOpen && (
+        <div
+          className="game-detail__exe-modal-backdrop"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) closeCloudModal()
+          }}
+        >
+          <div
+            className="game-detail__exe-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="game-detail-cloud-modal-title"
+          >
+            <div className="game-detail__exe-modal-header">
+              <h3 id="game-detail-cloud-modal-title" className="game-detail__exe-modal-title">
+                Cloud saves
+              </h3>
+              <button
+                type="button"
+                className="game-detail__pill"
+                onClick={closeCloudModal}
+                aria-label="Close"
+              >
+                ×
+              </button>
+            </div>
+            {!cloudConfigured ? (
+              <p className="game-detail__exe-modal-help" role="status">
+                {SETTINGS_COPY.cloudNotConfigured}
+              </p>
+            ) : (
+              <>
+                <label className="game-detail__cloud-enable">
+                  <input
+                    type="checkbox"
+                    className="game-detail__cloud-enable-checkbox"
+                    checked={Boolean(game?.cloud_saves_enabled)}
+                    disabled={cloudToggleBusy || cloudActionBusy}
+                    onChange={(e) => {
+                      const next = e.target.checked
+                      setCloudToggleBusy(true)
+                      setCloudModalMessage('')
+                      void window.api
+                        .setGameCloudSavesEnabled(appid, next)
+                        .then(async (result) => {
+                          if (!result.ok) {
+                            setCloudModalMessage(result.error || 'Could not update cloud setting.')
+                            return
+                          }
+                          await reloadDetail()
+                        })
+                        .catch(() => {
+                          setCloudModalMessage('Could not update cloud setting.')
+                        })
+                        .finally(() => setCloudToggleBusy(false))
+                    }}
+                  />
+                  <span>Auto-upload after local backup</span>
+                </label>
+                <p className="game-detail__exe-modal-help">
+                  When auto-upload is on, AchieveMe uploads to R2 only after a local backup
+                  that Ludusavi marks as New/Different (unchanged Same backups stay local).
+                  Upload and Download work anytime cloud is configured.
+                  Download adds a Cloud save snapshot locally — it does not wipe other Ludusavi
+                  snapshots or live saves. Use Install backup on the floppy menu to restore.
+                </p>
+                {cloudArtifactsLoading ? (
+                  <p className="game-detail__exe-modal-help" role="status">
+                    Loading cloud snapshots…
+                  </p>
+                ) : cloudArtifactsError ? (
+                  <p className="game-detail__exe-modal-error" role="alert">
+                    {cloudArtifactsError}
+                  </p>
+                ) : cloudArtifacts.length === 0 ? (
+                  <p className="game-detail__exe-modal-help" role="status">
+                    No remote cloud snapshots for this game yet.
+                  </p>
+                ) : (
+                  <ul
+                    className="game-detail__save-snapshot-list"
+                    role="listbox"
+                    aria-label="Cloud snapshots"
+                  >
+                    {cloudArtifacts.map((art) => {
+                      const selected = selectedCloudArtifactId === art.id
+                      return (
+                        <li key={art.id}>
+                          <label
+                            className={
+                              selected
+                                ? 'game-detail__save-snapshot-option is-selected'
+                                : 'game-detail__save-snapshot-option'
+                            }
+                          >
+                            <input
+                              type="radio"
+                              name="cloud-artifact"
+                              value={art.id}
+                              checked={selected}
+                              onChange={() => setSelectedCloudArtifactId(art.id)}
+                            />
+                            <span>{formatCloudArtifactLabel(art.createdAt, art.id)}</span>
+                          </label>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                )}
+                {cloudModalMessage ? (
+                  <p className="game-detail__exe-modal-help" role="status">
+                    {cloudModalMessage}
+                  </p>
+                ) : null}
+                <div className="game-detail__exe-confirm-actions">
+                  <button
+                    type="button"
+                    className="game-detail__pill game-detail__play"
+                    disabled={
+                      !ludusaviPathLinked ||
+                      cloudActionBusy ||
+                      game?.backup_status === 'running'
+                    }
+                    onClick={() => {
+                      closeCloudModal()
+                      setSaveModalOpen(true)
+                      openSaveSnapshotPicker('upload')
+                    }}
+                  >
+                    Upload
+                  </button>
+                  <button
+                    type="button"
+                    className="game-detail__pill"
+                    disabled={
+                      !ludusaviPathLinked ||
+                      cloudActionBusy ||
+                      cloudArtifactsLoading ||
+                      !selectedCloudArtifactId ||
+                      cloudArtifacts.length === 0
+                    }
+                    onClick={() => {
+                      const id = selectedCloudArtifactId
+                      if (!id) return
+                      setCloudActionBusy(true)
+                      setCloudModalMessage('')
+                      void window.api
+                        .ludusaviCloudDownloadGame(appid, id)
+                        .then((result) => {
+                          if (!result.ok) {
+                            setCloudModalMessage(result.error || 'Download failed.')
+                            return
+                          }
+                          setCloudModalMessage(
+                            'Downloaded as a Cloud save snapshot. Use Install backup on the floppy menu to restore live saves.'
+                          )
+                        })
+                        .catch((err) => {
+                          setCloudModalMessage(
+                            err instanceof Error ? err.message : 'Download failed.'
+                          )
+                        })
+                        .finally(() => setCloudActionBusy(false))
+                    }}
+                  >
+                    {cloudActionBusy ? 'Downloading…' : 'Download'}
                   </button>
                 </div>
               </>

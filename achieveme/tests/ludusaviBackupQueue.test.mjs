@@ -40,6 +40,7 @@ function makeGame(appid, overrides = {}) {
     backup_at: 0,
     backup_error: '',
     ludusavi_title: '',
+    cloud_saves_enabled: 0,
     steamless_applied: 0,
     goldberg_applied: 0,
     steamless_exe: '',
@@ -80,26 +81,201 @@ test('two schedule calls for same appid run once', async () => {
   assert.equal(ok.error, '')
 })
 
-test('backup passes ludusaviCloudSync to backupGame', async () => {
-  const optionsSeen = []
+test('cloud upload runs after Different backup when per-game cloud enabled', async () => {
+  const { R2_CLOUD_UPLOAD_FAILED_NOTE } = await import(
+    pathToFileURL(path.join(rootDir, '../src/shared/r2CloudSaveUtils.ts')).href
+  )
+  const uploadCalls = []
+  const statuses = []
   const queue = createLudusaviBackupQueue({
-    loadSettings: () => baseSettings({ ludusaviCloudSync: true }),
+    loadSettings: () =>
+      baseSettings({
+        cloudSavesApiUrl: 'https://saves.example.com',
+        cloudSavesApiToken: 'tok'
+      }),
     getAllGames: () => [],
-    getGame: () => makeGame('570', { ludusavi_title: 'Dota 2' }),
-    updateGameBackupStatus: () => undefined,
+    getGame: () =>
+      makeGame('570', { ludusavi_title: 'Dota 2', cloud_saves_enabled: 1 }),
+    updateGameBackupStatus: (appid, update) => {
+      statuses.push({ appid, ...update })
+    },
     notifyLibraryUpdated: () => undefined,
     validateLudusaviPath: (p) => p,
     findTitleBySteamId: async () => 'Dota 2',
-    backupGame: async (_exe, _title, options) => {
-      optionsSeen.push(options)
-      return { ok: true, decision: 'Processed', change: 'Different', bytes: 1 }
+    backupGame: async () => ({
+      ok: true,
+      decision: 'Processed',
+      change: 'Different',
+      bytes: 1
+    }),
+    restoreGame: async () => ({ ok: false, error: 'unexpected restore' }),
+    uploadCloudSave: async (input) => {
+      uploadCalls.push(input)
+      return { ok: false, softNote: R2_CLOUD_UPLOAD_FAILED_NOTE }
     },
-    restoreGame: async () => ({ ok: false, error: 'unexpected restore' })
+    nowSeconds: () => 100
   })
 
   queue.scheduleGameBackup('570', 'manual')
   await queue.drain()
-  assert.deepEqual(optionsSeen, [{ cloudSync: true }])
+  assert.equal(uploadCalls.length, 1)
+  const last = statuses[statuses.length - 1]
+  assert.equal(last.status, 'ok')
+  assert.equal(last.error, R2_CLOUD_UPLOAD_FAILED_NOTE)
+})
+
+test('cloud upload is skipped for Same backups', async () => {
+  let uploadCalls = 0
+  const queue = createLudusaviBackupQueue({
+    loadSettings: () =>
+      baseSettings({
+        cloudSavesApiUrl: 'https://saves.example.com',
+        cloudSavesApiToken: 'tok'
+      }),
+    getAllGames: () => [],
+    getGame: () =>
+      makeGame('570', { ludusavi_title: 'Dota 2', cloud_saves_enabled: 1 }),
+    updateGameBackupStatus: () => undefined,
+    notifyLibraryUpdated: () => undefined,
+    validateLudusaviPath: (p) => p,
+    findTitleBySteamId: async () => 'Dota 2',
+    backupGame: async () => ({
+      ok: true,
+      decision: 'Processed',
+      change: 'Same',
+      bytes: 1
+    }),
+    restoreGame: async () => ({ ok: false, error: 'unexpected restore' }),
+    uploadCloudSave: async () => {
+      uploadCalls += 1
+      return { ok: true }
+    }
+  })
+  queue.scheduleGameBackup('570', 'manual')
+  await queue.drain()
+  assert.equal(uploadCalls, 0)
+})
+
+test('cloud upload is skipped when change signal is missing', async () => {
+  let uploadCalls = 0
+  const queue = createLudusaviBackupQueue({
+    loadSettings: () =>
+      baseSettings({
+        cloudSavesApiUrl: 'https://saves.example.com',
+        cloudSavesApiToken: 'tok'
+      }),
+    getAllGames: () => [],
+    getGame: () =>
+      makeGame('570', { ludusavi_title: 'Dota 2', cloud_saves_enabled: 1 }),
+    updateGameBackupStatus: () => undefined,
+    notifyLibraryUpdated: () => undefined,
+    validateLudusaviPath: (p) => p,
+    findTitleBySteamId: async () => 'Dota 2',
+    backupGame: async () => ({
+      ok: true,
+      decision: 'Processed',
+      bytes: 1
+    }),
+    restoreGame: async () => ({ ok: false, error: 'unexpected restore' }),
+    uploadCloudSave: async () => {
+      uploadCalls += 1
+      return { ok: true }
+    }
+  })
+  queue.scheduleGameBackup('570', 'manual')
+  await queue.drain()
+  assert.equal(uploadCalls, 0)
+})
+
+test('restore does not call uploadCloudSave', async () => {
+  let uploadCalls = 0
+  const queue = createLudusaviBackupQueue({
+    loadSettings: () =>
+      baseSettings({
+        cloudSavesApiUrl: 'https://saves.example.com',
+        cloudSavesApiToken: 'tok'
+      }),
+    getAllGames: () => [],
+    getGame: () =>
+      makeGame('570', { ludusavi_title: 'Dota 2', cloud_saves_enabled: 1 }),
+    updateGameBackupStatus: () => undefined,
+    notifyLibraryUpdated: () => undefined,
+    validateLudusaviPath: (p) => p,
+    findTitleBySteamId: async () => 'Dota 2',
+    backupGame: async () => ({ ok: false, error: 'unexpected' }),
+    restoreGame: async () => ({ ok: true, decision: 'Processed', bytes: 1 }),
+    uploadCloudSave: async () => {
+      uploadCalls += 1
+      return { ok: true }
+    }
+  })
+  queue.scheduleGameRestore('570', 'snap-1')
+  await queue.drain()
+  assert.equal(uploadCalls, 0)
+})
+
+test('cloud upload skipped when token empty even if per-game cloud on', async () => {
+  let uploadCalls = 0
+  const queue = createLudusaviBackupQueue({
+    loadSettings: () =>
+      baseSettings({
+        cloudSavesApiUrl: 'https://saves.example.com',
+        cloudSavesApiToken: ''
+      }),
+    getAllGames: () => [],
+    getGame: () =>
+      makeGame('570', { ludusavi_title: 'Dota 2', cloud_saves_enabled: 1 }),
+    updateGameBackupStatus: () => undefined,
+    notifyLibraryUpdated: () => undefined,
+    validateLudusaviPath: (p) => p,
+    findTitleBySteamId: async () => 'Dota 2',
+    backupGame: async () => ({
+      ok: true,
+      decision: 'Processed',
+      change: 'Different',
+      bytes: 1
+    }),
+    restoreGame: async () => ({ ok: false, error: 'unexpected' }),
+    uploadCloudSave: async () => {
+      uploadCalls += 1
+      return { ok: true }
+    }
+  })
+  queue.scheduleGameBackup('570', 'manual')
+  await queue.drain()
+  assert.equal(uploadCalls, 0)
+})
+
+test('cloud upload skipped when per-game cloud disabled', async () => {
+  let uploadCalls = 0
+  const queue = createLudusaviBackupQueue({
+    loadSettings: () =>
+      baseSettings({
+        cloudSavesApiUrl: 'https://saves.example.com',
+        cloudSavesApiToken: 'tok'
+      }),
+    getAllGames: () => [],
+    getGame: () =>
+      makeGame('570', { ludusavi_title: 'Dota 2', cloud_saves_enabled: 0 }),
+    updateGameBackupStatus: () => undefined,
+    notifyLibraryUpdated: () => undefined,
+    validateLudusaviPath: (p) => p,
+    findTitleBySteamId: async () => 'Dota 2',
+    backupGame: async () => ({
+      ok: true,
+      decision: 'Processed',
+      change: 'Different',
+      bytes: 1
+    }),
+    restoreGame: async () => ({ ok: false, error: 'unexpected' }),
+    uploadCloudSave: async () => {
+      uploadCalls += 1
+      return { ok: true }
+    }
+  })
+  queue.scheduleGameBackup('570', 'manual')
+  await queue.drain()
+  assert.equal(uploadCalls, 0)
 })
 
 test('cloud conflict soft note from backupGame is stored with ok status', async () => {
@@ -247,6 +423,38 @@ test('auto backup off skips non-manual reasons', async () => {
   assert.equal(backupCalls, 0)
 
   queue.scheduleGameBackup('570', 'manual')
+  await queue.drain()
+  assert.equal(backupCalls, 1)
+})
+
+test('auto backup on runs session only; startup and add are ignored', async () => {
+  let backupCalls = 0
+  const queue = createLudusaviBackupQueue({
+    loadSettings: () =>
+      baseSettings({
+        ludusaviAutoBackup: true,
+        ludusaviBackupOnStartup: true,
+        ludusaviBackupOnAddGame: true
+      }),
+    getAllGames: () => [makeGame('570')],
+    getGame: () => makeGame('570', { ludusavi_title: 'Dota 2' }),
+    updateGameBackupStatus: () => undefined,
+    notifyLibraryUpdated: () => undefined,
+    validateLudusaviPath: (p) => p,
+    findTitleBySteamId: async () => 'Dota 2',
+    backupGame: async () => {
+      backupCalls += 1
+      return { ok: true, decision: 'Processed', change: 'Different', bytes: 1 }
+    },
+    restoreGame: async () => ({ ok: false, error: 'unexpected restore' })
+  })
+
+  queue.scheduleLibraryBackup('startup')
+  queue.scheduleGameBackup('570', 'add')
+  await queue.drain()
+  assert.equal(backupCalls, 0)
+
+  queue.scheduleGameBackup('570', 'session')
   await queue.drain()
   assert.equal(backupCalls, 1)
 })

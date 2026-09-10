@@ -119,3 +119,11 @@ test('electron-builder extraResources bundles DepotDownloader', () => {
   assert.equal(resource.from, 'resources/depotdownloader')
   assert.equal(resource.to, 'depotdownloader')
 })
+
+test('electron-builder does not bundle ludusavi or rclone', () => {
+  const config = loadElectronBuilderConfig()
+  const resources = config.extraResources ?? []
+  const blob = JSON.stringify(resources).toLowerCase()
+  assert.doesNotMatch(blob, /ludusavi/)
+  assert.doesNotMatch(blob, /rclone/)
+})

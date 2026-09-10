@@ -15,7 +15,6 @@ import {
   validateDllPath
 } from './goldbergFolderUtils'
 import { installSteamSettings } from './goldbergSteamSettingsUtils'
-import { scheduleGameBackup } from './ludusaviBackupQueue'
 
 function resolveGeneratorDir(): string {
   if (app.isPackaged) {
@@ -196,6 +195,5 @@ export async function applyGoldberg(
     goldbergApplied: true,
     goldbergDllPath: dllPath
   })
-  scheduleGameBackup(appid, 'add')
   log('Done. Game added to library.')
 }

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import type { ActiveDepotSession, AppSettings } from '../../../shared/types'
+import { shouldShowDepotInDock } from '../../../shared/transfersDockUtils'
 import { AppChrome, AppNav, AppShell, Chip } from '../components/app'
 import SteamlessWizard from '../components/SteamlessWizard'
 import type { AppPage } from '../lib/appNavigation'
@@ -30,11 +31,7 @@ export default function ToolsPage({
   const steamlessLinked = steamlessFolder.length > 0
   const hubcapKey = settings?.hubcapApiKey?.trim() ?? ''
   const hubcapLinked = hubcapKey.length > 0
-  const depotActive =
-    depotSession != null &&
-    (depotSession.phase === 'fetching' ||
-      depotSession.phase === 'depots' ||
-      depotSession.phase === 'downloading')
+  const depotActive = shouldShowDepotInDock(depotSession)
 
   return (
     <AppShell column>
@@ -61,7 +58,7 @@ export default function ToolsPage({
               </p>
             ) : (
               <p className="tools-card__hint">
-                Set the Steamless folder in Settings → External tools first.
+                Set the Steamless folder in Settings → Tools first.
               </p>
             )}
             <div className="tools-card__actions">
@@ -91,12 +88,12 @@ export default function ToolsPage({
               <p className="tools-card__path">Hubcap API key configured</p>
             ) : (
               <p className="tools-card__hint">
-                Optional Hubcap API key can be set in Settings → Depot Downloader.
+                Optional Hubcap API key can be set in Settings → Tools.
               </p>
             )}
             {depotActive && (
               <p className="tools-card__path">
-                Download in progress — reopen the wizard from the Transfers dock or below.
+                In progress — reopen the wizard from the Transfers dock or below.
               </p>
             )}
             <div className="tools-card__actions">

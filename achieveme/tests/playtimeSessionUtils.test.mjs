@@ -8,8 +8,11 @@ const {
   flushDeltaSeconds,
   shouldPeriodicFlush,
   matchRunningGames,
-  shouldOfferRecapOnOrphanClose,
-  PLAYTIME_FLUSH_INTERVAL_MS
+  selectProcessListForTick,
+  overlayAliveLaunchedPids,
+  shouldDeferSessionEnd,
+  PLAYTIME_FLUSH_INTERVAL_MS,
+  LAUNCH_GRACE_MS
 } = await import(pathToFileURL(path.join(rootDir, '../src/shared/playtimeSessionUtils.ts')).href)
 
 test('flushDeltaSeconds floors whole seconds and never goes negative', () => {
@@ -44,6 +47,76 @@ test('matchRunningGames: launch_exe wins over under-root of another folder', () 
   const matched = matchRunningGames(processes, games)
   assert.equal(matched.get('111')?.pid, 2)
   assert.equal(matched.has('222'), false)
+})
+
+test('matchRunningGames: registered PID matches even when ExecutablePath is empty', () => {
+  const processes = [{ pid: 4242, executablePath: '' }]
+  const games = [
+    {
+      appid: '111',
+      launchExe: 'D:\\Games\\A\\Game.exe',
+      scanRoot: 'D:\\Games\\A'
+    }
+  ]
+  const matched = matchRunningGames(processes, games, new Map([['111', 4242]]))
+  assert.equal(matched.get('111')?.pid, 4242)
+})
+
+test('matchRunningGames: launch_exe basename matches a relocated copy', () => {
+  const processes = [{ pid: 8, executablePath: 'E:\\New\\Install\\Game.exe' }]
+  const games = [
+    {
+      appid: '111',
+      launchExe: 'D:\\Old\\Install\\Game.exe',
+      scanRoot: ''
+    }
+  ]
+  const matched = matchRunningGames(processes, games)
+  assert.equal(matched.get('111')?.pid, 8)
+})
+
+test('matchRunningGames: launch_exe basename ignores crash handlers', () => {
+  const processes = [
+    { pid: 8, executablePath: 'E:\\New\\UnityCrashHandler64.exe' }
+  ]
+  const games = [
+    {
+      appid: '111',
+      launchExe: 'D:\\Old\\UnityCrashHandler64.exe',
+      scanRoot: ''
+    }
+  ]
+  assert.equal(matchRunningGames(processes, games).size, 0)
+})
+
+test('selectProcessListForTick uses a successful non-empty fetch', () => {
+  const processes = [{ pid: 1, executablePath: 'C:\\a.exe' }]
+  const selected = selectProcessListForTick({ ok: true, processes }, [])
+  assert.equal(selected.reusedLastGood, false)
+  assert.deepEqual(selected.processes, processes)
+})
+
+test('selectProcessListForTick reuses last good when fetch fails', () => {
+  const lastGood = [{ pid: 2, executablePath: 'C:\\b.exe' }]
+  const selected = selectProcessListForTick(
+    { ok: false, processes: [] },
+    lastGood
+  )
+  assert.equal(selected.reusedLastGood, true)
+  assert.deepEqual(selected.processes, lastGood)
+})
+
+test('selectProcessListForTick reuses last good when fetch is empty', () => {
+  const lastGood = [{ pid: 2, executablePath: 'C:\\b.exe' }]
+  const selected = selectProcessListForTick({ ok: true, processes: [] }, lastGood)
+  assert.equal(selected.reusedLastGood, true)
+  assert.deepEqual(selected.processes, lastGood)
+})
+
+test('selectProcessListForTick has nothing to reuse on first failed fetch', () => {
+  const selected = selectProcessListForTick({ ok: false, processes: [] }, [])
+  assert.equal(selected.reusedLastGood, false)
+  assert.deepEqual(selected.processes, [])
 })
 
 test('matchRunningGames: registered PID wins over path match', () => {
@@ -99,6 +172,48 @@ test('matchRunningGames: one process claims only the first matching game', () =>
   assert.equal(matched.has('b'), false)
 })
 
-test('shouldOfferRecapOnOrphanClose is always false', () => {
-  assert.equal(shouldOfferRecapOnOrphanClose(), false)
+test('matchRunningGames: process name matches when Windows hides the path', () => {
+  const processes = [{ pid: 9, name: 'Game', executablePath: '' }]
+  const games = [
+    {
+      appid: '111',
+      launchExe: 'D:\\Games\\A\\Game.exe',
+      scanRoot: 'D:\\Games\\A'
+    }
+  ]
+  assert.equal(matchRunningGames(processes, games).get('111')?.pid, 9)
+})
+
+test('matchRunningGames: extraBasenames match a child exe by name', () => {
+  const processes = [{ pid: 11, name: 'DawnWalker', executablePath: '' }]
+  const games = [
+    {
+      appid: '111',
+      launchExe: 'D:\\Games\\A\\Launcher.exe',
+      scanRoot: 'D:\\Games\\A',
+      extraBasenames: ['dawnwalker']
+    }
+  ]
+  assert.equal(matchRunningGames(processes, games).get('111')?.pid, 11)
+})
+
+test('overlayAliveLaunchedPids adds a synthetic row for a live Play PID', () => {
+  const processes = [{ pid: 1, name: 'system', executablePath: 'C:\\Windows\\a.exe' }]
+  const overlaid = overlayAliveLaunchedPids(
+    processes,
+    new Map([['111', 22340]]),
+    new Set([22340])
+  )
+  assert.equal(overlaid.some((p) => p.pid === 22340), true)
+})
+
+test('overlayAliveLaunchedPids ignores a dead Play PID', () => {
+  const overlaid = overlayAliveLaunchedPids([], new Map([['111', 22340]]), new Set())
+  assert.equal(overlaid.length, 0)
+})
+
+test('shouldDeferSessionEnd holds during launch grace', () => {
+  assert.equal(shouldDeferSessionEnd(1000, 1000 + LAUNCH_GRACE_MS - 1), true)
+  assert.equal(shouldDeferSessionEnd(1000, 1000 + LAUNCH_GRACE_MS), false)
+  assert.equal(shouldDeferSessionEnd(undefined, 1000), false)
 })

@@ -1,3 +1,6 @@
+/** Steam Community page for registering a Web API key. */
+export const STEAM_WEB_API_KEY_URL = 'https://steamcommunity.com/dev/apikey'
+
 /** Working Steam community assets CDN for achievement icons. */
 const STEAM_ICON_CDN_PREFIX =
   'https://shared.akamai.steamstatic.com/community_assets/images/apps'

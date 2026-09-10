@@ -5,6 +5,7 @@
 
 export type ProcessInfo = {
   readonly pid: number
+  readonly name: string
   readonly executablePath: string
 }
 
@@ -58,6 +59,28 @@ export const isIgnoredPlaytimeExe = (executablePath: string): boolean =>
   PLAYTIME_IGNORED_BASENAMES.has(exeBasenameNoExt(executablePath))
 
 /**
+ * True when a process image name (no path) is on the ignore list.
+ *
+ * @param name - ProcessName or exe basename
+ */
+export const isIgnoredPlaytimeName = (name: string): boolean =>
+  PLAYTIME_IGNORED_BASENAMES.has(exeBasenameNoExt(name))
+
+/**
+ * Lowercase image name for matching: ProcessName, else basename of the path.
+ *
+ * @param process - Running process
+ */
+export const processImageName = (process: {
+  readonly name?: string
+  readonly executablePath: string
+}): string => {
+  const named = exeBasenameNoExt(process.name ?? '')
+  if (named) return named
+  return exeBasenameNoExt(process.executablePath)
+}
+
+/**
  * True when two paths refer to the same file (case / slash insensitive).
  *
  * @param a - First path
@@ -82,41 +105,53 @@ export const isPathUnderRoot = (childPath: string, rootPath: string): boolean =>
 }
 
 /**
- * Parses PowerShell CIM `ProcessId\tExecutablePath` lines (or CSV-ish `pid,path`).
- * Skips rows with missing pid or empty executable path.
+ * Parses PowerShell process rows: `pid\tpath` or `pid\tname\tpath`.
+ * Keeps empty paths so Play PIDs and hidden-path processes still match.
  *
  * @param text - Raw command stdout
  */
-export const parseCimProcessList = (text: string): ProcessInfo[] => {
+export const parseProcessList = (text: string): ProcessInfo[] => {
   const results: ProcessInfo[] = []
   const seen = new Set<number>()
 
   for (const rawLine of text.split(/\r?\n/)) {
-    const line = rawLine.trim()
-    if (!line) continue
+    if (!rawLine.trim()) continue
+    // Keep trailing tabs so `pid\t` / `pid\tname\t` is not collapsed.
+    const line = rawLine.replace(/^\s+/, '')
     if (/^processid\b/i.test(line) || /^pid\b/i.test(line)) continue
+    if (!line.includes('\t')) continue
 
-    let pidStr = ''
+    const parts = line.split('\t')
+    const pidStr = (parts[0] ?? '').trim()
+    let nameRaw = ''
     let exePath = ''
-
-    if (line.includes('\t')) {
-      const [pidPart, ...rest] = line.split('\t')
-      pidStr = (pidPart ?? '').trim()
-      exePath = rest.join('\t').trim()
+    if (parts.length >= 3) {
+      nameRaw = (parts[1] ?? '').trim()
+      exePath = parts.slice(2).join('\t').trim()
     } else {
-      const comma = line.indexOf(',')
-      if (comma <= 0) continue
-      pidStr = line.slice(0, comma).trim()
-      exePath = line.slice(comma + 1).trim().replace(/^"|"$/g, '')
+      exePath = (parts[1] ?? '').trim()
     }
 
     const pid = Number(pidStr)
     if (!Number.isInteger(pid) || pid <= 0) continue
-    if (!exePath) continue
     if (seen.has(pid)) continue
     seen.add(pid)
-    results.push({ pid, executablePath: exePath })
+    const name = exeBasenameNoExt(nameRaw) || exeBasenameNoExt(exePath)
+    results.push({ pid, name, executablePath: exePath })
   }
 
   return results
+}
+
+/**
+ * Formats a process-list fetch error for logs.
+ *
+ * @param err - Thrown value from the process-list spawn
+ */
+export const formatProcessListError = (err: unknown): string => {
+  if (err && typeof err === 'object' && 'killed' in err && (err as { killed?: boolean }).killed) {
+    return 'timeout'
+  }
+  if (err instanceof Error && err.message.trim()) return err.message.trim()
+  return String(err)
 }

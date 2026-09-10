@@ -358,7 +358,7 @@ export default function UpdateTransferModal({
                       </Chip>
                       {steamlessFolderMissing && (
                         <p className="update-transfer__error" role="alert">
-                          Link a Steamless folder in Settings → External tools first.
+                          Link a Steamless folder in Settings → Tools first.
                         </p>
                       )}
                     </>

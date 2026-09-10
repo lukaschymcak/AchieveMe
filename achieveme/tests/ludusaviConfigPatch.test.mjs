@@ -10,7 +10,9 @@ const {
   patchRclonePathInConfigYaml,
   patchCloudSynchronizeInConfigYaml,
   writeRclonePathToLudusaviConfig,
-  writeCloudSynchronizeToLudusaviConfig
+  writeCloudSynchronizeToLudusaviConfig,
+  syncIsolatedLudusaviConfigFromGui,
+  extractRclonePathFromConfigYaml
 } = await import(
   pathToFileURL(path.join(rootDir, '../src/main/achievement/ludusaviConfigPatch.ts')).href
 )
@@ -44,4 +46,54 @@ test('write helpers persist to disk', () => {
   assert.match(text, /rclone\.exe/)
   assert.match(text, /synchronize:\s*true/)
   fs.rmSync(dir, { recursive: true, force: true })
+})
+
+test('extractRclonePathFromConfigYaml reads apps.rclone.path', () => {
+  const yaml = 'apps:\n  rclone:\n    path: "C:/Tools/rclone.exe"\n    arguments: "--fast-list"\n'
+  assert.equal(extractRclonePathFromConfigYaml(yaml), 'C:/Tools/rclone.exe')
+})
+
+test('syncIsolatedLudusaviConfigFromGui copies GUI backup.path and keeps rclone', () => {
+  const prevAppData = process.env.APPDATA
+  const fakeRoaming = fs.mkdtempSync(path.join(os.tmpdir(), 'ludusavi-gui-'))
+  const guiDir = path.join(fakeRoaming, 'ludusavi')
+  fs.mkdirSync(guiDir, { recursive: true })
+  fs.writeFileSync(
+    path.join(guiDir, 'config.yaml'),
+    [
+      'backup:',
+      '  path: "C:/Users/Luky/ludusavi-backup"',
+      'customGames:',
+      '  - name: "Dragon\'s Dogma 2"',
+      'cloud:',
+      '  synchronize: true',
+      'apps:',
+      '  rclone:',
+      '    path: ""',
+      ''
+    ].join('\n'),
+    'utf8'
+  )
+  process.env.APPDATA = fakeRoaming
+  const isolated = fs.mkdtempSync(path.join(os.tmpdir(), 'ludusavi-iso-'))
+  try {
+    fs.writeFileSync(
+      path.join(isolated, 'config.yaml'),
+      'backup:\n  path: "F:/stale"\napps:\n  rclone:\n    path: "C:/Tools/rclone.exe"\n',
+      'utf8'
+    )
+    const result = syncIsolatedLudusaviConfigFromGui(isolated)
+    assert.equal(result.ok, true)
+    assert.equal(result.syncedFromGui, true)
+    const text = fs.readFileSync(path.join(isolated, 'config.yaml'), 'utf8')
+    assert.match(text, /path:\s*"C:\/Users\/Luky\/ludusavi-backup"/)
+    assert.match(text, /Dragon's Dogma 2/)
+    assert.match(text, /synchronize:\s*false/)
+    assert.match(text, /path:\s*"C:\/Tools\/rclone\.exe"/)
+    assert.doesNotMatch(text, /F:\/stale/)
+  } finally {
+    process.env.APPDATA = prevAppData
+    fs.rmSync(fakeRoaming, { recursive: true, force: true })
+    fs.rmSync(isolated, { recursive: true, force: true })
+  }
 })

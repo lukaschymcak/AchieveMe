@@ -464,7 +464,9 @@ export default function App(): React.ReactElement {
 
   const transferRows = buildTransferDockRows({
     depot: activeDepotSession,
-    update: activeUpdateSession
+    update: activeUpdateSession,
+    depotModalOpen: depotWizardOpen,
+    updateModalOpen: updateModalOpen
   })
 
   function handleOpenTransferRow(row: TransferDockRow): void {

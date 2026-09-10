@@ -70,30 +70,14 @@ export const TOOLTIPS = {
   tierFilter: 'Filter the list by trophy tier. Counts show how many you have earned in that tier.',
   navArrows: 'Browse games in your library’s current sort and search order.',
   completionRing: 'Progress from merged emulator save data across all enabled sources.',
-  settingsApiKey:
-    'Required for achievement names, icons, and hidden flags. Cover art and global unlock % work without a key.',
-  settingsSources:
-    'Only enabled sources are scanned. Goldberg and GSE support delete and write-back.',
-  settingsCustomFolders:
-    'Extra roots scanned for every enabled source. Use for non-standard install paths.',
-  settingsInstallScanRoots:
-    'Folders Tools → Scan for installed games walks (depth ≤ 8) for steam_appid.txt / steam_api*.dll. Add selected also fetches Hubcap GIDs. Separate from Custom Watch Folders (emulator saves).',
-  settingsSteamless:
-    'Link a Steamless release folder that contains Steamless.CLI.exe and Plugins. Used from Tools → Steamless. Not bundled with AchieveMe.',
-  settingsLudusavi:
-    'Link ludusavi.exe to back up or restore emulator save files for library games only. Auto-backup is off by default. On Game Detail, the floppy icon opens Back up saves (keeps up to 5 full snapshots when saves change) or Install backup (pick a snapshot; restore overwrites current saves). Optional rclone cloud: AchieveMe uses its own Ludusavi config under app userData (not your Ludusavi GUI). Connect a provider, toggle Upload after backup, and resolve conflicts only with Upload / Download. Bulk Settings backup is backup-only.',
-  settingsDepotDownloader:
-    'Hubcap API key authenticates manifest downloads. Default download folder is used when starting a Depot Downloader run from Tools.',
-  settingsNotifications:
-    'Unlock toasts use a Steam-style layout with bronze/silver/gold accents by rarity, plus a platinum toast when a game first hits 100%. They fire on live save changes only. Optional sound uses the Windows default chime or a custom .wav/.mp3 with adjustable volume.',
-  settingsTray:
-    'Close to tray to keep watching saves. Startup launch is Setup-only (Save). Start minimized is login-only. Portable/dev never register startup. Optional: hide when a game starts.',
-  settingsPlaySessions:
-    'Counts time while the game’s install or Play path is running. Checks about every 2s; saves about every 30s. Session recap is under Notifications.',
-  settingsPlaytime:
-    'Matches the full file path (not the process name). Crash handlers and tools are ignored.',
-  settingsSessionRecap:
-    'After a play session of at least one minute, shows time played, unlocks, and XP.',
+  settingsLibrary:
+    'API key fills names and icons. Save folders are emulator roots; install folders are what Tools scans.',
+  settingsPlay:
+    'Toasts and recap fire while you play. Startup needs the installed Setup, not Portable.',
+  settingsBackups:
+    'Ludusavi backs up library saves. Auto-backup runs after a play session ends; Cloud URL and token unlock Game Detail upload and download.',
+  settingsTools:
+    'Steamless and Depot Downloader read these paths from the Tools page.',
   refreshNews:
     'Force-refetch popular Steam releases and library announcements. Popularity uses Steam’s popular-wishlist chart (exact wishlist counts are not public). Startup also refreshes news during the splash warm.'
 } as const
@@ -101,7 +85,7 @@ export const TOOLTIPS = {
 export const EMPTY_STATES = {
   noGames: {
     title: 'No games found yet',
-    body: 'AchieveMe discovers games automatically by scanning emulator save folders. Each game needs a numeric Steam App ID folder with an achievement file inside (for example Goldberg\\123456\\achievements.json). Check Settings → Emulator Sources, confirm your save paths exist, then click Refresh.'
+    body: 'AchieveMe discovers games automatically by scanning emulator save folders. Each game needs a numeric Steam App ID folder with an achievement file inside (for example Goldberg\\123456\\achievements.json). Check Settings → Library, confirm your save paths exist, then click Refresh.'
   },
   noSearchMatch: 'No games match your search.',
   noMonthlyActivity:
@@ -159,50 +143,6 @@ export const LONG_PRESS_HINT = {
 export const DELETE_CONFIRM =
   'Removes this game from the library and deletes its Goldberg/GSE save folder. The AppID is ignored so leftover CODEX/RUNE saves do not re-add it. Those read-only files are not deleted.'
 
-export const SETTINGS_HINTS = {
-  apiKey:
-    'Required for achievement display names, descriptions, icons, and hidden flags. Cover art and global unlock percentages work without a key.',
-  apiKeySettingsNote: 'After saving here, open Library and click Refresh to rescan.',
-  customFolders:
-    'Extra roots scanned for every enabled source. Use for non-standard installs. Use the layout {appid}/{achievement file}, e.g. C:\\Saves\\570\\achievements.json.',
-  installScanRoots:
-    'Game install folders to scan from Tools (not emulator save roots). Typical: D:\\Games or Steam steamapps\\common. Add selected saves install_path and pulls Hubcap GIDs (Windows/DLC auto; ambiguous depots → picker). Save after editing roots.',
-  saveSuccess: 'Saved. Open Library and click Refresh to rescan for games.',
-  notifications:
-    'Steam-style unlock toasts (rarity accents; platinum at 100%) with optional sound and volume when new achievements appear in save files. Toasts load achievement icons from the on-disk image cache (`achieveme-img://`); missing schema icons use a fallback glyph. Refresh and first library scan never trigger toasts.',
-  tray:
-    'Keep AchieveMe in the tray after close. Startup launch is Setup-only (Save). Start minimized is login-only. Portable/dev never register startup. Optional: hide when a game starts (Save).',
-  playSessions:
-    'Counts time while the game’s install or Play path is running (~2s check, ~30s save).',
-  customSound:
-    'Leave blank to use the Windows default unlock sound. Pick a .wav or .mp3 file for a custom chime. Click Save before Test notification so the new path and volume are used.',
-  soundVolume: 'Unlock sound loudness from 0% (silent) to 100% (full). Disabled when Play sound is off.',
-  testNotification:
-    'Preview the Steam-style unlock toast anytime. Each click cycles bronze → silver → gold → platinum skins. Works even when unlock toasts are disabled; real unlocks still follow the checkbox above. Quit and relaunch still shows the preview.',
-  testSessionRecap:
-    'Opens a demo session recap for a random library game (fake duration and recent unlocks). Works even when session recap is disabled.',
-  steamlessFolder:
-    'Point to an extracted Steamless release (must include Steamless.CLI.exe and a Plugins folder). Configure here, then unpack games from Tools.',
-  ludusaviPath:
-    'Point to ludusavi.exe (or a folder that contains it). AchieveMe backs up saves only for games in your library — it does not invent save paths.',
-  rclonePath:
-    'Point to rclone.exe for Ludusavi cloud remotes. AchieveMe writes rclone’s path only into its isolated Ludusavi config under app userData — your Ludusavi GUI config is never rewritten.',
-  ludusaviCloudProvider:
-    'Pick Google Drive, OneDrive, Dropbox, Box, a custom rclone remote, or None. Connect runs ludusavi cloud set (browser OAuth for common providers).',
-  ludusaviCloudSync:
-    'When on, AchieveMe backups use --cloud-sync after a successful local backup. When off, backups stay --no-cloud-sync. Restore and Install picker stay local-only.',
-  ludusaviCloudManual:
-    'Upload to cloud / Download from cloud overwrite the other side. Use them to resolve conflicts — AchieveMe never auto-resolves.',
-  ludusaviAutoBackup:
-    'When enabled, AchieveMe queues Ludusavi backups for library games on the triggers below. Manual Backup always works when a path is set.',
-  ludusaviBackupNow:
-    'Queues a backup for every game currently in your library. One Ludusavi process runs at a time; status updates on each game detail page.',
-  hubcapApiKey:
-    'Bearer token from hubcapmanifest.com. Required for private / rate-limited manifest downloads. Leave empty only if your Hubcap account allows unauthenticated access.',
-  depotDownloadPath:
-    'Default output folder for DepotDownloader. The wizard can still browse to a different folder per download.'
-} as const
-
 export const ADD_GAME = {
   searchHelp:
     'Search by game name, paste a Steam store URL, or enter an App ID. This wizard sets up Goldberg emulator files — it does not add CODEX or other save types manually.',
@@ -239,7 +179,7 @@ export const HELP_SECTIONS: HelpSection[] = [
     title: 'Where games come from',
     paragraphs: [
       'Games are discovered automatically from enabled emulator sources and custom watch folders. Each game must live at {emulator root}/{Steam App ID}/{achievement file} with a numeric App ID (e.g. 570, 1245620).',
-      'If saves exist but the library is empty, check Settings → Emulator Sources and paths, then click Refresh in Library.'
+      'If saves exist but the library is empty, check Settings → Library and paths, then click Refresh in Library.'
     ]
   },
   {
@@ -289,8 +229,8 @@ export const HELP_SECTIONS: HelpSection[] = [
     id: 'notifications',
     title: 'Notifications',
     paragraphs: [
-      'When a save file changes and a new achievement unlocks, AchieveMe shows a Hydra-style toast (centered icon hold → expand from center to measured width → hold → shrink to icon → icon hold → fade). White title + description, rarity border glow; gold rarity / lilac platinum chrome. Unlock toasts use cached achievement icons (`achieveme-img://`); if the schema has no icon or the cache cannot serve one, the toast still appears with a fallback glyph. When a game first reaches 100%, a platinum celebration toast follows. Library Refresh and first launch never spam toasts for existing unlocks. Use Settings → Test notification to cycle through all four skins.',
-      'Optional unlock sound uses the Windows default chime or a custom .wav/.mp3, with a volume slider. After a play session of at least one minute, a session recap summarizes time, unlocks, and XP. Settings → Test session recap previews it.'
+      'When a save file changes and a new achievement unlocks, AchieveMe shows a Hydra-style toast (centered icon hold → expand from center to measured width → hold → shrink to icon → icon hold → fade). White title + description, rarity border glow; gold rarity / lilac platinum chrome. Unlock toasts use cached achievement icons (`achieveme-img://`); if the schema has no icon or the cache cannot serve one, the toast still appears with a fallback glyph. When a game first reaches 100%, a platinum celebration toast follows. Library Refresh and first launch never spam toasts for existing unlocks. Use Settings → Play → Test on Unlock toasts to cycle through all four skins.',
+      'Optional unlock sound uses the Windows default chime or a custom .wav/.mp3, with a volume slider. After a play session of at least 30 seconds, a session recap summarizes time, unlocks, and XP. Settings → Play → Test on Session recap previews it.'
     ],
     bullets: [
       'Notifications — Steam-style unlock toasts on live save changes',
@@ -323,14 +263,14 @@ export const HELP_SECTIONS: HelpSection[] = [
     id: 'play-sessions',
     title: 'Play sessions',
     paragraphs: [
-      'Playtime counts while the game’s install folder or Play path is running. Matching uses the full path (and PID when available), not the process name.',
-      'Checks about every 2 seconds. Saves about every 30 seconds while playing, and immediately when the session ends or AchieveMe quits.',
-      'After a live session of at least one minute, a session recap can show time, unlocks, and XP. Sessions recovered after a restart do not show a surprise recap.'
+      'Playtime counts while the game’s install folder or Play path is running. Play starts the session immediately. Matching then uses the Play PID (even when Windows hides the path), Get-Process image names (same idea as Hydra), the full exe path, and other .exe names in the install folder so a launcher can hand off to the real game.',
+      'Checks about every 2 seconds without blocking the app. Saves about every 30 seconds while playing, and immediately when the session ends or AchieveMe quits. A failed process scan keeps the last snapshot so a timeout cannot look like every game closed.',
+      'After a live session of at least 30 seconds, a session recap can show time, unlocks, and XP. Sessions recovered after a restart do not show a surprise recap.'
     ],
     bullets: [
-      'Full path matching — not process name',
+      'PID, full path, then exe name',
       'Saves ~every 30s — also on quit',
-      'Session recap — after ≥1 minute of live play'
+      'Session recap — after ≥30 seconds of live play'
     ]
   },
   {
@@ -342,7 +282,7 @@ export const HELP_SECTIONS: HelpSection[] = [
       'Hidden toggle reveals descriptions for unearned hidden achievements only. Global rarity is Steam-wide, not friends-only.',
       'Edge arrows move through the library in your current sort/search order.',
       'A fail-soft hunter strip under the hero shows a Metacritic score box (green / yellow / red bands) and Steam review sentiment (for example Very Positive) in Steam-like colors, plus review count when available, with an Open on Steam link to the right. Metacritic and reviews are read from local cache on Detail open (instant). They refresh during boot warm, when you open Library (missing or stale entries), and on Refresh. Missing Metacritic from Steam omits the box. Reference info only — not a storefront download. Playtime hours (HowLongToBeat) are not included yet.',
-      'Update / Validate / Check for update and build status show only when depot GIDs are stored. Update and Validate open a transfer modal (pick depots, live progress). Closing hides the modal; reopen from the Transfers dock on any page. After a successful Update, Steamless/Goldberg reapply (when previously applied) is a phase of that same modal so leaving Game Detail cannot drop the prompt.'
+      'Update / Validate / Check for update and build status show only when depot GIDs are stored. Update and Validate open a transfer modal (pick depots, live progress). Closing hides the modal; reopen from the Transfers dock on any page. The dock hides the row for a modal that is already open. After a successful Update, Steamless/Goldberg reapply (when previously applied) is a phase of that same modal so leaving Game Detail cannot drop the prompt.'
     ]
   },
   {
@@ -378,10 +318,10 @@ export const HELP_SECTIONS: HelpSection[] = [
     id: 'tools',
     title: 'Tools (Steamless & Depot Downloader)',
     paragraphs: [
-      'Tools sits between News and Settings. Link a Steamless release folder in Settings → External tools (must include Steamless.CLI.exe and Plugins).',
+      'Tools sits between News and Settings. Link a Steamless release folder in Settings → Tools (must include Steamless.CLI.exe and Plugins).',
       'Open the Steamless wizard to pick a library game, then choose the .exe from the install folder (same list as Select executable — never auto-runs launch_exe or a previous Game.exe.unpacked.exe). Or Search for executable on disk, then run Steamless.CLI. Output is typically Game.exe.unpacked.exe beside the original; Play is not changed automatically.',
-      'Depot Downloader searches Steam, fetches a Hubcap manifest ZIP, lets you pick depots, and runs DepotDownloader.dll (dotnet required). Closing the wizard during a download keeps it running — reopen from the Transfers dock. After download you can optionally set up Goldberg achievements (DLL scan, emulator install, Denuvo preserve).',
-      'Scan for installed games walks Settings → Install scan folders (separate from Custom Watch Folders, depth ≤ 8) for steam_appid.txt or numeric folders that contain steam_api*.dll. Add selected sets install_path (and a suggested exe when ranked), then fetches Hubcap manifest GIDs — Windows and DLC depots auto-keep; Linux/mac depots are dropped; ambiguous depots queue a depot picker. Does not open Set up achievements — use Game Detail. Refresh keeps rows that have an install path.',
+      'Depot Downloader searches Steam, fetches a Hubcap manifest ZIP, lets you pick depots, and runs DepotDownloader.dll (dotnet required). Concurrent ZIP fetches for the same cache file share one download. Closing the wizard during a download keeps it running — reopen from the Transfers dock. The dock hides while the wizard is open, and stays after download so Set up achievements is not dropped. After download you can optionally set up Goldberg achievements (DLL scan, emulator install, Denuvo preserve).',
+      'Scan for installed games walks Settings → Library → Install folders (separate from Save folders, depth ≤ 8) for steam_appid.txt or numeric folders that contain steam_api*.dll. Add selected sets install_path (and a suggested exe when ranked), then fetches Hubcap manifest GIDs — Windows and DLC depots auto-keep; Linux/mac depots are dropped; ambiguous depots queue a depot picker. Does not open Set up achievements — use Game Detail. Refresh keeps rows that have an install path.',
       'Update / Validate / Check for update and build status appear on Game Detail only when depot GIDs are stored. Successful Steamless (from Tools, with a library game selected) or Goldberg apply stores flags and last paths. After a successful Update, if either flag is set, the Update transfer modal asks to reapply — you pick paths and Apply; Steamless runs before Goldberg, stops on failure, and offers Retry. Existing games stay unset until those tools succeed again.'
     ]
   },
@@ -389,10 +329,10 @@ export const HELP_SECTIONS: HelpSection[] = [
     id: 'ludusavi',
     title: 'Save backups (Ludusavi)',
     paragraphs: [
-      'Link ludusavi.exe under Settings → Save backups (not bundled with AchieveMe). AchieveMe backs up only games already in your library — it never invents save paths.',
-      'Optional auto-backup runs on startup, after a tracked play session, or when adding a game. Use Backup all library games now for a full library backup only. On Game Detail, the floppy icon opens a choice: Back up saves (AchieveMe passes --full-limit 5 so Ludusavi keeps up to five full snapshots when save files change; identical saves do not create a new snapshot) or Install backup (lists up to five newest snapshots from Ludusavi; restore overwrites current saves with the one you pick).',
-      'Matching uses Ludusavi find --steam-id, then backup or restore with --force --api. Backups use --cloud-sync only when Upload after backup is enabled; otherwise --no-cloud-sync. Restore and Install backup stay local (--no-cloud-sync and --backup <id> when installing a chosen snapshot). One Ludusavi backup/restore process at a time. Retention and folders stay with Ludusavi; AchieveMe only stores status timestamps in SQLite.',
-      'Cloud (optional): link rclone.exe, pick a provider, and Connect. AchieveMe keeps a separate Ludusavi config under its app userData folder — it does not rewrite your Ludusavi GUI config.yaml. If local and cloud disagree, AchieveMe shows a conflict note and never auto-picks a side; use Upload to cloud or Download from cloud in Settings (with overwrite confirm).'
+      'Link ludusavi.exe under Settings → Backups (not bundled with AchieveMe). AchieveMe backs up only games already in your library — it never invents save paths.',
+      'Optional auto-backup runs after a tracked play session ends (Settings → Backups). Cloud auto-upload for a game (when enabled) rides that same backup. Manual Backup now / floppy Back up / cloud Upload still work anytime. Use Backup all library games now for a full library backup. On Game Detail, the floppy icon opens Back up saves (--full-limit 5; identical saves do not create a new snapshot) or Install backup (pick a snapshot; restore overwrites current saves).',
+      'Matching uses Ludusavi find --steam-id, then backup or restore with --force --api --no-cloud-sync. GUI custom games and backup.path are copied from %APPDATA%\\ludusavi\\config.yaml before each CLI run. Snapshot folders encode invalid filename characters (colon becomes _). After a successful session-end (or manual) backup with changed saves, AchieveMe uploads a tar.gz when Auto-upload after local backup is on for that game and Worker URL+token are set. Install backup: local snapshots use --backup <id>; Cloud save folders stage then restore --path. The cloud icon opens a modal for Auto-upload / list / Upload / Download. One Ludusavi backup/restore process at a time. Retention and folders stay with Ludusavi; AchieveMe only stores status timestamps in SQLite.',
+      'Cloud (optional): set the Cloud URL and token under Settings → Backups. Open the cloud icon on Game Detail for Auto-upload after local backup (per-game), list remotes, Upload, or Download (additive Cloud save folders). Manual Upload/Download work whenever cloud is configured. Use Install backup to overwrite live saves.'
     ]
   },
   {
@@ -423,7 +363,7 @@ export const HELP_SECTIONS: HelpSection[] = [
       'Empty achievement list? Need a Steam API key; or Steam has not published schema yet (try Refresh later); or the game has no achievements.',
       'Deleted game keeps coming back? Delete ignores the AppID; leftover CODEX/RUNE files are not removed. Re-add via Add Game or Scan for installed games to clear the ignore.',
       'Game on disk missing from library? Tools → Scan for installed games (path + Hubcap GIDs on Add selected).',
-      'Save backups? Link Ludusavi in Settings → Save backups. Library titles only; floppy on Game Detail chooses Back up (keeps 5 full snapshots when saves change) or Install backup (pick a snapshot). Not in Ludusavi means no matching Steam AppID. Install overwrites current saves.',
+      'Save backups? Link Ludusavi in Settings → Backups. Library titles only; floppy on Game Detail chooses Back up (keeps 5 full snapshots when saves change) or Install backup (pick a snapshot). Not in Ludusavi means no matching Steam AppID. Install overwrites current saves.',
       'Live updates? Save file edits propagate in ~1s via the file watcher.',
       'Keyboard: Enter/Space on a focused card opens it; ContextMenu / Shift+F10 opens actions; Escape closes the menu.',
       'Privacy: data stays local (SQLite + userData, including cached cover/hero/icon images). API key in settings.json. Hidden descriptions may fetch from SteamDB.'

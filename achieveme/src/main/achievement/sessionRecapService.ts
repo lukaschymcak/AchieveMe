@@ -8,6 +8,7 @@ import {
   pickDemoSessionSeconds,
   pickDemoUnlocks,
   pickRandomGameIndex,
+  SESSION_RECAP_MIN_SECONDS,
   shouldOfferSessionRecap,
   unlocksInSessionWindow,
   xpForSessionUnlocks
@@ -26,6 +27,7 @@ function toCacheIconUnlocks<T extends { iconUrl: string }>(
 let resolveMainWindow: (() => BrowserWindow | null) | null = null
 let queue: SessionRecapPayload[] = []
 let showing = false
+let windowWaitAttempts = 0
 
 export function setSessionRecapMainWindow(resolver: () => BrowserWindow | null): void {
   resolveMainWindow = resolver
@@ -43,10 +45,23 @@ function showAndFocusMain(): BrowserWindow | null {
 function pumpQueue(): void {
   if (showing || queue.length === 0) return
   const win = showAndFocusMain()
-  if (!win) return
+  if (!win) {
+    console.warn('[playtime]', 'recap.wait-window', { queued: queue.length })
+    if (windowWaitAttempts < 10) {
+      windowWaitAttempts += 1
+      setTimeout(() => pumpQueue(), 500)
+    }
+    return
+  }
+  windowWaitAttempts = 0
 
   const payload = queue.shift()!
   showing = true
+  console.log('[playtime]', 'recap.show', {
+    appid: payload.appid,
+    seconds: payload.durationSeconds,
+    unlocks: payload.unlocks.length
+  })
   win.webContents.send('session-recap', payload)
 }
 
@@ -55,7 +70,14 @@ export function acknowledgeSessionRecap(): void {
   pumpQueue()
 }
 
-export function buildSessionRecap(
+/**
+ * Builds the recap payload for a live session window.
+ *
+ * @param appid - Steam AppID
+ * @param sessionStartMs - Session start epoch ms
+ * @param sessionEndMs - Session end epoch ms
+ */
+function buildSessionRecap(
   appid: string,
   sessionStartMs: number,
   sessionEndMs: number
@@ -91,13 +113,23 @@ export function offerSessionRecapIfNeeded(
   sessionEndMs: number
 ): void {
   const settings = loadSettings()
-  if (!settings.sessionRecapEnabled) return
+  if (!settings.sessionRecapEnabled) {
+    console.log('[playtime]', 'recap.skip', { appid, reason: 'disabled' })
+    return
+  }
 
   const elapsedSeconds = Math.max(
     1,
     Math.floor((sessionEndMs - sessionStartMs) / 1000)
   )
-  if (!shouldOfferSessionRecap(elapsedSeconds)) return
+  if (!shouldOfferSessionRecap(elapsedSeconds)) {
+    console.log('[playtime]', 'recap.skip', {
+      appid,
+      elapsedSeconds,
+      minSeconds: SESSION_RECAP_MIN_SECONDS
+    })
+    return
+  }
 
   const payload = buildSessionRecap(appid, sessionStartMs, sessionEndMs)
   if (!payload) return
@@ -129,10 +161,4 @@ export function previewSessionRecap(): void {
   queue = [payload]
   showing = false
   pumpQueue()
-}
-
-/** @internal */
-export function resetSessionRecapForTest(): void {
-  queue = []
-  showing = false
 }

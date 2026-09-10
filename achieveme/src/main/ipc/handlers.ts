@@ -18,6 +18,7 @@ import {
   ignoreAppid,
   getIgnoredAppids,
   updateGameBackupStatus,
+  updateGameCloudSavesEnabled,
   upsertScannedInstall,
   getAllGameAppids
 } from '../db/repository'
@@ -30,6 +31,7 @@ import {
 import { getStoreCoverUrl } from '../achievement/steamApiClient'
 import { getGameHunterStats, startWarmHunterLibrary } from '../achievement/gameHunterStatsService'
 import { cacheCoverUrl, cacheHeroUrl } from '../../shared/imageCacheUrls'
+import { SETTINGS_COPY } from '../../shared/settingsPageUtils'
 import { loadSettings, saveSettings, normalizeSettings } from '../settings'
 import {
   detectAppRuntime,
@@ -87,27 +89,27 @@ import {
 } from '../achievement/steamlessService'
 import {
   backupGame,
-  cloudDownload,
-  cloudSetProvider,
-  cloudUpload,
-  ensureLudusaviConfigDir,
   findTitleBySteamId,
   listGameBackups,
-  readLudusaviCloudStatus,
+  refreshAchieveMeLudusaviConfigFromGui,
   restoreGame,
   setAchieveMeLudusaviConfigDir,
-  validateLudusaviPath,
-  validateRclonePath
+  validateLudusaviPath
 } from '../achievement/ludusaviService'
 import type { LudusaviSnapshot } from '../../shared/ludusaviApiUtils'
+import { isSafeLudusaviBackupId } from '../../shared/ludusaviApiUtils'
+import { getAchieveMeLudusaviConfigDir } from '../../shared/ludusaviCloudUtils'
 import {
-  getAchieveMeLudusaviConfigDir,
-  type LudusaviCloudProviderId
-} from '../../shared/ludusaviCloudUtils'
+  cloudSavesApiUrlHost,
+  cloudSavesConfigured
+} from '../../shared/r2CloudSaveUtils'
 import {
-  writeCloudSynchronizeToLudusaviConfig,
-  writeRclonePathToLudusaviConfig
-} from '../achievement/ludusaviConfigPatch'
+  downloadNewestGameCloudSave,
+  downloadGameCloudSave,
+  listGameCloudArtifacts,
+  uploadGameCloudSave
+} from '../achievement/r2CloudSaveService'
+import { cloudSavesLog } from '../achievement/cloudSavesDebugLog'
 import {
   configureLudusaviBackupQueue,
   getBackupQueueSnapshot,
@@ -181,6 +183,11 @@ async function openFolderInFileManager(folder: string): Promise<void> {
 
 export function registerIpcHandlers(): void {
   setAchieveMeLudusaviConfigDir(getAchieveMeLudusaviConfigDir(app.getPath('userData')))
+  try {
+    refreshAchieveMeLudusaviConfigFromGui(loadSettings().rclonePath)
+  } catch {
+    // GUI config may be missing on first run
+  }
 
   configureLudusaviBackupQueue({
     loadSettings,
@@ -189,9 +196,38 @@ export function registerIpcHandlers(): void {
     updateGameBackupStatus: (appid, update) => updateGameBackupStatus(getDb(), appid, update),
     notifyLibraryUpdated,
     validateLudusaviPath,
-    findTitleBySteamId,
-    backupGame,
-    restoreGame
+    findTitleBySteamId: async (exe, appid) => {
+      const settings = loadSettings()
+      refreshAchieveMeLudusaviConfigFromGui(settings.rclonePath)
+      return findTitleBySteamId(exe, appid)
+    },
+    backupGame: async (exe, title) => {
+      const settings = loadSettings()
+      refreshAchieveMeLudusaviConfigFromGui(settings.rclonePath)
+      return backupGame(exe, title)
+    },
+    restoreGame: async (exe, title, backupId) => {
+      const settings = loadSettings()
+      refreshAchieveMeLudusaviConfigFromGui(settings.rclonePath)
+      return restoreGame(exe, title, backupId, undefined, {
+        configDir: getAchieveMeLudusaviConfigDir(app.getPath('userData')),
+        stagingRoot: path.join(app.getPath('userData'), 'Backups', 'restore-staging')
+      })
+    },
+    uploadCloudSave: async ({ settings, appid, title }) => {
+      refreshAchieveMeLudusaviConfigFromGui(settings.rclonePath)
+      const configDir = getAchieveMeLudusaviConfigDir(app.getPath('userData'))
+      const outputDir = path.join(app.getPath('userData'), 'Backups')
+      const result = await uploadGameCloudSave({
+        settings,
+        appid,
+        title,
+        configDir,
+        outputDir
+      })
+      if (result.ok) return { ok: true }
+      return { ok: false, softNote: result.softNote || undefined }
+    }
   })
 
   ipcMain.handle(
@@ -246,6 +282,7 @@ export function registerIpcHandlers(): void {
         backup_at: g.backup_at ?? 0,
         backup_error: g.backup_error ?? '',
         ludusavi_title: g.ludusavi_title ?? '',
+        cloud_saves_enabled: g.cloud_saves_enabled ? 1 : 0,
         has_depot_gids: hasStoredManifestGids(g.manifest_gids)
       })
     }
@@ -336,26 +373,9 @@ export function registerIpcHandlers(): void {
     } else {
       normalized.ludusaviPath = ''
     }
-    if (normalized.rclonePath.trim()) {
-      try {
-        normalized.rclonePath = validateRclonePath(normalized.rclonePath)
-      } catch {
-        normalized.rclonePath = ''
-      }
-    } else {
-      normalized.rclonePath = ''
-    }
+    // Legacy rclone fields are kept in settings.json for compatibility but ignored.
+    normalized.rclonePath = String(normalized.rclonePath || '')
     saveSettings(normalized)
-    // Keep AchieveMe-owned Ludusavi config in sync (never the GUI config).
-    try {
-      const configDir = getAchieveMeLudusaviConfigDir(app.getPath('userData'))
-      if (normalized.ludusaviPath.trim() && normalized.rclonePath.trim()) {
-        writeRclonePathToLudusaviConfig(configDir, normalized.rclonePath)
-      }
-      writeCloudSynchronizeToLudusaviConfig(configDir, Boolean(normalized.ludusaviCloudSync))
-    } catch {
-      // Ignore patch failures; cloud Connect will surface errors.
-    }
     syncLoginItemSettings(normalized)
     if (normalized.playtimeTrackingEnabled) {
       startPlaytimeTracker()
@@ -651,87 +671,193 @@ export function registerIpcHandlers(): void {
     return validateLudusaviPath(filePaths[0])
   })
 
-  ipcMain.handle('browse-rclone-path', async (): Promise<string | null> => {
-    const { canceled, filePaths } = await dialog.showOpenDialog({
-      title: 'Select rclone.exe',
-      filters: [{ name: 'rclone', extensions: ['exe'] }],
-      properties: ['openFile']
-    })
-    if (canceled || filePaths.length === 0) return null
-    return validateRclonePath(filePaths[0])
+  ipcMain.handle('ludusavi:cloud-status', () => {
+    const settings = loadSettings()
+    return {
+      configured: cloudSavesConfigured(
+        settings.cloudSavesApiUrl,
+        settings.cloudSavesApiToken
+      ),
+      apiUrlHost: cloudSavesApiUrlHost(settings.cloudSavesApiUrl)
+    }
   })
 
-  ipcMain.handle('ludusavi:cloud-status', () => readLudusaviCloudStatus())
-
   ipcMain.handle(
-    'ludusavi:cloud-set',
-    async (
-      _event,
-      provider: string,
-      customRemoteId?: string
-    ): Promise<{ ok: boolean; error?: string }> => {
+    'games:set-cloud-saves-enabled',
+    (_event, appid: string, enabled: boolean): { ok: boolean; error?: string } => {
+      const clean = String(appid || '').trim()
+      if (!/^\d+$/.test(clean)) {
+        return { ok: false, error: 'Invalid AppID.' }
+      }
       const settings = loadSettings()
-      const ludusaviRaw = String(settings.ludusaviPath || '').trim()
-      const rcloneRaw = String(settings.rclonePath || '').trim()
-      if (!ludusaviRaw) return { ok: false, error: 'Set ludusavi.exe in Settings first.' }
-      if (!rcloneRaw && provider !== 'none') {
-        return { ok: false, error: 'Set rclone.exe in Settings first.' }
+      if (!cloudSavesConfigured(settings.cloudSavesApiUrl, settings.cloudSavesApiToken)) {
+        return { ok: false, error: SETTINGS_COPY.cloudNotConfigured }
       }
-
-      let exe: string
-      try {
-        exe = validateLudusaviPath(ludusaviRaw)
-      } catch (err) {
-        return { ok: false, error: err instanceof Error ? err.message : String(err) }
-      }
-
-      const configDir = getAchieveMeLudusaviConfigDir(app.getPath('userData'))
-      setAchieveMeLudusaviConfigDir(configDir)
-
-      try {
-        if (rcloneRaw) {
-          const rcloneExe = validateRclonePath(rcloneRaw)
-          writeRclonePathToLudusaviConfig(configDir, rcloneExe)
-        }
-        writeCloudSynchronizeToLudusaviConfig(configDir, Boolean(settings.ludusaviCloudSync))
-      } catch (err) {
-        return { ok: false, error: err instanceof Error ? err.message : String(err) }
-      }
-
-      const boot = await ensureLudusaviConfigDir(exe)
-      if (!boot.ok) return boot
-
-      const allowed: LudusaviCloudProviderId[] = [
-        'google-drive',
-        'onedrive',
-        'dropbox',
-        'box',
-        'custom',
-        'none'
-      ]
-      const cleanProvider = String(provider || '').trim() as LudusaviCloudProviderId
-      if (!allowed.includes(cleanProvider)) {
-        return { ok: false, error: 'Unknown cloud provider.' }
-      }
-
-      return cloudSetProvider(exe, cleanProvider, customRemoteId)
+      const game = getGame(getDb(), clean)
+      if (!game) return { ok: false, error: 'Game not found.' }
+      updateGameCloudSavesEnabled(getDb(), clean, Boolean(enabled))
+      notifyLibraryUpdated(clean)
+      return { ok: true }
     }
   )
 
   ipcMain.handle(
-    'ludusavi:cloud-upload',
-    async (): Promise<{ ok: boolean; error?: string }> => {
+    'ludusavi:cloud-list-game',
+    async (
+      _event,
+      appid: string
+    ): Promise<{ ok: true; artifacts: Awaited<ReturnType<typeof listGameCloudArtifacts>> } | { ok: false; error: string }> => {
+      const clean = String(appid || '').trim()
+      if (!/^\d+$/.test(clean)) return { ok: false, error: 'Invalid AppID.' }
       const settings = loadSettings()
+      if (!cloudSavesConfigured(settings.cloudSavesApiUrl, settings.cloudSavesApiToken)) {
+        return { ok: false, error: SETTINGS_COPY.cloudNotConfigured }
+      }
+      try {
+        const artifacts = await listGameCloudArtifacts({ settings, appid: clean })
+        return { ok: true, artifacts }
+      } catch (err) {
+        return {
+          ok: false,
+          error: err instanceof Error ? err.message : 'Failed to list cloud backups.'
+        }
+      }
+    }
+  )
+
+  ipcMain.handle(
+    'ludusavi:cloud-download-game',
+    async (
+      _event,
+      appid: string,
+      artifactId?: string
+    ): Promise<{ ok: boolean; error?: string; backupId?: string }> => {
+      const clean = String(appid || '').trim()
+      if (!/^\d+$/.test(clean)) return { ok: false, error: 'Invalid AppID.' }
+      const settings = loadSettings()
+      if (!cloudSavesConfigured(settings.cloudSavesApiUrl, settings.cloudSavesApiToken)) {
+        return { ok: false, error: SETTINGS_COPY.cloudNotConfigured }
+      }
       const ludusaviRaw = String(settings.ludusaviPath || '').trim()
       if (!ludusaviRaw) return { ok: false, error: 'Set ludusavi.exe in Settings first.' }
-      let exe: string
       try {
-        exe = validateLudusaviPath(ludusaviRaw)
+        validateLudusaviPath(ludusaviRaw)
       } catch (err) {
         return { ok: false, error: err instanceof Error ? err.message : String(err) }
       }
-      setAchieveMeLudusaviConfigDir(getAchieveMeLudusaviConfigDir(app.getPath('userData')))
-      return cloudUpload(exe)
+
+      const game = getGame(getDb(), clean)
+      let title = String(game?.ludusavi_title || '').trim()
+      if (!title) {
+        try {
+          const exe = validateLudusaviPath(ludusaviRaw)
+          title = (await findTitleBySteamId(exe, clean))?.trim() || ''
+        } catch {
+          title = ''
+        }
+      }
+      if (!title) {
+        return { ok: false, error: 'Ludusavi title not found for this game.' }
+      }
+
+      const configDir = getAchieveMeLudusaviConfigDir(app.getPath('userData'))
+      const tempDir = path.join(app.getPath('userData'), 'Backups', 'downloads')
+      refreshAchieveMeLudusaviConfigFromGui(settings.rclonePath)
+      const result = await downloadGameCloudSave({
+        settings,
+        appid: clean,
+        title,
+        configDir,
+        tempDir,
+        artifactId: artifactId ? String(artifactId).trim() : undefined
+      })
+      return result
+    }
+  )
+
+  ipcMain.handle(
+    'ludusavi:cloud-upload-game',
+    async (
+      _event,
+      appid: string,
+      backupId: string
+    ): Promise<{ ok: boolean; error?: string }> => {
+      const clean = String(appid || '').trim()
+      const id = String(backupId || '').trim()
+      if (!/^\d+$/.test(clean)) return { ok: false, error: 'Invalid AppID.' }
+      if (!isSafeLudusaviBackupId(id)) {
+        return { ok: false, error: 'Invalid snapshot id.' }
+      }
+      const settings = loadSettings()
+      if (!cloudSavesConfigured(settings.cloudSavesApiUrl, settings.cloudSavesApiToken)) {
+        return { ok: false, error: SETTINGS_COPY.cloudNotConfigured }
+      }
+      const ludusaviRaw = String(settings.ludusaviPath || '').trim()
+      if (!ludusaviRaw) return { ok: false, error: 'Set ludusavi.exe in Settings first.' }
+      try {
+        validateLudusaviPath(ludusaviRaw)
+      } catch (err) {
+        return { ok: false, error: err instanceof Error ? err.message : String(err) }
+      }
+
+      const game = getGame(getDb(), clean)
+      let title = String(game?.ludusavi_title || '').trim()
+      if (!title) {
+        try {
+          const exe = validateLudusaviPath(ludusaviRaw)
+          title = (await findTitleBySteamId(exe, clean))?.trim() || ''
+        } catch {
+          title = ''
+        }
+      }
+      if (!title) {
+        return { ok: false, error: 'Ludusavi title not found for this game.' }
+      }
+
+      updateGameBackupStatus(getDb(), clean, {
+        status: 'running',
+        at: Math.floor(Date.now() / 1000),
+        error: '',
+        ludusaviTitle: title
+      })
+      notifyLibraryUpdated(clean)
+
+      try {
+        const configDir = getAchieveMeLudusaviConfigDir(app.getPath('userData'))
+        const outputDir = path.join(app.getPath('userData'), 'Backups')
+        refreshAchieveMeLudusaviConfigFromGui(settings.rclonePath)
+        const result = await uploadGameCloudSave({
+          settings,
+          appid: clean,
+          title,
+          configDir,
+          outputDir,
+          backupId: id
+        })
+
+        updateGameBackupStatus(getDb(), clean, {
+          status: 'ok',
+          at: Math.floor(Date.now() / 1000),
+          error: result.ok ? '' : result.softNote || 'Cloud upload failed.',
+          ludusaviTitle: title
+        })
+        notifyLibraryUpdated(clean)
+
+        if (!result.ok) {
+          return { ok: false, error: result.softNote || 'Cloud upload failed.' }
+        }
+        return { ok: true }
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err)
+        updateGameBackupStatus(getDb(), clean, {
+          status: 'ok',
+          at: Math.floor(Date.now() / 1000),
+          error: message.replace(/Bearer\s+\S+/gi, 'Bearer [redacted]') || 'Cloud upload failed.',
+          ludusaviTitle: title
+        })
+        notifyLibraryUpdated(clean)
+        return { ok: false, error: 'Cloud upload failed.' }
+      }
     }
   )
 
@@ -739,16 +865,52 @@ export function registerIpcHandlers(): void {
     'ludusavi:cloud-download',
     async (): Promise<{ ok: boolean; error?: string }> => {
       const settings = loadSettings()
+      if (!cloudSavesConfigured(settings.cloudSavesApiUrl, settings.cloudSavesApiToken)) {
+        return { ok: false, error: SETTINGS_COPY.cloudNotConfigured }
+      }
       const ludusaviRaw = String(settings.ludusaviPath || '').trim()
       if (!ludusaviRaw) return { ok: false, error: 'Set ludusavi.exe in Settings first.' }
-      let exe: string
       try {
-        exe = validateLudusaviPath(ludusaviRaw)
+        validateLudusaviPath(ludusaviRaw)
       } catch (err) {
         return { ok: false, error: err instanceof Error ? err.message : String(err) }
       }
-      setAchieveMeLudusaviConfigDir(getAchieveMeLudusaviConfigDir(app.getPath('userData')))
-      return cloudDownload(exe)
+
+      const configDir = getAchieveMeLudusaviConfigDir(app.getPath('userData'))
+      const tempDir = path.join(app.getPath('userData'), 'Backups', 'downloads')
+      refreshAchieveMeLudusaviConfigFromGui(settings.rclonePath)
+      const games = getAllGames(getDb())
+      let downloaded = 0
+      let failed = 0
+      for (const game of games) {
+        const title = String(game.ludusavi_title || '').trim()
+        if (!title) continue
+        const result = await downloadNewestGameCloudSave({
+          settings,
+          appid: game.appid,
+          title,
+          configDir,
+          tempDir
+        })
+        if (result.ok) downloaded += 1
+        else failed += 1
+      }
+      if (downloaded === 0) {
+        return {
+          ok: false,
+          error:
+            failed > 0
+              ? 'Cloud download failed (or no remote backups).'
+              : 'No library games with Ludusavi titles to download.'
+        }
+      }
+      return {
+        ok: true,
+        error:
+          failed > 0
+            ? `Downloaded ${downloaded}; ${failed} skipped/failed. Use Install backup on Game Detail.`
+            : 'Downloaded into Ludusavi as Cloud save snapshot(s). Use Install backup on Game Detail to restore live saves.'
+      }
     }
   )
 
@@ -784,6 +946,7 @@ export function registerIpcHandlers(): void {
       if (!title) return 'Not in Ludusavi'
 
       try {
+        refreshAchieveMeLudusaviConfigFromGui(settings.rclonePath)
         const snapshots = await listGameBackups(exe, title)
         return { title, snapshots }
       } catch (err) {
@@ -795,7 +958,10 @@ export function registerIpcHandlers(): void {
   ipcMain.handle(
     'ludusavi:restore-game',
     (_event, appid: string, backupId: string): void => {
-      scheduleGameRestore(String(appid || ''), String(backupId || ''))
+      const cleanAppid = String(appid || '')
+      const id = String(backupId || '')
+      cloudSavesLog('ipc.restore', { appid: cleanAppid, backupId: id })
+      scheduleGameRestore(cleanAppid, id)
     }
   )
 
@@ -876,7 +1042,6 @@ export function registerIpcHandlers(): void {
     ): void => {
       saveManifestGids(getDb(), appid, gids, gameName, installPath)
       notifyLibraryUpdated(appid)
-      scheduleGameBackup(appid, 'add')
     }
   )
 
@@ -1047,9 +1212,6 @@ export function registerIpcHandlers(): void {
         launchExe: request.launchExe
       })
       notifyLibraryUpdated(String(request.appid || '').trim())
-      if (result.created) {
-        scheduleGameBackup(String(request.appid || '').trim(), 'add')
-      }
       return result
     }
   )

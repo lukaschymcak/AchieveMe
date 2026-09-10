@@ -18,6 +18,7 @@ colors:
   color-progress: "oklch(60% 0.12 230)"
   color-action: "oklch(62% 0.14 230)"
   color-error: "oklch(68% 0.16 25)"
+  color-success: "oklch(74% 0.14 155)"
 typography:
   display:
     fontFamily: "'Bebas Neue', 'Franklin Gothic Medium', 'Arial Narrow', sans-serif"
@@ -81,6 +82,12 @@ components:
     typography: "{typography.stats}"
     rounded: "{rounded.pill}"
     padding: "5px 12px"
+  chip-app-action:
+    backgroundColor: "color-mix(in oklch, {colors.color-progress} 18%, oklch(16% 0.014 275 / 0.92))"
+    textColor: "{colors.ink}"
+    typography: "{typography.stats}"
+    rounded: "{rounded.pill}"
+    padding: "5px 12px"
   chip-filter:
     backgroundColor: "oklch(16% 0.014 275 / 0.88)"
     textColor: "{colors.ink-muted}"
@@ -121,7 +128,7 @@ The visual system has **two canonical layers**, each with a reference implementa
 1. **App shell (Library chrome)** — canonical for **Library, Dashboard, Settings, and Help**. Implemented on `LibraryPage` via `.library`, `.library-chrome`, `.library-chip`, and `.library-chrome__search`. Pure-black canvas, embedded Rajdhani pill navigation, matte chip actions, chrome header with bottom border. This is the furniture every app page must share.
 2. **Trophy / hero surfaces (Game Detail)** — canonical for **game detail only**. Bebas game titles, frosted hero pills over cover art, tier-tinted achievement rows, completion rings, tier filter bar.
 
-**Migration status:** Library is the reference app shell. Dashboard, Settings, and Help still render inside the legacy `app-nav` top bar and page-specific form layouts — they must migrate onto Library chrome, not invent a third pattern. Game Detail is complete. Do not treat `#5865f2`, `#1a1a22`, or `app-nav` as source of truth.
+**Migration status:** Library chrome (`AppShell` / `AppChrome` / `library-chip`) is the app shell. Settings is a four-group Steam-style row list on that shell (Library · Play · Backups · Tools) — no essay leads, HelpTips only on group titles. Dashboard and Help still have page-specific layouts but share the same chrome. Game Detail is the trophy layer. Do not treat `#5865f2`, `#1a1a22`, or `app-nav` as source of truth.
 
 **Key Characteristics:**
 
@@ -130,7 +137,7 @@ The visual system has **two canonical layers**, each with a reference implementa
 - Bebas Neue for game titles on detail hero only; system UI for achievement lists and form body copy
 - Frosted pill chips on cover art (hero nav) and matte pill filters in the achievement toolbar
 - Tier-tinted earned rows with full borders — never side-stripe accents
-- Restrained progress blue for rings, bars, and active nav chip tint; action blue for focus rings only
+- Restrained progress blue for rings, bars, active nav chip tint, and primary action chips; action blue for focus rings only
 - State-only motion (150–600ms ease-out); reduced-motion alternatives required
 
 ## Colors
@@ -139,7 +146,7 @@ A cool violet-tinted dark shell (hue 275) with a full trophy-metal palette for e
 
 ### Primary
 
-- **Progress Blue** (`oklch(60% 0.12 230)` / `--color-progress`): Completion ring stroke, hero progress bar fill, active app-nav chip tint (`library-chip--nav.library-chip--active`), text links (`library__link-btn`). The functional accent — where the user is in a game or which app page is current.
+- **Progress Blue** (`oklch(60% 0.12 230)` / `--color-progress`): Completion ring stroke, hero progress bar fill, active app-nav chip tint (`library-chip--nav.library-chip--active`), primary action chips (`library-chip--action`), text links (`library__link-btn`). The functional accent — where the user is in a game, which app page is current, or which chrome control commits.
 - **Action Blue** (`oklch(62% 0.14 230)` / `--color-action`): Keyboard focus rings only. Never used as a resting button fill or decorative outline.
 
 ### Tertiary
@@ -158,7 +165,8 @@ A cool violet-tinted dark shell (hue 275) with a full trophy-metal palette for e
 - **Ink** (`oklch(93% 0.01 275)`): Primary text on dark surfaces.
 - **Ink Muted** (`oklch(70% 0.014 275)`): Descriptions, meta, inactive chip text — must stay ≥4.5:1 on row surfaces.
 - **Ink Subtle** (`oklch(58% 0.012 275)`): Timestamps, rarity footnotes, chrome count labels, placeholders on dark panels.
-- **Error** (`oklch(68% 0.16 25)` / `--color-error`): Error banners, destructive chip hover (`library-chip--danger`), delete mode.
+- **Error** (`oklch(68% 0.16 25)` / `--color-error`): Error banners, destructive chip hover (`library-chip--danger`), delete mode, Settings save failure.
+- **Success** (`oklch(74% 0.14 155)` / `--color-success`): Settings save confirmation. Not a fill — status text only.
 
 ### Named Rules
 
@@ -220,7 +228,7 @@ Character line for the system: **restrained gaming chrome with trophy-metal prid
 Reference: `LibraryPage.tsx` + `components/app/` (`AppShell`, `AppChrome`, `AppNav`, `Chip`, `AppSearchInput`, `AppToolbarButton`) + `.app-*` / `.library-*` classes in `index.css`.
 
 - **Page wrapper** (`.library`): `display: flex; flex-direction: column; min-height: 100%`; padding `var(--space-4) clamp(var(--space-4), 3vw, var(--space-6))`; background `oklch(0% 0 0)`; font `var(--font-ui)`.
-- **Chrome wrap** (`.library-chrome-wrap`): margin-bottom `var(--space-5)`; optional second-row toolbar (`.library-chrome__toolbar`) for icon actions.
+- **Chrome wrap** (`.library-chrome-wrap`): margin-bottom `var(--space-5)`; optional second-row toolbar (`.library-chrome__toolbar`) for icon actions. Settings passes `sticky` so the wrap pins at `top: 0` (`z-index: 80`) over the black canvas — Save / Backup / Browse errors stay on-screen. Sticky Settings hides the empty toolbar spacer.
 - **Chrome header** (`.library-chrome`): flex row, align center, gap `var(--space-3)`, padding-bottom `var(--space-4)`, border-bottom `1px solid var(--border-subtle)`. Slots: left (nav + page tools), center (search flex), right (meta + actions).
 - **Responsive:** wraps at 1100px (nav full width, search full width, right row below); sort divider drops at 640px.
 
@@ -233,7 +241,7 @@ Matte Rajdhani uppercase pills — the **primary interactive vocabulary on app p
 - **Hover:** `oklch(20% … / 0.92)` fill, `--ink` text; 150ms ease-out.
 - **Active** (`.library-chip--active`): `oklch(22% … / 0.92)` fill, `--ink` text, stronger border.
 - **Nav active** (`.library-chip--nav.library-chip--active`): progress-blue tint at 14% into base; progress-blue border at 40%.
-- **Action** (`.library-chip--action`): same chip shape for Refresh, Save, Export — not rectangular buttons.
+- **Action** (`.library-chip--action`): Refresh, Save, Export. Same pill shape; progress-blue tint at 18% into base, `--ink` text, progress-blue border at 42%. Not a filled `--color-action` button.
 - **Danger** (`.library-chip--danger`): error color on hover/active for destructive confirms.
 - **Focus:** 2px `--color-action` outline, 2px offset.
 
@@ -255,7 +263,7 @@ Canonical text field for app pages (search, API key, folder path).
 
 - **Shape:** 6px radius (`--radius-sm`) for global `button` reset only.
 - **Default:** `--surface-2` fill, `--ink` text, `--border-subtle` border, 6×14px padding, 13px system font.
-- **Use on app pages:** avoid — prefer `library-chip`. Still acceptable inside unmigrated Settings form rows until extract/migration lands.
+- **Use on app pages:** avoid — prefer `library-chip`. Settings uses chips for Browse / Add / Preview / Save.
 
 ### Chips / Filters (Game Detail)
 
@@ -270,13 +278,13 @@ Canonical text field for app pages (search, API key, folder path).
 
 - **Library card / list row:** Full-width progress surfaces on black canvas; platinum tint variant; skeleton pulse for loading.
 - **Achievement row:** 8px radius, full border, flex row (icon 40px + body + aside). Earned: tier-tinted background; unearned: `--surface-1` or translucent dark on detail page.
-- **Settings / form panel:** `--surface-1` panel, `--radius-md`, full border — content inside app shell, not a separate document column on `--bg-base`.
+- **Settings rows:** Four groups (Library · Play · Backups · Tools). Each group is one `--surface-1` inset list; rows are label-left / control-right, min-height 44px, hairline dividers — not 10 essay sections. Titles sit `space-3` above their lists. Groups sit `space-5` apart, with `space-6` after Library (the long cluster). Path rows (`settings-row--path`) indent under Save/Install add-fields at 36px. Checkboxes use a 44px wrap. HelpTips on the four group titles only; no row essays (Portable startup note is a constraint, not a Help essay). Cloud auto-upload copy lives on Help / Game Detail. Inputs use `library-chrome__search` with `htmlFor` on FieldRow labels; the inset list is `overflow: visible` with radius on the first/last row so search focus rings are not clipped. Page title is a visually hidden `h1`. Repeated chips (Add / Preview / Browse / Clear) keep short visible text and unique `aria-label`s. Get key stays a text link; accessible name is “Get key (opens in browser)”. Save stays in chrome and reports success or error in a live region; load failure, Backup now, and Browse path errors use that same chrome alert (Retry on load fail; no `window.alert`). Chips: Browse / Add / Preview / Save.
 - **Empty state** (`.library__status--empty`): centered panel, `--surface-1`, `--radius-md`, muted text.
 
 ### Navigation
 
 - **App chrome nav (canonical):** `library-chip library-chip--nav` inside `.library-chrome__nav`. Pages: Dashboard, Library, Settings, Help. Active page gets `library-chip--active` + progress-blue nav tint. Embedded in page chrome — **not** a separate top bar.
-- **Legacy `app-nav` (deprecated):** `--surface-1` strip with text `app-nav__link` buttons. Used only by unmigrated Dashboard / Settings / Help in `App.tsx`. **Do not extend.** Remove when those pages adopt `.library-chrome`.
+- **Legacy `app-nav` (deprecated):** `--surface-1` strip with text `app-nav__link` buttons. **Do not extend.** App pages use `.library-chrome`.
 - **Game detail:** No app chrome — hero bar with back + refresh pills over cover. Full-bleed `app-shell--game-detail`.
 
 ### Signature Components
@@ -287,7 +295,7 @@ Canonical text field for app pages (search, API key, folder path).
 
 **Game detail backdrop:** Cover or library hero image, fixed inset, non-interactive; content scrolls above.
 
-**Help tip** (`.help-tip`): 18px circular `?` trigger; floating popover portal; `--surface-3` panel, `--ink` text.
+**Help tip** (`.help-tip`): 18px circular `?` trigger; click disclosure (`aria-expanded` / `aria-controls`) with a floating `role="region"` portal — not `role="tooltip"`. `--surface-3` panel, `--ink` text. Escape returns focus to the trigger.
 
 ## Do's and Don'ts
 
@@ -295,7 +303,8 @@ Concrete guardrails for agents extending AchieveMe UI.
 
 ### Do:
 
-- **Do** use **Library chrome** (`.library` + `.library-chrome` + `.library-chip`) as the app shell for Dashboard, Settings, Help, and Library — extract shared components from `LibraryPage` when building new app surfaces.
+- **Do** use **Library chrome** (`.library` + `.library-chrome` + `.library-chip`) as the app shell for Dashboard, Settings, Help, and Library.
+- **Do** use Steam-style Settings rows (label + control) in four groups; put explanations in Help, not under every heading.
 - **Do** use CSS custom properties from `:root` for all surfaces — never hardcode `#1a1a22` or `#5865f2`.
 - **Do** use `library-chip` for app navigation, page actions (Refresh, Save, Export), and sort/filter controls on app pages.
 - **Do** use `library-chrome__search` styling for text inputs on app pages (search, API key, folder paths).

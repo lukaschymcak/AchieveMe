@@ -36,12 +36,19 @@ const DEPOT_DOCK_PHASES: ReadonlySet<DepotPhase> = new Set([
   'fetching',
   'depots',
   'downloading',
+  'prompt',
+  'dll',
+  'emu',
+  'apply',
+  'complete',
   'failed',
   'canceled'
 ])
 
 /**
  * Whether a depot session should appear in the Transfers dock.
+ * Search is excluded. Download, Goldberg setup (`prompt` through `complete`),
+ * and failed/canceled stay until the session is dismissed.
  *
  * @param session - Live depot wizard session, or null.
  */
@@ -69,15 +76,19 @@ export function shouldShowUpdateInDock(session: UpdateDockSession | null | undef
 /**
  * Builds dock rows from the current App shell sessions.
  *
- * @param input - Active depot and update sessions.
+ * @param input - Active sessions and which transfer modals are already open.
  */
 export function buildTransferDockRows(input: {
   depot?: ActiveDepotSession | null
   update?: UpdateDockSession | null
+  /** When true, omit the depot row — the wizard is already on screen. */
+  depotModalOpen?: boolean
+  /** When true, omit the update row — the transfer modal is already on screen. */
+  updateModalOpen?: boolean
 }): TransferDockRow[] {
   const rows: TransferDockRow[] = []
 
-  if (shouldShowDepotInDock(input.depot ?? null)) {
+  if (shouldShowDepotInDock(input.depot ?? null) && !input.depotModalOpen) {
     const depot = input.depot!
     rows.push({
       id: `depot:${depot.channelId}`,
@@ -89,7 +100,7 @@ export function buildTransferDockRows(input: {
     })
   }
 
-  if (shouldShowUpdateInDock(input.update ?? null)) {
+  if (shouldShowUpdateInDock(input.update ?? null) && !input.updateModalOpen) {
     const update = input.update!
     const modeLabel = update.mode === 'validate' ? 'Validate' : 'Update'
     rows.push({

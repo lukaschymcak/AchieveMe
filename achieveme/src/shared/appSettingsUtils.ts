@@ -39,10 +39,12 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   ludusaviCloudSync: false,
   ludusaviCloudProvider: 'none',
   ludusaviCloudCustomRemote: '',
+  cloudSavesApiUrl: '',
+  cloudSavesApiToken: '',
   ludusaviAutoBackup: false,
-  ludusaviBackupOnStartup: true,
+  ludusaviBackupOnStartup: false,
   ludusaviBackupOnSessionEnd: true,
-  ludusaviBackupOnAddGame: true
+  ludusaviBackupOnAddGame: false
 }
 
 export function normalizeAppSettings(
@@ -88,6 +90,8 @@ export function normalizeAppSettings(
       parsed?.ludusaviCloudProvider ?? DEFAULT_APP_SETTINGS.ludusaviCloudProvider,
     ludusaviCloudCustomRemote:
       parsed?.ludusaviCloudCustomRemote ?? DEFAULT_APP_SETTINGS.ludusaviCloudCustomRemote,
+    cloudSavesApiUrl: parsed?.cloudSavesApiUrl ?? DEFAULT_APP_SETTINGS.cloudSavesApiUrl,
+    cloudSavesApiToken: parsed?.cloudSavesApiToken ?? DEFAULT_APP_SETTINGS.cloudSavesApiToken,
     ludusaviAutoBackup: parsed?.ludusaviAutoBackup ?? DEFAULT_APP_SETTINGS.ludusaviAutoBackup,
     ludusaviBackupOnStartup:
       parsed?.ludusaviBackupOnStartup ?? DEFAULT_APP_SETTINGS.ludusaviBackupOnStartup,

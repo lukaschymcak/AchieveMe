@@ -1,4 +1,5 @@
 import fs from 'node:fs'
+import os from 'node:os'
 import path from 'node:path'
 
 /**
@@ -8,6 +9,91 @@ import path from 'node:path'
  */
 export function ludusaviConfigYamlPath(configDir: string): string {
   return path.join(path.resolve(configDir), 'config.yaml')
+}
+
+/**
+ * Absolute path to the Ludusavi GUI `config.yaml` when present.
+ * Windows: `%APPDATA%/ludusavi/config.yaml`
+ */
+export function resolveLudusaviGuiConfigPath(): string | null {
+  if (process.platform === 'win32') {
+    const base = String(process.env.APPDATA || '').trim()
+    if (!base) return null
+    const candidate = path.join(base, 'ludusavi', 'config.yaml')
+    return fs.existsSync(candidate) ? candidate : null
+  }
+  if (process.platform === 'darwin') {
+    const candidate = path.join(
+      os.homedir(),
+      'Library',
+      'Application Support',
+      'ludusavi',
+      'config.yaml'
+    )
+    return fs.existsSync(candidate) ? candidate : null
+  }
+  const candidate = path.join(os.homedir(), '.config', 'ludusavi', 'config.yaml')
+  return fs.existsSync(candidate) ? candidate : null
+}
+
+/**
+ * Best-effort extract of `apps.rclone.path` from Ludusavi config YAML.
+ */
+export function extractRclonePathFromConfigYaml(configYaml: string): string {
+  const text = String(configYaml || '')
+  const rcloneIdx = text.search(/^\s*rclone\s*:/m)
+  if (rcloneIdx < 0) return ''
+  const after = text.slice(rcloneIdx)
+  const match = /^[ \t]+path:\s*(.+)\s*$/m.exec(after)
+  if (!match) return ''
+  return String(match[1] || '')
+    .trim()
+    .replace(/^["']|["']$/g, '')
+    .trim()
+}
+
+/**
+ * Copies Ludusavi GUI settings (backup.path, roots, customGames, …) into AchieveMe’s
+ * isolated config so CLI ops track what the user set in ludusavi.exe.
+ * Re-applies AchieveMe overrides: `cloud.synchronize: false` and rclone path
+ * (argument, else previous isolated value when GUI path is empty).
+ *
+ * @param isolatedConfigDir - AchieveMe `--config` directory.
+ * @param options - Optional rclone.exe to keep after the copy.
+ */
+export function syncIsolatedLudusaviConfigFromGui(
+  isolatedConfigDir: string,
+  options?: { rcloneExe?: string }
+): { ok: boolean; syncedFromGui: boolean } {
+  const dir = path.resolve(String(isolatedConfigDir || '').trim() || '.')
+  if (!String(isolatedConfigDir || '').trim()) {
+    return { ok: false, syncedFromGui: false }
+  }
+  fs.mkdirSync(dir, { recursive: true })
+  const dest = ludusaviConfigYamlPath(dir)
+  const gui = resolveLudusaviGuiConfigPath()
+
+  let rcloneExe = String(options?.rcloneExe || '').trim()
+  if (!rcloneExe && fs.existsSync(dest)) {
+    try {
+      rcloneExe = extractRclonePathFromConfigYaml(fs.readFileSync(dest, 'utf8'))
+    } catch {
+      rcloneExe = ''
+    }
+  }
+
+  if (gui) {
+    fs.copyFileSync(gui, dest)
+  } else if (!fs.existsSync(dest)) {
+    return { ok: false, syncedFromGui: false }
+  }
+
+  // AchieveMe always drives cloud via R2 Worker — keep Ludusavi auto-sync off.
+  writeCloudSynchronizeToLudusaviConfig(dir, false)
+  if (rcloneExe) {
+    writeRclonePathToLudusaviConfig(dir, rcloneExe)
+  }
+  return { ok: true, syncedFromGui: Boolean(gui) }
 }
 
 /**

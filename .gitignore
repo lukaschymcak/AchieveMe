@@ -42,10 +42,8 @@ Thumbs.db
 # Electron packager / builder
 .electron-builder-cache/
 
-# Environment
-.env
-.env.local
-.env.*.local
+cloud-saves-worker/.dev.vars
+cloud-saves-worker/node_modules/
 
 # Reference material — ignore entirely
 Resorces/

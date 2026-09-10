@@ -378,7 +378,7 @@ export default function InstalledGamesScanModal({
               {roots.length === 0 ? (
                 <p className="install-scan-modal__empty">
                   No roots yet. Browse a folder or add suggested Games / Steam paths. Configure
-                  permanently in Settings → Install scan folders.
+                  permanently in Settings → Library.
                 </p>
               ) : (
                 <ul className="install-scan-modal__root-list">

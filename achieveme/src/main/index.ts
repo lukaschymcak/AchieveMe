@@ -16,7 +16,6 @@ import {
   registerImageCacheProtocol,
   registerImageCacheSchemes
 } from './achievement/imageCacheProtocol'
-import { scheduleLibraryBackup } from './achievement/ludusaviBackupQueue'
 
 // Allow unlock-sound Audio.play() from the hidden sound window without a user gesture.
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required')
@@ -105,7 +104,6 @@ function bootApp(): void {
     syncLoginItemSettings(settings)
     startWatcher(settings).catch(() => {})
     startPlaytimeTracker()
-    scheduleLibraryBackup('startup')
 
     createWindow()
     initTray(() => mainWindow)

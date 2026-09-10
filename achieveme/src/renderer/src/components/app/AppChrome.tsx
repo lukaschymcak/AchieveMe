@@ -5,16 +5,27 @@ interface Props {
   center?: React.ReactNode
   right?: React.ReactNode
   toolbar?: React.ReactNode
+  /** Pin chrome to the scrollport so live-region errors stay on-screen. */
+  sticky?: boolean
 }
 
 export default function AppChrome({
   left,
   center,
   right,
-  toolbar
+  toolbar,
+  sticky = false
 }: Props): React.ReactElement {
+  const wrapClass = [
+    'app-chrome-wrap',
+    'library-chrome-wrap',
+    sticky ? 'app-chrome-wrap--sticky library-chrome-wrap--sticky' : ''
+  ]
+    .filter(Boolean)
+    .join(' ')
+
   return (
-    <div className="app-chrome-wrap library-chrome-wrap">
+    <div className={wrapClass}>
       <header className="app-chrome library-chrome">
         {left != null && (
           <div className="app-chrome__left library-chrome__left">{left}</div>

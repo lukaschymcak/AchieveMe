@@ -2,7 +2,7 @@ import type Database from 'better-sqlite3'
 import type { Game, Achievement, SaveLocation, UpdateStatus } from '../../shared/types'
 
 const GAME_COLUMNS =
-  'appid, name, total_achievements, unlocked_achievements, completion_pct, has_platinum, last_unlocked_at, schema_fetched_at, playtime_seconds, install_path, launch_exe, launch_args, playtime_session_started_at, playtime_last_flush_at, manifest_gids, update_status, backup_status, backup_at, backup_error, ludusavi_title, steamless_applied, goldberg_applied, steamless_exe, goldberg_dll_path'
+  'appid, name, total_achievements, unlocked_achievements, completion_pct, has_platinum, last_unlocked_at, schema_fetched_at, playtime_seconds, install_path, launch_exe, launch_args, playtime_session_started_at, playtime_last_flush_at, manifest_gids, update_status, backup_status, backup_at, backup_error, ludusavi_title, cloud_saves_enabled, steamless_applied, goldberg_applied, steamless_exe, goldberg_dll_path'
 
 function normalizeGameRow(row: Game | undefined): Game | undefined {
   if (!row) return undefined
@@ -20,6 +20,7 @@ function normalizeGameRow(row: Game | undefined): Game | undefined {
     backup_at: row.backup_at ?? 0,
     backup_error: row.backup_error ?? '',
     ludusavi_title: row.ludusavi_title ?? '',
+    cloud_saves_enabled: row.cloud_saves_enabled ? 1 : 0,
     steamless_applied: row.steamless_applied ?? 0,
     goldberg_applied: row.goldberg_applied ?? 0,
     steamless_exe: row.steamless_exe ?? '',
@@ -41,6 +42,8 @@ export function upsertGame(db: Database.Database, game: Game): void {
   const backupAt = game.backup_at ?? existing?.backup_at ?? 0
   const backupError = game.backup_error ?? existing?.backup_error ?? ''
   const ludusaviTitle = game.ludusavi_title ?? existing?.ludusavi_title ?? ''
+  const cloudSavesEnabled =
+    game.cloud_saves_enabled ?? existing?.cloud_saves_enabled ?? 0
   const steamlessApplied = game.steamless_applied ?? existing?.steamless_applied ?? 0
   const goldbergApplied = game.goldberg_applied ?? existing?.goldberg_applied ?? 0
   const steamlessExe = game.steamless_exe ?? existing?.steamless_exe ?? ''
@@ -51,14 +54,14 @@ export function upsertGame(db: Database.Database, game: Game): void {
       appid, name, total_achievements, unlocked_achievements,
       completion_pct, has_platinum, last_unlocked_at, schema_fetched_at,
       playtime_seconds, install_path, launch_exe, launch_args, manifest_gids, update_status,
-      backup_status, backup_at, backup_error, ludusavi_title,
+      backup_status, backup_at, backup_error, ludusavi_title, cloud_saves_enabled,
       steamless_applied, goldberg_applied, steamless_exe, goldberg_dll_path
     )
     VALUES (
       @appid, @name, @total_achievements, @unlocked_achievements,
       @completion_pct, @has_platinum, @last_unlocked_at, @schema_fetched_at,
       @playtime_seconds, @install_path, @launch_exe, @launch_args, @manifest_gids, @update_status,
-      @backup_status, @backup_at, @backup_error, @ludusavi_title,
+      @backup_status, @backup_at, @backup_error, @ludusavi_title, @cloud_saves_enabled,
       @steamless_applied, @goldberg_applied, @steamless_exe, @goldberg_dll_path
     )
     ON CONFLICT(appid) DO UPDATE SET
@@ -101,6 +104,7 @@ export function upsertGame(db: Database.Database, game: Game): void {
         WHEN excluded.ludusavi_title != '' THEN excluded.ludusavi_title
         ELSE games.ludusavi_title
       END,
+      cloud_saves_enabled   = games.cloud_saves_enabled,
       steamless_applied     = games.steamless_applied,
       goldberg_applied      = games.goldberg_applied,
       steamless_exe         = games.steamless_exe,
@@ -117,6 +121,7 @@ export function upsertGame(db: Database.Database, game: Game): void {
     backup_at: backupAt,
     backup_error: backupError,
     ludusavi_title: ludusaviTitle,
+    cloud_saves_enabled: cloudSavesEnabled ? 1 : 0,
     steamless_applied: steamlessApplied,
     goldberg_applied: goldbergApplied,
     steamless_exe: steamlessExe,
@@ -397,6 +402,27 @@ export function updateGameBackupStatus(
     SET backup_status = ?, backup_at = ?, backup_error = ?, ludusavi_title = ?
     WHERE appid = ?
   `).run(status, at, error, ludusaviTitle, cleanAppid)
+}
+
+/**
+ * Sets whether a library game auto-uploads to R2 after local backup.
+ *
+ * @param db - Open SQLite database.
+ * @param appid - Steam AppID.
+ * @param enabled - When true, store 1; otherwise 0.
+ */
+export function updateGameCloudSavesEnabled(
+  db: Database.Database,
+  appid: string,
+  enabled: boolean
+): void {
+  const cleanAppid = String(appid || '').trim()
+  if (!cleanAppid || !/^\d+$/.test(cleanAppid)) return
+  db.prepare(`
+    UPDATE games
+    SET cloud_saves_enabled = ?
+    WHERE appid = ?
+  `).run(enabled ? 1 : 0, cleanAppid)
 }
 
 export function deleteGame(db: Database.Database, appid: string): void {

@@ -16,7 +16,6 @@ const {
   EMPTY_STATES,
   getEmptyAchievementsMessage,
   DELETE_CONFIRM,
-  SETTINGS_HINTS,
   FIRST_RUN,
   LONG_PRESS_HINT
 } = helpContent
@@ -93,6 +92,8 @@ describe('helpContent', () => {
     assert.ok(section)
     const body = (section.paragraphs ?? []).join(' ')
     assert.match(body, /Transfers dock/i)
+    assert.match(body, /hides while the wizard is open/i)
+    assert.match(body, /Set up achievements is not dropped/i)
   })
 
   it('Game detail section documents Update transfer modal', () => {
@@ -166,19 +167,11 @@ describe('helpContent', () => {
   })
 
   it('documents Ludusavi save backup settings', () => {
-    assert.match(SETTINGS_HINTS.ludusaviPath, /ludusavi\.exe/i)
-    assert.match(SETTINGS_HINTS.ludusaviAutoBackup, /library/i)
-    assert.match(SETTINGS_HINTS.rclonePath, /rclone\.exe/i)
-    assert.match(SETTINGS_HINTS.rclonePath, /userData|isolated|GUI/i)
-    assert.match(SETTINGS_HINTS.ludusaviCloudProvider, /Connect|cloud set/i)
-    assert.match(SETTINGS_HINTS.ludusaviCloudSync, /cloud-sync/i)
-    assert.match(SETTINGS_HINTS.ludusaviCloudSync, /local-only|Install picker/i)
-    assert.match(SETTINGS_HINTS.ludusaviCloudManual, /never auto-resolves|Upload to cloud/i)
-    assert.match(TOOLTIPS.settingsLudusavi, /library/i)
-    assert.match(TOOLTIPS.settingsLudusavi, /Install backup|restore/i)
-    assert.match(TOOLTIPS.settingsLudusavi, /5 full snapshots|pick a snapshot/i)
-    assert.match(TOOLTIPS.settingsLudusavi, /when saves change|saves change/i)
-    assert.match(TOOLTIPS.settingsLudusavi, /rclone|cloud|userData/i)
+    assert.match(TOOLTIPS.settingsLibrary, /Save folders/i)
+    assert.match(TOOLTIPS.settingsLibrary, /install folders/i)
+
+    assert.match(TOOLTIPS.settingsBackups, /Cloud URL|cloud/i)
+    assert.doesNotMatch(TOOLTIPS.settingsBackups, /Worker/i)
     const section = HELP_SECTIONS.find((s) => s.id === 'ludusavi')
     assert.ok(section)
     const body = (section.paragraphs ?? []).join(' ')
@@ -186,14 +179,14 @@ describe('helpContent', () => {
     assert.match(body, /Install backup|floppy/i)
     assert.match(body, /full-limit 5|five full snapshots|newest snapshots/i)
     assert.match(body, /when save files change|identical saves/i)
-    assert.match(body, /userData|GUI config/i)
-    assert.match(body, /Upload to cloud|Download from cloud|never auto/i)
+    assert.match(body, /session ends|play session/i)
+    assert.doesNotMatch(body, /on startup|when adding a game/i)
+    assert.match(body, /Worker|R2|tar\.gz/i)
+    assert.match(body, /ludusavi\.exe/i)
   })
 
   it('tray section documents installed Setup vs portable login items', () => {
-    assert.match(SETTINGS_HINTS.tray, /Setup/i)
-    assert.match(SETTINGS_HINTS.tray, /Portable/i)
-    assert.match(TOOLTIPS.settingsTray, /Setup/i)
+    assert.match(TOOLTIPS.settingsPlay, /Setup/i)
     const section = HELP_SECTIONS.find((s) => s.id === 'tray')
     assert.ok(section)
     const body = [...(section.paragraphs ?? []), ...(section.bullets ?? [])].join(' ')
@@ -203,11 +196,10 @@ describe('helpContent', () => {
   })
 
   it('play-sessions section documents path tracking and incremental save', () => {
-    assert.match(SETTINGS_HINTS.playSessions, /30s|2s|Play path|install/i)
     const section = HELP_SECTIONS.find((s) => s.id === 'play-sessions')
     assert.ok(section)
     const body = [...(section.paragraphs ?? []), ...(section.bullets ?? [])].join(' ')
-    assert.match(body, /full path|process name/i)
+    assert.match(body, /full path|process name|PID|exe name/i)
     assert.match(body, /30 seconds|30s/i)
   })
 
@@ -225,7 +217,7 @@ describe('helpContent', () => {
     assert.ok(section)
     const body = (section.paragraphs ?? []).join(' ')
     assert.match(body, /Scan for installed games/i)
-    assert.match(body, /install scan folders|Install scan folders/i)
+    assert.match(body, /install folders|Install folders/i)
     assert.match(body, /steam_appid\.txt/i)
   })
 })

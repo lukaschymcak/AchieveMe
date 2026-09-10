@@ -64,24 +64,44 @@ export interface AppSettings {
   depotDownloadPath: string
   /** Absolute path to user-linked ludusavi.exe, or empty. */
   ludusaviPath: string
-  /** Absolute path to user-linked rclone.exe, or empty. */
+  /**
+   * Legacy rclone path (unused after R2 cloud saves).
+   * Kept so old settings.json files still load.
+   */
   rclonePath: string
-  /** When true, AchieveMe backups pass --cloud-sync (Ludusavi may upload). */
+  /**
+   * Legacy global “upload after backup” flag. Ignored by the product path;
+   * per-game `cloud_saves_enabled` controls R2 upload instead.
+   * Kept so old settings.json files still load.
+   */
   ludusaviCloudSync: boolean
   /**
-   * Last provider chosen in Settings (display/cache).
-   * Live remote still lives in AchieveMe’s isolated Ludusavi config.
+   * Legacy provider cache (unused after R2 cloud saves).
+   * Kept so old settings.json files still load.
    */
   ludusaviCloudProvider: string
-  /** Custom rclone remote id when provider is `custom`. */
+  /** Legacy custom rclone remote (unused). Kept for settings.json compatibility. */
   ludusaviCloudCustomRemote: string
-  /** Master switch for automatic library save backups via Ludusavi. */
+  /** Cloudflare Worker base URL for cloud saves (https), or empty. */
+  cloudSavesApiUrl: string
+  /** Bearer token for the cloud saves Worker, or empty. */
+  cloudSavesApiToken: string
+  /** Master switch: automatic Ludusavi backup after a tracked play session ends. */
   ludusaviAutoBackup: boolean
-  /** When auto-backup is on, enqueue the library on app startup. */
+  /**
+   * Legacy: ignored. Startup auto-backup was removed; kept for settings file compat.
+   * @deprecated
+   */
   ludusaviBackupOnStartup: boolean
-  /** When auto-backup is on, enqueue after a tracked play session ends. */
+  /**
+   * Legacy: ignored. Session auto-backup is controlled by `ludusaviAutoBackup`.
+   * @deprecated
+   */
   ludusaviBackupOnSessionEnd: boolean
-  /** When auto-backup is on, enqueue after a game is added to the library. */
+  /**
+   * Legacy: ignored. Add-game auto-backup was removed; kept for settings file compat.
+   * @deprecated
+   */
   ludusaviBackupOnAddGame: boolean
 }
 
@@ -202,6 +222,11 @@ export interface Game {
   backup_error: string
   /** Cached Ludusavi manifest title resolved via find --steam-id. */
   ludusavi_title: string
+  /**
+   * 1 when this game should auto-upload to R2 after a successful local backup.
+   * Default 0 (off). Requires Worker URL + token in settings.
+   */
+  cloud_saves_enabled: number
   /** 1 when Steamless was successfully applied for this game. */
   steamless_applied: number
   /** 1 when Goldberg was successfully applied for this game. */
@@ -279,6 +304,8 @@ export interface GameSummary {
   backup_at: number
   backup_error: string
   ludusavi_title: string
+  /** 1 when this game auto-uploads to R2 after local backup. */
+  cloud_saves_enabled: number
   /** True when stored `manifest_gids` has at least one depot GID. */
   has_depot_gids: boolean
 }

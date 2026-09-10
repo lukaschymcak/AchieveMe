@@ -62,6 +62,9 @@ export function migrateSchema(db: Database.Database): void {
   if (!columnExists(db, 'games', 'launch_args')) {
     db.exec("ALTER TABLE games ADD COLUMN launch_args TEXT NOT NULL DEFAULT ''")
   }
+  if (!columnExists(db, 'games', 'cloud_saves_enabled')) {
+    db.exec('ALTER TABLE games ADD COLUMN cloud_saves_enabled INTEGER NOT NULL DEFAULT 0')
+  }
   db.exec(`
     CREATE TABLE IF NOT EXISTS ignored_appids (
       appid       TEXT    PRIMARY KEY,
@@ -91,6 +94,7 @@ export function createTables(db: Database.Database): void {
       backup_at             INTEGER NOT NULL DEFAULT 0,
       backup_error          TEXT    NOT NULL DEFAULT '',
       ludusavi_title        TEXT    NOT NULL DEFAULT '',
+      cloud_saves_enabled   INTEGER NOT NULL DEFAULT 0,
       steamless_applied     INTEGER NOT NULL DEFAULT 0,
       goldberg_applied      INTEGER NOT NULL DEFAULT 0,
       steamless_exe         TEXT    NOT NULL DEFAULT '',

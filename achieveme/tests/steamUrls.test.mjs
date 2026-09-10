@@ -4,7 +4,12 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 import path from 'node:path'
 
 const rootDir = path.dirname(fileURLToPath(import.meta.url))
-const { normalizeSteamIconUrl, getSteamLibraryHeroUrl, getSteamStoreAppUrl } = await import(
+const {
+  normalizeSteamIconUrl,
+  getSteamLibraryHeroUrl,
+  getSteamStoreAppUrl,
+  STEAM_WEB_API_KEY_URL
+} = await import(
   pathToFileURL(path.join(rootDir, '../src/shared/steamUrls.ts')).href
 )
 
@@ -46,6 +51,10 @@ test('getSteamLibraryHeroUrl builds cloudflare steamstatic path', () => {
     getSteamLibraryHeroUrl('4570720'),
     'https://cdn.cloudflare.steamstatic.com/steam/apps/4570720/library_hero.jpg'
   )
+})
+
+test('STEAM_WEB_API_KEY_URL points at the Steam Web API key form', () => {
+  assert.equal(STEAM_WEB_API_KEY_URL, 'https://steamcommunity.com/dev/apikey')
 })
 
 test('getSteamStoreAppUrl builds store product URL', () => {

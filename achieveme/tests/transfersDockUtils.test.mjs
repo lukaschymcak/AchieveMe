@@ -107,3 +107,58 @@ test('pick_depots update phase is excluded until busy', () => {
     false
   )
 })
+
+test('search depot phase stays out of the dock', () => {
+  assert.equal(shouldShowDepotInDock(makeDepot({ phase: 'search' })), false)
+})
+
+test('depot post-download Goldberg phases stay in the dock', () => {
+  for (const phase of ['prompt', 'dll', 'emu', 'apply', 'complete']) {
+    assert.equal(
+      shouldShowDepotInDock(makeDepot({ phase, pct: 100, status: 'Download complete' })),
+      true,
+      phase
+    )
+  }
+})
+
+test('buildTransferDockRows keeps depot after download completes', () => {
+  const rows = buildTransferDockRows({
+    depot: makeDepot({ phase: 'prompt', pct: 100, status: 'Download complete' })
+  })
+  assert.equal(rows.length, 1)
+  assert.equal(rows[0].kind, 'depot')
+  assert.equal(rows[0].pct, 100)
+  assert.equal(isTransfersDockVisible(rows), true)
+})
+
+test('buildTransferDockRows hides depot row when depot modal is open', () => {
+  const rows = buildTransferDockRows({
+    depot: makeDepot(),
+    update: makeUpdate(),
+    depotModalOpen: true
+  })
+  assert.equal(rows.length, 1)
+  assert.equal(rows[0].kind, 'update')
+})
+
+test('buildTransferDockRows hides update row when update modal is open', () => {
+  const rows = buildTransferDockRows({
+    depot: makeDepot(),
+    update: makeUpdate(),
+    updateModalOpen: true
+  })
+  assert.equal(rows.length, 1)
+  assert.equal(rows[0].kind, 'depot')
+})
+
+test('buildTransferDockRows hides both rows when both modals are open', () => {
+  const rows = buildTransferDockRows({
+    depot: makeDepot(),
+    update: makeUpdate(),
+    depotModalOpen: true,
+    updateModalOpen: true
+  })
+  assert.deepEqual(rows, [])
+  assert.equal(isTransfersDockVisible(rows), false)
+})

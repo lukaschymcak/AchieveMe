@@ -67,7 +67,10 @@ export default function HelpTip({
     }
 
     function handleKeyDown(e: KeyboardEvent): void {
-      if (e.key === 'Escape') setOpen(false)
+      if (e.key !== 'Escape') return
+      e.preventDefault()
+      setOpen(false)
+      triggerRef.current?.focus()
     }
 
     function handleReposition(): void {
@@ -90,14 +93,15 @@ export default function HelpTip({
   const popover =
     open &&
     createPortal(
-      <span
+      <div
         id={tipId}
-        role="tooltip"
+        role="region"
+        aria-label={label}
         className="help-tip__popover help-tip__popover--floating"
         style={popoverStyle}
       >
         {content}
-      </span>,
+      </div>,
       document.body
     )
 
@@ -109,7 +113,7 @@ export default function HelpTip({
         className={`help-tip__trigger${open ? ' help-tip__trigger--open' : ''}`}
         aria-label={label}
         aria-expanded={open}
-        aria-describedby={open ? tipId : undefined}
+        aria-controls={open ? tipId : undefined}
         onClick={() => setOpen((v) => !v)}
       >
         <span aria-hidden="true">?</span>
