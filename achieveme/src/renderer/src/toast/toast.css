@@ -100,6 +100,7 @@ body {
   transition: none;
   opacity: 1;
   transform: none;
+  filter: none;
 }
 
 .unlock-toast--measure .unlock-toast__name,
@@ -131,10 +132,16 @@ body {
   display: grid;
   width: 100%;
   overflow: hidden;
-  border: 1px solid var(--border-subtle);
+  border: 1px solid color-mix(in oklch, var(--toast-accent) 58%, var(--border-subtle));
   border-radius: 4px;
   background: var(--surface-1);
-  box-shadow: 0 2px 16px rgba(0, 0, 0, 0.25);
+  box-shadow:
+    0 2px 16px rgba(0, 0, 0, 0.28),
+    0 0 0 1px color-mix(in oklch, var(--toast-accent) 38%, transparent);
+  /* drop-shadow survives transparent Electron windows; box-shadow often does not */
+  filter:
+    drop-shadow(0 0 0.6px color-mix(in oklch, var(--toast-accent) 78%, transparent))
+    drop-shadow(0 0 6px color-mix(in oklch, var(--toast-accent) 42%, transparent));
 }
 
 /* Hidden until --play; resting cascade stays visible after scale-in. */
@@ -151,26 +158,18 @@ body {
   animation: toast-scale-in 350ms var(--toast-ease);
 }
 
-.unlock-toast[data-tier='bronze'] .unlock-toast__panel,
-.unlock-toast[data-tier='silver'] .unlock-toast__panel {
-  border-color: color-mix(in srgb, var(--toast-accent) 55%, #ffffff1a);
-  box-shadow:
-    0 2px 16px rgba(0, 0, 0, 0.25),
-    0 0 10px 0 color-mix(in srgb, var(--toast-accent) 28%, transparent);
-}
-
 .unlock-toast[data-tier='gold'] .unlock-toast__panel {
-  border-color: color-mix(in srgb, var(--tier-gold) 70%, #ffffff1a);
-  box-shadow:
-    0 2px 16px rgba(0, 0, 0, 0.25),
-    0 0 14px 0 rgba(244, 165, 16, 0.28);
+  border-color: color-mix(in oklch, var(--tier-gold) 78%, var(--border-subtle));
+  filter:
+    drop-shadow(0 0 0.8px color-mix(in oklch, var(--tier-gold) 88%, transparent))
+    drop-shadow(0 0 8px color-mix(in oklch, var(--tier-gold) 52%, transparent));
 }
 
 .unlock-toast[data-tier='platinum'] .unlock-toast__panel {
-  border-color: color-mix(in srgb, var(--tier-platinum) 70%, #ffffff1a);
-  box-shadow:
-    0 2px 16px rgba(0, 0, 0, 0.25),
-    0 0 14px 0 color-mix(in oklch, var(--tier-platinum) 35%, transparent);
+  border-color: color-mix(in oklch, var(--tier-platinum) 78%, var(--border-subtle));
+  filter:
+    drop-shadow(0 0 0.8px color-mix(in oklch, var(--tier-platinum) 86%, transparent))
+    drop-shadow(0 0 8px color-mix(in oklch, var(--tier-platinum) 50%, transparent));
 }
 
 .unlock-toast[data-tier='platinum'] .unlock-toast__inner {
