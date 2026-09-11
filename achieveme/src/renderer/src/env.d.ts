@@ -112,6 +112,17 @@ declare global {
       ludusaviListBackups(
         appid: string
       ): Promise<{ title: string; snapshots: LudusaviSnapshot[] } | string>
+      ludusaviListCustomPaths(
+        appid: string
+      ): Promise<{ ok: true; title: string; paths: string[] } | { ok: false; error: string }>
+      ludusaviAddCustomPath(
+        appid: string,
+        folder: string
+      ): Promise<{ ok: true; title: string; paths: string[] } | { ok: false; error: string }>
+      ludusaviRemoveCustomPath(
+        appid: string,
+        folder: string
+      ): Promise<{ ok: true; title: string; paths: string[] } | { ok: false; error: string }>
       ludusaviRestoreGame(appid: string, backupId: string): Promise<void>
       ludusaviBackupLibrary(): Promise<void>
       ludusaviGetQueue(): Promise<{ runningAppid: string | null; pending: string[] }>

@@ -96,6 +96,12 @@ import {
   setAchieveMeLudusaviConfigDir,
   validateLudusaviPath
 } from '../achievement/ludusaviService'
+import {
+  addLudusaviGuiCustomPath,
+  listLudusaviGuiCustomPaths,
+  removeLudusaviGuiCustomPath
+} from '../achievement/ludusaviCustomGames'
+import { resolveLudusaviGuiConfigPath } from '../achievement/ludusaviConfigPatch'
 import type { LudusaviSnapshot } from '../../shared/ludusaviApiUtils'
 import { isSafeLudusaviBackupId } from '../../shared/ludusaviApiUtils'
 import { getAchieveMeLudusaviConfigDir } from '../../shared/ludusaviCloudUtils'
@@ -179,6 +185,34 @@ async function openFolderInFileManager(folder: string): Promise<void> {
   if (err?.trim()) {
     throw new Error(err.trim())
   }
+}
+
+async function resolveLudusaviTitleForCustomPaths(
+  appid: string
+): Promise<{ ok: true; title: string } | { ok: false; error: string }> {
+  const clean = String(appid || '').trim()
+  if (!/^\d+$/.test(clean)) return { ok: false, error: 'Invalid AppID.' }
+  const settings = loadSettings()
+  const pathRaw = String(settings.ludusaviPath || '').trim()
+  if (!pathRaw) return { ok: false, error: 'Set Ludusavi path in Settings first.' }
+  let exe: string
+  try {
+    exe = validateLudusaviPath(pathRaw)
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : String(err) }
+  }
+  const game = getGame(getDb(), clean)
+  let title = String(game?.ludusavi_title || '').trim()
+  if (!title) {
+    try {
+      title = (await findTitleBySteamId(exe, clean))?.trim() || ''
+    } catch {
+      title = ''
+    }
+  }
+  if (!title) title = String(game?.name || '').trim()
+  if (!title) return { ok: false, error: 'Ludusavi title not found for this game.' }
+  return { ok: true, title }
 }
 
 export function registerIpcHandlers(): void {
@@ -952,6 +986,77 @@ export function registerIpcHandlers(): void {
       } catch (err) {
         return err instanceof Error ? err.message : String(err)
       }
+    }
+  )
+
+  ipcMain.handle(
+    'ludusavi:list-custom-paths',
+    async (
+      _event,
+      appid: string
+    ): Promise<{ ok: true; title: string; paths: string[] } | { ok: false; error: string }> => {
+      const resolved = await resolveLudusaviTitleForCustomPaths(appid)
+      if (!resolved.ok) return resolved
+      const gui = resolveLudusaviGuiConfigPath()
+      if (!gui) return { ok: true, title: resolved.title, paths: [] }
+      try {
+        refreshAchieveMeLudusaviConfigFromGui(loadSettings().rclonePath)
+      } catch {
+        // Isolated sync is best-effort for listing
+      }
+      return {
+        ok: true,
+        title: resolved.title,
+        paths: listLudusaviGuiCustomPaths(gui, resolved.title)
+      }
+    }
+  )
+
+  ipcMain.handle(
+    'ludusavi:add-custom-path',
+    async (
+      _event,
+      appid: string,
+      folder: string
+    ): Promise<{ ok: true; title: string; paths: string[] } | { ok: false; error: string }> => {
+      const resolved = await resolveLudusaviTitleForCustomPaths(appid)
+      if (!resolved.ok) return resolved
+      const gui = resolveLudusaviGuiConfigPath()
+      if (!gui) {
+        return { ok: false, error: 'Ludusavi config.yaml was not found. Open ludusavi.exe once.' }
+      }
+      const result = addLudusaviGuiCustomPath(gui, resolved.title, folder)
+      if (!result.ok) return { ok: false, error: result.error || 'Could not add folder.' }
+      try {
+        refreshAchieveMeLudusaviConfigFromGui(loadSettings().rclonePath)
+      } catch {
+        // GUI write succeeded; isolated copy retries on next backup
+      }
+      return { ok: true, title: resolved.title, paths: result.paths }
+    }
+  )
+
+  ipcMain.handle(
+    'ludusavi:remove-custom-path',
+    async (
+      _event,
+      appid: string,
+      folder: string
+    ): Promise<{ ok: true; title: string; paths: string[] } | { ok: false; error: string }> => {
+      const resolved = await resolveLudusaviTitleForCustomPaths(appid)
+      if (!resolved.ok) return resolved
+      const gui = resolveLudusaviGuiConfigPath()
+      if (!gui) {
+        return { ok: false, error: 'Ludusavi config.yaml was not found. Open ludusavi.exe once.' }
+      }
+      const result = removeLudusaviGuiCustomPath(gui, resolved.title, folder)
+      if (!result.ok) return { ok: false, error: result.error || 'Could not remove folder.' }
+      try {
+        refreshAchieveMeLudusaviConfigFromGui(loadSettings().rclonePath)
+      } catch {
+        // GUI write succeeded; isolated copy retries on next backup
+      }
+      return { ok: true, title: resolved.title, paths: result.paths }
     }
   )
 

@@ -183,6 +183,7 @@ describe('helpContent', () => {
     assert.doesNotMatch(body, /on startup|when adding a game/i)
     assert.match(body, /Worker|R2|tar\.gz/i)
     assert.match(body, /ludusavi\.exe/i)
+    assert.match(body, /extra save folders|custom games/i)
   })
 
   it('tray section documents installed Setup vs portable login items', () => {

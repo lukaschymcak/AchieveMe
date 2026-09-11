@@ -224,6 +224,23 @@ contextBridge.exposeInMainWorld('api', {
   ): Promise<{ title: string; snapshots: LudusaviSnapshot[] } | string> =>
     ipcRenderer.invoke('ludusavi:list-backups', appid),
 
+  ludusaviListCustomPaths: (
+    appid: string
+  ): Promise<{ ok: true; title: string; paths: string[] } | { ok: false; error: string }> =>
+    ipcRenderer.invoke('ludusavi:list-custom-paths', appid),
+
+  ludusaviAddCustomPath: (
+    appid: string,
+    folder: string
+  ): Promise<{ ok: true; title: string; paths: string[] } | { ok: false; error: string }> =>
+    ipcRenderer.invoke('ludusavi:add-custom-path', appid, folder),
+
+  ludusaviRemoveCustomPath: (
+    appid: string,
+    folder: string
+  ): Promise<{ ok: true; title: string; paths: string[] } | { ok: false; error: string }> =>
+    ipcRenderer.invoke('ludusavi:remove-custom-path', appid, folder),
+
   ludusaviRestoreGame: (appid: string, backupId: string): Promise<void> =>
     ipcRenderer.invoke('ludusavi:restore-game', appid, backupId),
 

@@ -593,6 +593,9 @@ export default function GameDetailPage({
   const [saveSnapshotsError, setSaveSnapshotsError] = useState('')
   const [selectedBackupId, setSelectedBackupId] = useState('')
   const [ludusaviPathLinked, setLudusaviPathLinked] = useState(false)
+  const [customSavePaths, setCustomSavePaths] = useState<string[]>([])
+  const [customSavePathsError, setCustomSavePathsError] = useState('')
+  const [customSavePathsBusy, setCustomSavePathsBusy] = useState(false)
   const [cloudConfigured, setCloudConfigured] = useState(false)
   const [cloudModalOpen, setCloudModalOpen] = useState(false)
   const [cloudToggleBusy, setCloudToggleBusy] = useState(false)
@@ -614,6 +617,63 @@ export default function GameDetailPage({
     setSaveSnapshotsLoading(false)
     setSaveSnapshotsError('')
     setSelectedBackupId('')
+    setCustomSavePaths([])
+    setCustomSavePathsError('')
+    setCustomSavePathsBusy(false)
+  }
+
+  const loadCustomSavePaths = (): void => {
+    void window.api
+      .ludusaviListCustomPaths(appid)
+      .then((result) => {
+        if (!result.ok) {
+          setCustomSavePaths([])
+          setCustomSavePathsError(result.error)
+          return
+        }
+        setCustomSavePaths(result.paths)
+        setCustomSavePathsError('')
+      })
+      .catch((err) => {
+        setCustomSavePaths([])
+        setCustomSavePathsError(err instanceof Error ? err.message : String(err))
+      })
+  }
+
+  const handleAddCustomSavePath = async (): Promise<void> => {
+    const folder = await window.api.browseGameInstallFolder()
+    if (!folder) return
+    setCustomSavePathsBusy(true)
+    try {
+      const result = await window.api.ludusaviAddCustomPath(appid, folder)
+      if (!result.ok) {
+        setCustomSavePathsError(result.error)
+        return
+      }
+      setCustomSavePaths(result.paths)
+      setCustomSavePathsError('')
+    } catch (err) {
+      setCustomSavePathsError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setCustomSavePathsBusy(false)
+    }
+  }
+
+  const handleRemoveCustomSavePath = async (folder: string): Promise<void> => {
+    setCustomSavePathsBusy(true)
+    try {
+      const result = await window.api.ludusaviRemoveCustomPath(appid, folder)
+      if (!result.ok) {
+        setCustomSavePathsError(result.error)
+        return
+      }
+      setCustomSavePaths(result.paths)
+      setCustomSavePathsError('')
+    } catch (err) {
+      setCustomSavePathsError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setCustomSavePathsBusy(false)
+    }
   }
 
   const closeCloudModal = (): void => {
@@ -1146,6 +1206,7 @@ export default function GameDetailPage({
                           setSelectedBackupId('')
                           setSaveSnapshotsLoading(false)
                           setSaveModalOpen(true)
+                          loadCustomSavePaths()
                         }}
                         disabled={game?.backup_status === 'running'}
                         aria-label={
@@ -1546,6 +1607,55 @@ export default function GameDetailPage({
                   <p className="game-detail__exe-modal-help" role="status">
                     Link ludusavi.exe in Settings → Backups first.
                   </p>
+                )}
+                {ludusaviPathLinked && (
+                  <div className="game-detail__custom-paths">
+                    <p className="game-detail__exe-modal-help">
+                      Extra save folders (written to Ludusavi custom games). New folders merge with
+                      the official manifest; existing override games keep their override.
+                    </p>
+                    {customSavePathsError ? (
+                      <p className="game-detail__exe-modal-error" role="alert">
+                        {customSavePathsError}
+                      </p>
+                    ) : null}
+                    {customSavePaths.length === 0 ? (
+                      <p className="game-detail__exe-modal-help" role="status">
+                        No extra folders for this game.
+                      </p>
+                    ) : (
+                      <ul className="game-detail__save-snapshot-list" aria-label="Extra save folders">
+                        {customSavePaths.map((folder) => (
+                          <li key={folder} className="game-detail__custom-path-row">
+                            <span className="game-detail__custom-path-text">{folder}</span>
+                            <button
+                              type="button"
+                              className="game-detail__pill"
+                              disabled={customSavePathsBusy || game?.backup_status === 'running'}
+                              aria-label={`Remove ${folder}`}
+                              onClick={() => {
+                                void handleRemoveCustomSavePath(folder)
+                              }}
+                            >
+                              Remove
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                    <div className="game-detail__exe-confirm-actions">
+                      <button
+                        type="button"
+                        className="game-detail__pill"
+                        disabled={customSavePathsBusy || game?.backup_status === 'running'}
+                        onClick={() => {
+                          void handleAddCustomSavePath()
+                        }}
+                      >
+                        Add folder
+                      </button>
+                    </div>
+                  </div>
                 )}
               </>
             ) : (

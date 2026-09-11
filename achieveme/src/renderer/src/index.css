@@ -855,6 +855,26 @@ button:focus-visible {
   flex-shrink: 0;
 }
 
+.game-detail__custom-path-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid oklch(20% 0.016 275);
+  background: oklch(12% 0.012 275);
+}
+
+.game-detail__custom-path-text {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: oklch(78% 0.01 275);
+  word-break: break-all;
+}
+
 .game-detail__exe-list {
   list-style: none;
   margin: 0;
