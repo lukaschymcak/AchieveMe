@@ -29,6 +29,23 @@ let queue: SessionRecapPayload[] = []
 let showing = false
 let windowWaitAttempts = 0
 
+function recapTimestamp(): string {
+  const d = new Date()
+  const time = d.toTimeString().split(' ')[0]
+  const ms = String(d.getMilliseconds()).padStart(3, '0')
+  return `${time}.${ms}`
+}
+
+function recapLog(event: string, detail?: Record<string, unknown>): void {
+  const prefix = `[playtime ${recapTimestamp()}]`
+  detail ? console.log(prefix, event, detail) : console.log(prefix, event)
+}
+
+function recapWarn(event: string, detail?: Record<string, unknown>): void {
+  const prefix = `[playtime ${recapTimestamp()}]`
+  detail ? console.warn(prefix, event, detail) : console.warn(prefix, event)
+}
+
 export function setSessionRecapMainWindow(resolver: () => BrowserWindow | null): void {
   resolveMainWindow = resolver
 }
@@ -46,7 +63,7 @@ function pumpQueue(): void {
   if (showing || queue.length === 0) return
   const win = showAndFocusMain()
   if (!win) {
-    console.warn('[playtime]', 'recap.wait-window', { queued: queue.length })
+    recapWarn('recap.wait-window', { queued: queue.length })
     if (windowWaitAttempts < 10) {
       windowWaitAttempts += 1
       setTimeout(() => pumpQueue(), 500)
@@ -57,7 +74,7 @@ function pumpQueue(): void {
 
   const payload = queue.shift()!
   showing = true
-  console.log('[playtime]', 'recap.show', {
+  recapLog('recap.show', {
     appid: payload.appid,
     seconds: payload.durationSeconds,
     unlocks: payload.unlocks.length
@@ -114,7 +131,7 @@ export function offerSessionRecapIfNeeded(
 ): void {
   const settings = loadSettings()
   if (!settings.sessionRecapEnabled) {
-    console.log('[playtime]', 'recap.skip', { appid, reason: 'disabled' })
+    recapLog('recap.skip', { appid, reason: 'disabled' })
     return
   }
 
@@ -123,7 +140,7 @@ export function offerSessionRecapIfNeeded(
     Math.floor((sessionEndMs - sessionStartMs) / 1000)
   )
   if (!shouldOfferSessionRecap(elapsedSeconds)) {
-    console.log('[playtime]', 'recap.skip', {
+    recapLog('recap.skip', {
       appid,
       elapsedSeconds,
       minSeconds: SESSION_RECAP_MIN_SECONDS

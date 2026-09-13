@@ -148,3 +148,20 @@ export function rawAchievementsFromIniSections(
 
   return result
 }
+
+/**
+ * Extracts global unlock percentage map from existing achievement records.
+ * Returns null if the list is empty or absent.
+ *
+ * @param achievements - Achievement list from database or schema.
+ */
+export function achievementPercentagesFromRecords(
+  achievements: Array<{ api_name: string; global_percent: number }> | null | undefined
+): Record<string, number> | null {
+  if (!achievements || achievements.length === 0) return null
+  const map: Record<string, number> = {}
+  for (const item of achievements) {
+    map[item.api_name] = item.global_percent
+  }
+  return map
+}

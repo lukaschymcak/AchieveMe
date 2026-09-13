@@ -4,37 +4,55 @@ import {
   buildAchievementRecords,
   resolveAchievementSchema,
   schemaListFromSteamResponse,
+  achievementPercentagesFromRecords,
   type SteamSchemaAchievement
-} from '../../shared/achievementSchemaUtils'
-import { normalizeSteamIconUrl } from '../../shared/steamUrls'
+} from '../../shared/achievementSchemaUtils.ts'
+import { normalizeSteamIconUrl } from '../../shared/steamUrls.ts'
 import {
   getCacheEntry,
   setCacheEntry,
-  getGame
-} from '../db/repository'
-import { isFresh } from './cacheUtils'
-import { ensureSteamDbHiddenDescriptions } from './steamDbScraper'
+  getGame,
+  getAchievementsForGame
+} from '../db/repository.ts'
+import { isFresh } from './cacheUtils.ts'
+import { ensureSteamDbHiddenDescriptions } from './steamDbScraper.ts'
 import type Database from 'better-sqlite3'
 
 export type { SteamSchemaAchievement }
-export { buildAchievementRecords, resolveAchievementSchema }
+export { buildAchievementRecords, resolveAchievementSchema, achievementPercentagesFromRecords }
 
 const SCHEMA_TTL = 604800
 const APPDETAILS_TTL = 604800
 
-function httpGet(url: string): Promise<string> {
+function httpGet(url: string, timeoutMs = 5000): Promise<string> {
   return new Promise((resolve, reject) => {
-    https.get(url, (res) => {
+    let settled = false
+    const finish = (err: Error | null, result?: string): void => {
+      if (settled) return
+      settled = true
+      if (err) {
+        reject(err)
+      } else {
+        resolve(result ?? '')
+      }
+    }
+
+    const req = https.get(url, (res) => {
       if (res.statusCode !== 200) {
         res.resume()
-        reject(new Error(`HTTP ${res.statusCode} for ${url}`))
+        finish(new Error(`HTTP ${res.statusCode} for ${url}`))
         return
       }
       const chunks: Buffer[] = []
       res.on('data', (chunk: Buffer) => chunks.push(chunk))
-      res.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')))
-      res.on('error', reject)
-    }).on('error', reject)
+      res.on('end', () => finish(null, Buffer.concat(chunks).toString('utf8')))
+      res.on('error', (err) => finish(err))
+    })
+
+    req.setTimeout(timeoutMs, () => {
+      req.destroy(new Error(`Request timeout (${timeoutMs}ms) for ${url}`))
+    })
+    req.on('error', (err) => finish(err))
   })
 }
 
@@ -135,13 +153,24 @@ interface SteamPercentResponse {
   }
 }
 
-async function fetchPercentages(
+export function getPercentagesFromDb(
+  db: Database.Database,
+  appid: string
+): Record<string, number> | null {
+  const existing = getAchievementsForGame(db, appid)
+  return achievementPercentagesFromRecords(existing)
+}
+
+export async function fetchPercentages(
   db: Database.Database,
   appid: string,
-  _forceRefresh: boolean
+  forceRefresh: boolean
 ): Promise<Record<string, number> | null> {
-  // Rarities are not durable — always fetch live (db unused; kept for call-site symmetry).
-  void db
+  if (!forceRefresh) {
+    const fromDb = getPercentagesFromDb(db, appid)
+    if (fromDb) return fromDb
+  }
+
   try {
     const url =
       `https://api.steampowered.com/ISteamUserStats/GetGlobalAchievementPercentagesForApp/v2/` +
@@ -155,7 +184,7 @@ async function fetchPercentages(
     }
     return map
   } catch {
-    return null
+    return getPercentagesFromDb(db, appid)
   }
 }
 

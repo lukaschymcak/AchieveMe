@@ -21,8 +21,9 @@ import {
   selectProcessListForTick,
   shouldDeferSessionEnd,
   shouldPeriodicFlush,
+  LAUNCH_GRACE_MS,
   type PlaytimeGameCandidate
-} from '../../shared/playtimeSessionUtils'
+} from '../../shared/playtimeSessionUtils.ts'
 
 const POLL_INTERVAL_MS = 2_000
 const PROCESS_LIST_REUSE_LOG_EVERY = 15
@@ -47,12 +48,21 @@ let lastGoodProcesses: ProcessInfo[] = []
 let consecutiveProcessListReuses = 0
 const extraBasenameCache = new Map<string, { key: string; names: string[] }>()
 
+function playtimeTimestamp(): string {
+  const d = new Date()
+  const time = d.toTimeString().split(' ')[0]
+  const ms = String(d.getMilliseconds()).padStart(3, '0')
+  return `${time}.${ms}`
+}
+
 function playtimeLog(event: string, detail?: Record<string, unknown>): void {
-  detail ? console.log(PLAYTIME_LOG_PREFIX, event, detail) : console.log(PLAYTIME_LOG_PREFIX, event)
+  const prefix = `[playtime ${playtimeTimestamp()}]`
+  detail ? console.log(prefix, event, detail) : console.log(prefix, event)
 }
 
 function playtimeWarn(event: string, detail?: Record<string, unknown>): void {
-  detail ? console.warn(PLAYTIME_LOG_PREFIX, event, detail) : console.warn(PLAYTIME_LOG_PREFIX, event)
+  const prefix = `[playtime ${playtimeTimestamp()}]`
+  detail ? console.warn(prefix, event, detail) : console.warn(prefix, event)
 }
 
 /**
@@ -257,7 +267,14 @@ function tickWithProcesses(processes: ProcessInfo[], nowMs: number = Date.now())
   for (const [appid, session] of [...activeSessions.entries()]) {
     if (matched.has(appid)) continue
     const launchedAt = launchedPids.has(appid) ? session.sessionStartMs : undefined
-    if (shouldDeferSessionEnd(launchedAt, nowMs)) continue
+    if (shouldDeferSessionEnd(launchedAt, nowMs)) {
+      playtimeLog('session.defer-end', {
+        appid,
+        elapsedSinceLaunchMs: nowMs - (launchedAt ?? 0),
+        graceRemainingMs: Math.max(0, LAUNCH_GRACE_MS - (nowMs - (launchedAt ?? 0)))
+      })
+      continue
+    }
     endLiveSession(appid, session, nowMs)
     libraryDirty = true
   }
@@ -335,7 +352,12 @@ async function runTick(): Promise<void> {
   if (fetchingProcessList) return
   fetchingProcessList = true
   try {
+    const t0 = Date.now()
     const fetch = await listRunningProcesses()
+    const scanMs = Date.now() - t0
+    if (activeSessions.size > 0 && scanMs > 1000) {
+      playtimeLog('process-scan.slow', { scanMs, count: fetch.processes.length })
+    }
     if (stopped) return
     const selected = selectProcessListForTick(fetch, lastGoodProcesses)
     if (selected.reusedLastGood) {

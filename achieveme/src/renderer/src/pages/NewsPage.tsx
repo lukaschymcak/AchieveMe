@@ -347,19 +347,25 @@ export default function NewsPage({
                           <ReleaseRowContent release={release} />
                         </button>
                       ) : (
-                        <div className="news-release-list__unowned">
-                          <a
-                            className="news-release-row"
-                            href={storeUrl(release.appid)}
-                            target="_blank"
-                            rel="noreferrer"
-                            aria-label={`Open ${release.name} on Steam Store`}
-                          >
-                            <ReleaseRowContent release={release} />
-                          </a>
-                          <Chip
-                            className="news-wanted-pin"
-                            active={wantedAppids.has(release.appid)}
+                        <div
+                          className="news-release-row"
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => window.open(storeUrl(release.appid), '_blank', 'noreferrer')}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault()
+                              window.open(storeUrl(release.appid), '_blank', 'noreferrer')
+                            }
+                          }}
+                          aria-label={`Open ${release.name} on Steam Store`}
+                        >
+                          <ReleaseRowContent release={release} />
+                          <button
+                            type="button"
+                            className={`news-release-row__wanted-btn${
+                              wantedAppids.has(release.appid) ? ' news-release-row__wanted-btn--active' : ''
+                            }`}
                             disabled={
                               pinningAppid === release.appid || wantedAppids.has(release.appid)
                             }
@@ -368,14 +374,24 @@ export default function NewsPage({
                                 ? `${release.name} is on Wanted`
                                 : `Add ${release.name} to Wanted`
                             }
-                            onClick={() => void handlePinWanted(release)}
+                            title={
+                              wantedAppids.has(release.appid)
+                                ? 'On Wanted'
+                                : 'Add to Wanted'
+                            }
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              e.preventDefault()
+                              void handlePinWanted(release)
+                            }}
+                            onPointerDown={(e) => e.stopPropagation()}
                           >
                             {wantedAppids.has(release.appid)
-                              ? 'Wanted'
+                              ? '✓'
                               : pinningAppid === release.appid
                                 ? '…'
-                                : 'Want'}
-                          </Chip>
+                                : '+'}
+                          </button>
                         </div>
                       )}
                     </li>
