@@ -14,7 +14,7 @@ interface Props {
 }
 
 /**
- * Compact parallelogram Wanted tray for Library chrome center slot.
+ * Compact Wanted tray for Library chrome center (search) slot.
  * Horizontal scroll of short list-style chips (no Play / progress).
  */
 export default function WantedRail({
@@ -54,7 +54,7 @@ export default function WantedRail({
       <div className="wanted-rail__inner">
         <button
           type="button"
-          className="wanted-rail__add"
+          className="library-view-toggle wanted-rail__add"
           aria-label="Add a game to Wanted"
           title="Add to Wanted"
           onClick={onAddWanted}
@@ -128,6 +128,7 @@ function WantedChip({
       className={`wanted-chip${menuOpen ? ' wanted-chip--menu-open' : ''}`}
       role="listitem"
       tabIndex={0}
+      title={game.name}
       aria-label={`${game.name}, Wanted — open on Steam Store`}
       {...longPressHandlers}
       onContextMenu={(e) => {
@@ -186,29 +187,31 @@ function WantedChip({
             document.body
           )
         : null}
-      <div className="wanted-chip__thumb-wrap">
-        {game.coverUrl ? (
-          <img className="wanted-chip__thumb" src={game.coverUrl} alt="" loading="lazy" />
-        ) : (
-          <div className="wanted-chip__thumb wanted-chip__thumb--placeholder" aria-hidden />
-        )}
+      <div className="wanted-chip__face">
+        <div className="wanted-chip__thumb-wrap">
+          {game.coverUrl ? (
+            <img className="wanted-chip__thumb" src={game.coverUrl} alt="" loading="lazy" />
+          ) : (
+            <div className="wanted-chip__thumb wanted-chip__thumb--placeholder" aria-hidden />
+          )}
+        </div>
+        <h3 className="wanted-chip__name">{game.name}</h3>
+        <button
+          type="button"
+          className="wanted-chip__add"
+          aria-label={`Add ${game.name} to Library`}
+          title="Add to Library"
+          onClick={(e) => {
+            e.stopPropagation()
+            e.preventDefault()
+            onAddToLibrary()
+          }}
+          onPointerDown={(e) => e.stopPropagation()}
+          onContextMenu={(e) => e.stopPropagation()}
+        >
+          +
+        </button>
       </div>
-      <h3 className="wanted-chip__name">{game.name}</h3>
-      <button
-        type="button"
-        className="wanted-chip__add"
-        aria-label={`Add ${game.name} to Library`}
-        title="Add to Library"
-        onClick={(e) => {
-          e.stopPropagation()
-          e.preventDefault()
-          onAddToLibrary()
-        }}
-        onPointerDown={(e) => e.stopPropagation()}
-        onContextMenu={(e) => e.stopPropagation()}
-      >
-        +
-      </button>
     </article>
   )
 }

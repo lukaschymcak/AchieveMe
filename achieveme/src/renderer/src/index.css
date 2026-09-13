@@ -6403,17 +6403,22 @@ button.dashboard-near__row:focus-visible {
   color: var(--ink);
 }
 
-/* Wanted chrome rail — parallelogram tray in AppChrome center */
+/* Wanted chrome rail — search-slot well in AppChrome center */
 .wanted-rail {
   display: flex;
   align-items: center;
   width: 100%;
-  max-height: 44px;
-  min-height: 40px;
+  min-height: 36px;
+  max-height: 36px;
   min-width: 0;
   border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
   background: var(--surface-1);
-  clip-path: polygon(18px 0, 100% 0, calc(100% - 18px) 100%, 0 100%);
+  transition: background 150ms var(--ease-out), border-color 150ms var(--ease-out);
+}
+
+.wanted-rail:hover {
+  background: var(--surface-2);
 }
 
 .wanted-rail__inner {
@@ -6423,37 +6428,14 @@ button.dashboard-near__row:focus-visible {
   width: 100%;
   min-width: 0;
   height: 100%;
-  padding: 4px 28px 4px 22px;
+  padding: 2px var(--space-2);
 }
 
 .wanted-rail__add {
   flex-shrink: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  margin: 0;
-  padding: 0;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border-subtle);
-  background: var(--surface-2);
-  color: var(--ink);
-  font-family: var(--font-ui);
   font-size: 1.1rem;
   line-height: 1;
-  cursor: pointer;
-  transition: border-color 150ms var(--ease-out), background 150ms var(--ease-out);
-}
-
-.wanted-rail__add:hover {
-  border-color: color-mix(in oklch, var(--color-progress) 35%, var(--border-subtle));
-  background: var(--surface-3);
-}
-
-.wanted-rail__add:focus-visible {
-  outline: 2px solid var(--color-action);
-  outline-offset: 2px;
+  color: var(--ink);
 }
 
 .wanted-rail__scroller {
@@ -6467,6 +6449,13 @@ button.dashboard-near__row:focus-visible {
   overflow-y: hidden;
   scrollbar-width: thin;
   overscroll-behavior-x: contain;
+}
+
+/* Let expanded chip faces paint over neighbors without clipping */
+.wanted-rail__scroller:has(.wanted-chip:hover),
+.wanted-rail__scroller:has(.wanted-chip:focus-within),
+.wanted-rail__scroller:has(.wanted-chip--menu-open) {
+  overflow-x: visible;
 }
 
 .wanted-rail__hint {
@@ -6483,35 +6472,70 @@ button.dashboard-near__row:focus-visible {
 
 .wanted-chip {
   position: relative;
-  display: flex;
   flex: 0 0 auto;
-  align-items: center;
-  gap: var(--space-2);
   width: 180px;
-  min-height: 32px;
-  max-height: 36px;
-  padding: 2px 4px 2px 2px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border-subtle);
-  background: var(--surface-2);
-  overflow: hidden;
+  height: 32px;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  overflow: visible;
   cursor: pointer;
-  transition: border-color 150ms var(--ease-out), background 150ms var(--ease-out);
 }
 
-.wanted-chip:hover {
-  border-color: color-mix(in oklch, var(--color-progress) 35%, var(--border-subtle));
-  background: var(--surface-3);
+.wanted-chip:focus {
+  outline: none;
 }
 
-.wanted-chip:focus-visible {
+.wanted-chip:focus-visible .wanted-chip__face {
   outline: 2px solid var(--color-action);
   outline-offset: 2px;
 }
 
 .wanted-chip--menu-open {
-  z-index: 3;
-  border-color: color-mix(in oklch, var(--color-progress) 38%, var(--border-subtle));
+  z-index: 5;
+}
+
+.wanted-chip__face {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  box-sizing: border-box;
+  width: 180px;
+  max-width: 180px;
+  height: 32px;
+  padding: 2px 4px 2px 2px;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  background: transparent;
+  overflow: hidden;
+  transition:
+    width 180ms var(--ease-out),
+    max-width 180ms var(--ease-out),
+    border-color 150ms var(--ease-out),
+    background 150ms var(--ease-out);
+}
+
+.wanted-chip:hover .wanted-chip__face,
+.wanted-chip:focus-within .wanted-chip__face,
+.wanted-chip--menu-open .wanted-chip__face {
+  z-index: 4;
+  width: max-content;
+  max-width: min(28rem, 70vw);
+  min-width: 180px;
+  overflow: visible;
+  border-color: color-mix(in oklch, var(--color-progress) 35%, var(--border-subtle));
+  background: var(--surface-2);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wanted-chip__face {
+    transition: none;
+  }
 }
 
 .wanted-chip__thumb-wrap {
@@ -6539,13 +6563,21 @@ button.dashboard-near__row:focus-visible {
   min-width: 0;
   margin: 0;
   font-family: var(--font-ui);
-  font-size: 0.75rem;
+  font-size: 13px;
   font-weight: 600;
-  line-height: 1.15;
+  line-height: 1.2;
   color: var(--ink);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.wanted-chip:hover .wanted-chip__name,
+.wanted-chip:focus-within .wanted-chip__name,
+.wanted-chip--menu-open .wanted-chip__name {
+  overflow: visible;
+  text-overflow: clip;
+  flex: 0 1 auto;
 }
 
 .wanted-chip__add {
@@ -6553,21 +6585,23 @@ button.dashboard-near__row:focus-visible {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 22px;
-  height: 22px;
+  width: 24px;
+  height: 24px;
   margin: 0;
   padding: 0;
-  border-radius: 4px;
-  border: 1px solid var(--border-subtle);
-  background: var(--surface-1);
-  color: var(--ink);
-  font-size: 0.95rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid oklch(34% 0.02 275 / 0.45);
+  background: oklch(16% 0.014 275 / 0.88);
+  color: var(--ink-muted);
+  font-size: 1rem;
   line-height: 1;
   cursor: pointer;
+  transition: background 150ms var(--ease-out), border-color 150ms var(--ease-out), color 150ms var(--ease-out);
 }
 
 .wanted-chip__add:hover {
-  border-color: color-mix(in oklch, var(--color-progress) 40%, var(--border-subtle));
+  background: oklch(20% 0.014 275 / 0.92);
+  color: var(--ink);
 }
 
 .wanted-chip__add:focus-visible {
