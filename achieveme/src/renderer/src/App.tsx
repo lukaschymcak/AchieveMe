@@ -36,6 +36,8 @@ type TransitionDir = 'next' | 'prev' | null
 
 export default function App(): React.ReactElement {
   const [bootReady, setBootReady] = useState(false)
+  const [bootExiting, setBootExiting] = useState(false)
+  const [bootSplashPreview, setBootSplashPreview] = useState(false)
   const [bootProgress, setBootProgress] = useState<BootWarmProgress | null>(null)
   const [bootError, setBootError] = useState<string | null>(null)
   const [page, setPage] = useState<AppPage>('dashboard')
@@ -64,8 +66,25 @@ export default function App(): React.ReactElement {
   const updateSessionRef = useRef<ActiveUpdateSession | null>(null)
   const updateJobRunningRef = useRef(false)
 
+  const finishBoot = useCallback(() => {
+    setBootExiting(true)
+    window.setTimeout(() => {
+      setBootReady(true)
+    }, 280)
+  }, [])
+
   useEffect(() => {
     let cancelled = false
+    if (!window.api) {
+      setBootProgress({
+        phase: 'games',
+        current: 7,
+        total: 12,
+        label: 'Warming games (7/12)…'
+      })
+      return
+    }
+
     window.api.onBootWarmProgress((progress) => {
       if (!cancelled) setBootProgress(progress)
     })
@@ -76,20 +95,32 @@ export default function App(): React.ReactElement {
         if (!result.ok && result.errorMessage) {
           setBootError(result.errorMessage)
         }
-        setBootReady(true)
+        finishBoot()
       })
       .catch((err: unknown) => {
         if (cancelled) return
         setBootError(err instanceof Error ? err.message : String(err))
-        setBootReady(true)
+        finishBoot()
       })
       .finally(() => {
-        window.api.offBootWarmProgress()
+        window.api?.offBootWarmProgress()
       })
     return () => {
       cancelled = true
-      window.api.offBootWarmProgress()
+      window.api?.offBootWarmProgress()
     }
+  }, [finishBoot])
+
+  // Dev shortcut: Ctrl+Shift+B toggles simulated boot splash preview
+  useEffect(() => {
+    const handleDevShortcuts = (e: KeyboardEvent): void => {
+      if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'b') {
+        e.preventDefault()
+        setBootSplashPreview((prev) => !prev)
+      }
+    }
+    window.addEventListener('keydown', handleDevShortcuts)
+    return () => window.removeEventListener('keydown', handleDevShortcuts)
   }, [])
 
   useEffect(() => {
@@ -512,8 +543,27 @@ export default function App(): React.ReactElement {
     </>
   )
 
-  if (!bootReady) {
-    return <BootSplash progress={bootProgress} />
+  if (!bootReady || bootSplashPreview) {
+    const previewSample: BootWarmProgress = {
+      phase: 'games',
+      current: 7,
+      total: 12,
+      label: 'Warming games (7/12)…'
+    }
+
+    return (
+      <BootSplash
+        progress={bootSplashPreview ? previewSample : bootProgress}
+        isExiting={bootExiting && !bootSplashPreview}
+        onSkip={() => {
+          if (bootSplashPreview) {
+            setBootSplashPreview(false)
+          } else {
+            finishBoot()
+          }
+        }}
+      />
+    )
   }
 
   if (selectedAppid) {

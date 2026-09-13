@@ -50,7 +50,7 @@
   padding: 0;
 }
 
-/* Boot splash — full window until warm completes */
+/* Boot splash — console-grade Trophy Case startup sequence */
 .boot-splash {
   position: relative;
   display: flex;
@@ -59,90 +59,404 @@
   min-height: 100vh;
   width: 100%;
   overflow: hidden;
-  background:
-    radial-gradient(ellipse 80% 60% at 50% 20%, oklch(28% 0.04 275), transparent 70%),
-    var(--bg-base);
+  background: oklch(0% 0 0);
   color: var(--ink);
   font-family: var(--font-ui);
+  transition:
+    opacity 280ms var(--ease-out),
+    transform 280ms var(--ease-out);
 }
 
-.boot-splash__glow {
-  position: absolute;
-  inset: 20% 10% auto;
-  height: 40%;
-  background: radial-gradient(circle, oklch(45% 0.08 230 / 0.35), transparent 70%);
+.boot-splash--exiting {
+  opacity: 0;
+  transform: scale(1.02);
   pointer-events: none;
-  animation: boot-splash-pulse 2.4s var(--ease-out) infinite;
 }
 
-.boot-splash__content {
+.boot-splash__aura {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    circle 440px at 50% 42%,
+    oklch(24% 0.035 275 / 0.55),
+    oklch(15% 0.018 275 / 0.2) 55%,
+    transparent 80%
+  );
+  animation: boot-splash-breathe 3.6s ease-in-out infinite;
+}
+
+.boot-splash__grid {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.05;
+  background-image: radial-gradient(oklch(90% 0.01 275 / 0.3) 1px, transparent 1px);
+  background-size: 28px 28px;
+  mask-image: radial-gradient(circle 380px at 50% 45%, black, transparent 80%);
+}
+
+.boot-splash__container {
   position: relative;
   z-index: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-6);
   text-align: center;
+  gap: var(--space-4);
+  max-width: 440px;
+  width: 100%;
+  padding: var(--space-6) var(--space-4);
+  animation: boot-splash-reveal 400ms var(--ease-out);
+}
+
+.boot-splash__crest {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  margin-bottom: var(--space-1);
+}
+
+.boot-splash__crest-svg {
+  display: block;
+  overflow: visible;
+}
+
+.boot-splash__crest-star {
+  transform-origin: 48px 22px;
+  animation: boot-splash-star-shimmer 2.8s ease-in-out infinite;
+}
+
+.boot-splash__header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
 }
 
 .boot-splash__brand {
   font-family: var(--font-display);
-  font-size: clamp(2.75rem, 8vw, 4.5rem);
-  letter-spacing: 0.06em;
+  font-size: clamp(2.75rem, 6vw, 3.85rem);
+  letter-spacing: 0.08em;
   line-height: 1;
   color: var(--ink);
+  text-shadow: 0 2px 16px oklch(0% 0 0 / 0.8);
 }
 
-.boot-splash__status {
+.boot-splash__subtitle {
   font-family: var(--font-stats);
-  font-size: 1.1rem;
-  font-weight: 500;
-  letter-spacing: 0.04em;
-  color: var(--ink-muted);
-  min-height: 1.4em;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ink-subtle);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
 }
 
-.boot-splash__count {
-  font-size: 0.85rem;
+.boot-splash__subtitle-badge {
+  color: var(--ink-muted);
+}
+
+.boot-splash__subtitle-sep {
+  color: var(--border-subtle);
+}
+
+/* Pipeline Stepper */
+.boot-splash__stepper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: var(--space-1);
+  flex-wrap: wrap;
+}
+
+.boot-splash__step {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: var(--radius-pill);
+  font-family: var(--font-stats);
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border: 1px solid transparent;
+  transition: all 200ms var(--ease-out);
+}
+
+.boot-splash__step--pending {
   color: var(--ink-subtle);
+  opacity: 0.45;
+}
+
+.boot-splash__step--current {
+  color: var(--ink);
+  background: color-mix(in oklch, var(--color-progress) 14%, oklch(16% 0.014 275 / 0.92));
+  border-color: color-mix(in oklch, var(--color-progress) 42%, transparent);
+}
+
+.boot-splash__step--completed {
+  color: var(--ink-muted);
+  opacity: 0.8;
+  background: oklch(16% 0.014 275 / 0.6);
+  border-color: var(--border-subtle);
+}
+
+.boot-splash__step-indicator {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 10px;
+  height: 10px;
+}
+
+.boot-splash__step-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 999px;
+  background: currentColor;
+}
+
+.boot-splash__step--current .boot-splash__step-dot {
+  background: var(--color-progress);
+  box-shadow: 0 0 6px var(--color-progress);
+}
+
+.boot-splash__step-check {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--color-progress);
+  line-height: 1;
+}
+
+.boot-splash__step-label {
+  line-height: 1;
+}
+
+/* Progress Meter */
+.boot-splash__meter-box {
+  width: 100%;
+  max-width: 340px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: var(--space-1);
+}
+
+.boot-splash__meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-family: var(--font-stats);
+}
+
+.boot-splash__stage-title {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+.boot-splash__percent {
+  font-size: 0.85rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-progress);
 }
 
 .boot-splash__bar {
-  margin-top: var(--space-2);
-  width: min(240px, 60vw);
-  height: 3px;
+  position: relative;
+  width: 100%;
+  height: 4px;
   border-radius: 999px;
-  background: var(--surface-3);
+  background: var(--surface-2);
+  border: 1px solid var(--border-subtle);
   overflow: hidden;
 }
 
 .boot-splash__bar-fill {
   height: 100%;
-  width: 40%;
   border-radius: inherit;
-  background: var(--color-action);
-  animation: boot-splash-bar 1.2s var(--ease-out) infinite;
+  background: var(--color-progress);
 }
 
-@keyframes boot-splash-pulse {
+.boot-splash__bar--determinate .boot-splash__bar-fill {
+  box-shadow: 0 0 10px color-mix(in oklch, var(--color-progress) 80%, transparent);
+  transition: width 240ms var(--ease-out);
+}
+
+.boot-splash__bar--indeterminate .boot-splash__bar-fill {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 40%;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--color-progress) 50%,
+    transparent 100%
+  );
+  animation: boot-splash-laser 1.4s ease-in-out infinite;
+}
+
+.boot-splash__status-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  min-height: 1.4em;
+}
+
+.boot-splash__detail-label {
+  font-family: var(--font-ui);
+  font-size: 0.82rem;
+  color: var(--ink-subtle);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: left;
+}
+
+.boot-splash__count-badge {
+  font-family: var(--font-stats);
+  font-size: 0.72rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-muted);
+  background: var(--surface-2);
+  padding: 1px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border-subtle);
+  flex-shrink: 0;
+}
+
+/* Footer Telemetry & Skip */
+.boot-splash__footer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+}
+
+.boot-splash__telemetry {
+  font-family: var(--font-stats);
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-subtle);
+  opacity: 0.65;
+}
+
+.boot-splash__skip-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  border: 1px solid var(--border-subtle);
+  color: var(--ink-muted);
+  font-family: var(--font-stats);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  transition: all 150ms var(--ease-out);
+}
+
+.boot-splash__skip-btn:hover {
+  background: var(--surface-2);
+  color: var(--ink);
+  border-color: var(--color-progress);
+}
+
+.boot-splash__skip-btn:focus-visible {
+  outline: 2px solid var(--color-action);
+  outline-offset: 2px;
+}
+
+.boot-splash__kbd {
+  display: inline-block;
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: var(--surface-3);
+  border: 1px solid var(--border-subtle);
+  font-size: 0.62rem;
+  color: var(--ink);
+  line-height: 1;
+}
+
+/* Keyframes */
+@keyframes boot-splash-breathe {
   0%,
   100% {
-    opacity: 0.55;
+    opacity: 0.45;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.85;
+    transform: scale(1.06);
+  }
+}
+
+@keyframes boot-splash-star-shimmer {
+  0%,
+  100% {
+    opacity: 0.8;
     transform: scale(1);
   }
   50% {
     opacity: 1;
-    transform: scale(1.05);
+    transform: scale(1.15);
   }
 }
 
-@keyframes boot-splash-bar {
+@keyframes boot-splash-laser {
   0% {
-    transform: translateX(-120%);
+    transform: translateX(-140%);
   }
   100% {
-    transform: translateX(320%);
+    transform: translateX(380%);
+  }
+}
+
+@keyframes boot-splash-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .boot-splash,
+  .boot-splash--exiting,
+  .boot-splash__container {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  .boot-splash__aura,
+  .boot-splash__crest-star,
+  .boot-splash__bar--indeterminate .boot-splash__bar-fill {
+    animation: none !important;
+  }
+
+  .boot-splash__bar--indeterminate .boot-splash__bar-fill {
+    width: 100%;
+    background: var(--color-progress);
+    opacity: 0.6;
   }
 }
 
