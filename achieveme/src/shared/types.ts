@@ -591,6 +591,20 @@ export interface GetNewsOptions {
   forceRefresh?: boolean
 }
 
+/** One row in the Wanted collection (Library chrome rail). */
+export interface WantedGame {
+  appid: string
+  name: string
+  coverUrl: string
+  /** Unix seconds when pinned / added. */
+  addedAt: number
+}
+
+/** Result of `wanted:add` (pin or Add Wanted modal). */
+export type WantedAddResult =
+  | { ok: true; game: WantedGame; created: boolean }
+  | { ok: false; reason: 'invalid-appid' | 'in-library' }
+
 /** Boot splash warm progress (main → renderer via `boot:warm-progress`). */
 export interface BootWarmProgress {
   phase: 'prune' | 'library' | 'games' | 'news' | 'done' | 'error'

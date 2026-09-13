@@ -71,6 +71,14 @@ export function migrateSchema(db: Database.Database): void {
       ignored_at  INTEGER NOT NULL DEFAULT 0
     )
   `)
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS wanted_games (
+      appid       TEXT    PRIMARY KEY,
+      name        TEXT    NOT NULL DEFAULT '',
+      cover_url   TEXT    NOT NULL DEFAULT '',
+      added_at    INTEGER NOT NULL DEFAULT 0
+    )
+  `)
 }
 
 export function createTables(db: Database.Database): void {
@@ -143,6 +151,13 @@ export function createTables(db: Database.Database): void {
     CREATE TABLE IF NOT EXISTS ignored_appids (
       appid       TEXT    PRIMARY KEY,
       ignored_at  INTEGER NOT NULL DEFAULT 0
+    );
+
+    CREATE TABLE IF NOT EXISTS wanted_games (
+      appid       TEXT    PRIMARY KEY,
+      name        TEXT    NOT NULL DEFAULT '',
+      cover_url   TEXT    NOT NULL DEFAULT '',
+      added_at    INTEGER NOT NULL DEFAULT 0
     );
   `)
 }

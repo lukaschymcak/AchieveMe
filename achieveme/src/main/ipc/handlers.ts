@@ -20,7 +20,10 @@ import {
   updateGameBackupStatus,
   updateGameCloudSavesEnabled,
   upsertScannedInstall,
-  getAllGameAppids
+  getAllGameAppids,
+  listWantedGames,
+  addWantedGame,
+  removeWantedGame
 } from '../db/repository'
 import { parseManifestGidsJson, pickManifestGids } from '../../shared/manifestUpdateUtils'
 import { hasStoredManifestGids } from '../../shared/libraryRetentionUtils'
@@ -72,7 +75,9 @@ import type {
   ImportScannedInstallRequest,
   ScannedInstallCandidate,
   BootWarmProgress,
-  BootWarmResult
+  BootWarmResult,
+  WantedGame,
+  WantedAddResult
 } from '../../shared/types'
 import { getNews } from '../achievement/steamNewsService'
 import { startBootWarm } from '../achievement/bootWarmService'
@@ -273,6 +278,34 @@ export function registerIpcHandlers(): void {
       return getNews(getDb(), Boolean(options?.forceRefresh))
     }
   )
+
+  ipcMain.handle('wanted:list', async (): Promise<WantedGame[]> => {
+    const db = getDb()
+    const games = listWantedGames(db)
+    const out: WantedGame[] = []
+    for (const g of games) {
+      const remoteCover = await getStoreCoverUrl(db, g.appid)
+      out.push({
+        ...g,
+        coverUrl: remoteCover ? cacheCoverUrl(g.appid) : ''
+      })
+    }
+    return out
+  })
+
+  ipcMain.handle(
+    'wanted:add',
+    (
+      _event,
+      input: { appid: string; name: string; coverUrl?: string }
+    ): WantedAddResult => {
+      return addWantedGame(getDb(), input)
+    }
+  )
+
+  ipcMain.handle('wanted:remove', (_event, appid: string): void => {
+    removeWantedGame(getDb(), appid)
+  })
 
   ipcMain.handle('boot:run-warm', async (event): Promise<BootWarmResult> => {
     return startBootWarm(getDb(), (progress: BootWarmProgress) => {

@@ -1,5 +1,13 @@
 import type Database from 'better-sqlite3'
-import type { Game, Achievement, SaveLocation, UpdateStatus } from '../../shared/types'
+import type {
+  Game,
+  Achievement,
+  SaveLocation,
+  UpdateStatus,
+  WantedGame,
+  WantedAddResult
+} from '../../shared/types'
+import { normalizeWantedAppid, wantedAddRejection } from '../../shared/wantedGamesUtils.ts'
 
 const GAME_COLUMNS =
   'appid, name, total_achievements, unlocked_achievements, completion_pct, has_platinum, last_unlocked_at, schema_fetched_at, playtime_seconds, install_path, launch_exe, launch_args, playtime_session_started_at, playtime_last_flush_at, manifest_gids, update_status, backup_status, backup_at, backup_error, ludusavi_title, cloud_saves_enabled, steamless_applied, goldberg_applied, steamless_exe, goldberg_dll_path'
@@ -127,6 +135,7 @@ export function upsertGame(db: Database.Database, game: Game): void {
     steamless_exe: steamlessExe,
     goldberg_dll_path: goldbergDllPath
   })
+  removeWantedGame(db, game.appid)
 }
 
 export function getGame(db: Database.Database, appid: string): Game | undefined {
@@ -193,6 +202,7 @@ export function saveManifestGids(
       END
   `).run(cleanAppid, name, json, iPath)
   unignoreAppid(db, cleanAppid)
+  removeWantedGame(db, cleanAppid)
 }
 
 /**
@@ -330,6 +340,7 @@ export function upsertScannedInstall(
       VALUES (?, ?, ?, ?, '', 'unknown')
     `).run(appid, name, installPath, launchExe)
     unignoreAppid(db, appid)
+    removeWantedGame(db, appid)
     return { created: true }
   }
 
@@ -342,6 +353,7 @@ export function upsertScannedInstall(
     db.prepare('UPDATE games SET name = ? WHERE appid = ?').run(name, appid)
   }
   unignoreAppid(db, appid)
+  removeWantedGame(db, appid)
   return { created: false }
 }
 
@@ -490,6 +502,116 @@ export function isAppidIgnored(db: Database.Database, appid: string): boolean {
 export function getIgnoredAppids(db: Database.Database): string[] {
   const rows = db.prepare('SELECT appid FROM ignored_appids').all() as Array<{ appid: string }>
   return rows.map((row) => row.appid).filter((id) => /^\d+$/.test(id))
+}
+
+// ─── Wanted games ─────────────────────────────────────────────────────────────
+
+interface WantedGameRow {
+  appid: string
+  name: string
+  cover_url: string
+  added_at: number
+}
+
+function mapWantedGameRow(row: WantedGameRow): WantedGame {
+  return {
+    appid: row.appid,
+    name: row.name,
+    coverUrl: row.cover_url ?? '',
+    addedAt: row.added_at ?? 0
+  }
+}
+
+/**
+ * Lists Wanted pins newest-first.
+ *
+ * @param db - Open SQLite database.
+ */
+export function listWantedGames(db: Database.Database): WantedGame[] {
+  const rows = db
+    .prepare(
+      `
+    SELECT appid, name, cover_url, added_at
+    FROM wanted_games
+    ORDER BY added_at DESC, appid ASC
+  `
+    )
+    .all() as WantedGameRow[]
+  return rows.map(mapWantedGameRow)
+}
+
+/**
+ * Pins a Wanted title, or returns the existing pin (idempotent).
+ *
+ * @param db - Open SQLite database.
+ * @param input - AppID, display name, optional cover URL.
+ */
+export function addWantedGame(
+  db: Database.Database,
+  input: { appid: string; name: string; coverUrl?: string }
+): WantedAddResult {
+  const appid = normalizeWantedAppid(input.appid)
+  const libraryAppids = new Set<string>()
+  if (appid && getGame(db, appid)) {
+    libraryAppids.add(appid)
+  }
+  const rejection = wantedAddRejection({ appid: input.appid, libraryAppids })
+  if (rejection) {
+    return { ok: false, reason: rejection }
+  }
+  if (!appid) {
+    return { ok: false, reason: 'invalid-appid' }
+  }
+
+  const existing = db
+    .prepare('SELECT appid, name, cover_url, added_at FROM wanted_games WHERE appid = ?')
+    .get(appid) as WantedGameRow | undefined
+  if (existing) {
+    return { ok: true, created: false, game: mapWantedGameRow(existing) }
+  }
+
+  const name = String(input.name || '').trim()
+  const coverUrl = String(input.coverUrl || '').trim()
+  const addedAt = Math.floor(Date.now() / 1000)
+  db.prepare(
+    `
+    INSERT INTO wanted_games (appid, name, cover_url, added_at)
+    VALUES (?, ?, ?, ?)
+  `
+  ).run(appid, name, coverUrl, addedAt)
+
+  return {
+    ok: true,
+    created: true,
+    game: { appid, name, coverUrl, addedAt }
+  }
+}
+
+/**
+ * Removes a Wanted pin. No-op when missing or invalid.
+ *
+ * @param db - Open SQLite database.
+ * @param appid - Steam AppID.
+ */
+export function removeWantedGame(db: Database.Database, appid: string): void {
+  const clean = normalizeWantedAppid(appid)
+  if (!clean) return
+  db.prepare('DELETE FROM wanted_games WHERE appid = ?').run(clean)
+}
+
+/**
+ * Returns whether an AppID is currently Wanted.
+ *
+ * @param db - Open SQLite database.
+ * @param appid - Steam AppID.
+ */
+export function isWantedGame(db: Database.Database, appid: string): boolean {
+  const clean = normalizeWantedAppid(appid)
+  if (!clean) return false
+  const row = db.prepare('SELECT 1 FROM wanted_games WHERE appid = ?').get(clean) as
+    | { 1?: number }
+    | undefined
+  return Boolean(row)
 }
 
 // ─── Achievements ─────────────────────────────────────────────────────────────

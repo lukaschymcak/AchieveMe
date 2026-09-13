@@ -26,7 +26,9 @@ import type {
   ImportScannedInstallRequest,
   ScannedInstallCandidate,
   BootWarmProgress,
-  BootWarmResult
+  BootWarmResult,
+  WantedGame,
+  WantedAddResult
 } from '../shared/types'
 import type { LudusaviSnapshot } from '../shared/ludusaviApiUtils'
 
@@ -127,6 +129,17 @@ contextBridge.exposeInMainWorld('api', {
 
   deleteGame: (appid: string): Promise<void> =>
     ipcRenderer.invoke('delete-game', appid),
+
+  listWantedGames: (): Promise<WantedGame[]> => ipcRenderer.invoke('wanted:list'),
+
+  addWantedGame: (input: {
+    appid: string
+    name: string
+    coverUrl?: string
+  }): Promise<WantedAddResult> => ipcRenderer.invoke('wanted:add', input),
+
+  removeWantedGame: (appid: string): Promise<void> =>
+    ipcRenderer.invoke('wanted:remove', appid),
 
   searchSteamGames: (query: string): Promise<SteamSearchResult[]> =>
     ipcRenderer.invoke('search-steam-games', query),

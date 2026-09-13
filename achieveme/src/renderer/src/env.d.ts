@@ -25,7 +25,9 @@ import type {
   ImportScannedInstallRequest,
   ScannedInstallCandidate,
   BootWarmProgress,
-  BootWarmResult
+  BootWarmResult,
+  WantedGame,
+  WantedAddResult
 } from '../../shared/types'
 import type { LudusaviSnapshot } from '../../shared/ludusaviApiUtils'
 
@@ -58,6 +60,13 @@ declare global {
       refresh(): Promise<void>
       refreshGame(appid: string): Promise<void>
       deleteGame(appid: string): Promise<void>
+      listWantedGames(): Promise<WantedGame[]>
+      addWantedGame(input: {
+        appid: string
+        name: string
+        coverUrl?: string
+      }): Promise<WantedAddResult>
+      removeWantedGame(appid: string): Promise<void>
       searchSteamGames(query: string): Promise<SteamSearchResult[]>
       browseDllPath(): Promise<SteamApiDllInfo | null>
       browseSoundPath(): Promise<string | null>

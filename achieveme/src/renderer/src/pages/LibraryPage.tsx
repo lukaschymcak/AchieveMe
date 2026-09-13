@@ -1,9 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import type { AppSettings, GameSummary } from '../../../shared/types'
+import type { AppSettings, GameSummary, WantedGame } from '../../../shared/types'
 import { LAUNCH_NEEDS_EXE } from '../../../shared/types'
 import { formatPlaytimeCompact } from '../../../shared/playtimeUtils'
+import { wantedStoreUrl } from '../../../shared/wantedGamesUtils'
 import SteamApiKeyForm from '../components/SteamApiKeyForm'
 import AddGameModal from '../components/AddGameModal'
+import AddWantedModal from '../components/AddWantedModal'
+import WantedRail from '../components/WantedRail'
 import GameCardMenu, {
   type GameCardMenuMode,
   type MenuPosition
@@ -13,7 +16,6 @@ import LibraryCoachMark from '../components/LibraryCoachMark'
 import {
   AppChrome,
   AppNav,
-  AppSearchInput,
   AppShell,
   AppToolbarButton,
   Chip
@@ -67,7 +69,6 @@ export default function LibraryPage({
   const [hasApiKey, setHasApiKey] = useState<boolean | null>(null)
   const [games, setGames] = useState<GameSummary[]>([])
   const [loading, setLoading] = useState(false)
-  const [search, setSearch] = useState('')
   const [sort, setSort] = useState<SortOption>('unlocked-desc')
   const [menuAppid, setMenuAppid] = useState<string | null>(null)
   const [menuMode, setMenuMode] = useState<GameCardMenuMode>('actions')
@@ -76,13 +77,31 @@ export default function LibraryPage({
   const [refreshingAppid, setRefreshingAppid] = useState<string | null>(null)
   const [viewMode, setViewMode] = useState<ViewMode>(readStoredViewMode)
   const [showAddModal, setShowAddModal] = useState(false)
+  const [addGamePrefill, setAddGamePrefill] = useState<{ appid: string; name: string } | null>(null)
   const [showLongPressHint, setShowLongPressHint] = useState(() => shouldShowLongPressHint())
   const [settings, setSettings] = useState<AppSettings | null>(null)
   const [launchingAppid, setLaunchingAppid] = useState<string | null>(null)
+  const [wantedGames, setWantedGames] = useState<WantedGame[]>([])
+  const [wantedLoading, setWantedLoading] = useState(false)
+  const [showAddWantedModal, setShowAddWantedModal] = useState(false)
 
   useEffect(() => {
     localStorage.setItem(LIBRARY_VIEW_MODE_KEY, viewMode)
   }, [viewMode])
+
+  async function loadWantedGames(): Promise<void> {
+    setWantedLoading(true)
+    try {
+      const list = await window.api.listWantedGames()
+      setWantedGames(list)
+    } finally {
+      setWantedLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    void loadWantedGames()
+  }, [])
 
   useEffect(() => {
     window.api.getSettings().then((next) => {
@@ -134,10 +153,11 @@ export default function LibraryPage({
   }
 
   useEffect(() => {
-    if (hasApiKey !== true) return
-
     function handleLibraryUpdated(): void {
-      void reloadGames()
+      if (hasApiKey === true) {
+        void reloadGames()
+      }
+      void loadWantedGames()
     }
 
     window.api.onLibraryUpdated(handleLibraryUpdated)
@@ -151,9 +171,7 @@ export default function LibraryPage({
     if (!menuAppid) return
 
     function handleKeyDown(e: KeyboardEvent): void {
-      if (e.key === 'Escape') {
-        closeMenu()
-      }
+      if (e.key === 'Escape') closeMenu()
     }
 
     window.addEventListener('keydown', handleKeyDown)
@@ -161,8 +179,8 @@ export default function LibraryPage({
   }, [menuAppid])
 
   const displayedGames = useMemo(
-    () => filterAndSortGames(games, search, sort),
-    [games, search, sort]
+    () => filterAndSortGames(games, '', sort),
+    [games, sort]
   )
 
   useEffect(() => {
@@ -185,6 +203,35 @@ export default function LibraryPage({
     setMenuAppid(null)
     setMenuMode('actions')
     setMenuPosition(null)
+  }
+
+  async function handleRemoveWanted(appid: string): Promise<void> {
+    await window.api.removeWantedGame(appid)
+    setWantedGames((prev) => prev.filter((g) => g.appid !== appid))
+  }
+
+  function handleOpenWantedStore(appid: string): void {
+    window.open(wantedStoreUrl(appid), '_blank', 'noreferrer')
+  }
+
+  function handleAddWantedToLibrary(game: WantedGame): void {
+    setAddGamePrefill({ appid: game.appid, name: game.name })
+    setShowAddModal(true)
+  }
+
+  function handleCloseAddGameModal(): void {
+    setShowAddModal(false)
+    setAddGamePrefill(null)
+  }
+
+  function handleAddGameAdded(): void {
+    handleCloseAddGameModal()
+    setLoading(true)
+    window.api
+      .getAllGames()
+      .then(setGames)
+      .finally(() => setLoading(false))
+    void loadWantedGames()
   }
 
   function openMenu(appid: string, position: MenuPosition): void {
@@ -274,11 +321,34 @@ export default function LibraryPage({
   return (
     <AppShell>
       <AppChrome
-        left={
+        left={<AppNav page={page} onNavigate={onNavigate} />}
+        center={
+          <WantedRail
+            games={wantedGames}
+            loading={wantedLoading}
+            onAddWanted={() => setShowAddWantedModal(true)}
+            onAddToLibrary={handleAddWantedToLibrary}
+            onRemove={(appid) => void handleRemoveWanted(appid)}
+            onOpenStore={handleOpenWantedStore}
+          />
+        }
+        right={
           <>
-            <AppNav page={page} onNavigate={onNavigate} />
+            <span className="app-chrome__count library-chrome__count" aria-live="polite">
+              {displayedGames.length + (displayedGames.length === 1 ? ' game' : ' games')}
+            </span>
+            <span className="app-chrome__refresh-wrap library-chrome__refresh-wrap">
+              <Chip variant="action" onClick={onRefresh} disabled={refreshing}>
+                {refreshing ? 'Refreshing…' : 'Refresh'}
+              </Chip>
+              <HelpTip content={TOOLTIPS.refreshLibrary} label="Refresh library help" />
+            </span>
+          </>
+        }
+        toolbar={
+          <>
             <div
-              className="app-chrome__sorts library-chrome__sorts"
+              className="app-chrome__sorts library-chrome__sorts library-chrome__toolbar-sorts"
               role="group"
               aria-label="Sort games"
             >
@@ -295,39 +365,6 @@ export default function LibraryPage({
                 </Chip>
               ))}
             </div>
-          </>
-        }
-        center={
-          <>
-            <label className="app-chrome__search-label library-chrome__search-label" htmlFor="library-search">
-              <span className="visually-hidden">Search games</span>
-            </label>
-            <AppSearchInput
-              id="library-search"
-              type="search"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search games…"
-              autoComplete="off"
-              title={TOOLTIPS.search}
-            />
-          </>
-        }
-        right={
-          <>
-            <span className="app-chrome__count library-chrome__count" aria-live="polite">
-              {displayedGames.length} {displayedGames.length === 1 ? 'game' : 'games'}
-            </span>
-            <span className="app-chrome__refresh-wrap library-chrome__refresh-wrap">
-              <Chip variant="action" onClick={onRefresh} disabled={refreshing}>
-                {refreshing ? 'Refreshing…' : 'Refresh'}
-              </Chip>
-              <HelpTip content={TOOLTIPS.refreshLibrary} label="Refresh library help" />
-            </span>
-          </>
-        }
-        toolbar={
-          <>
             <label className="library-launcher-toggle" title={TOOLTIPS.playGamesFromLauncher}>
               <input
                 type="checkbox"
@@ -340,7 +377,10 @@ export default function LibraryPage({
             </label>
             <div className="library-chrome__toolbar-actions">
               <AppToolbarButton
-                onClick={() => setShowAddModal(true)}
+                onClick={() => {
+                  setAddGamePrefill(null)
+                  setShowAddModal(true)
+                }}
                 aria-label="Set up Goldberg emulator for a new game"
                 title={TOOLTIPS.addGame}
               >
@@ -400,9 +440,9 @@ export default function LibraryPage({
               }}
               onPlay={() => void handleLibraryPlay(game)}
               onOpenFolder={() => void handleOpenFolder(game)}
-              onRefresh={() => handleRefreshGame(game.appid)}
+              onRefresh={() => void handleRefreshGame(game.appid)}
               onDelete={() => setMenuMode('confirm-delete')}
-              onConfirmDelete={() => handleDelete(game.appid)}
+              onConfirmDelete={() => void handleDelete(game.appid)}
               onCancelDelete={() => setMenuMode('actions')}
             />
           ))}
@@ -428,9 +468,9 @@ export default function LibraryPage({
               }}
               onPlay={() => void handleLibraryPlay(game)}
               onOpenFolder={() => void handleOpenFolder(game)}
-              onRefresh={() => handleRefreshGame(game.appid)}
+              onRefresh={() => void handleRefreshGame(game.appid)}
               onDelete={() => setMenuMode('confirm-delete')}
-              onConfirmDelete={() => handleDelete(game.appid)}
+              onConfirmDelete={() => void handleDelete(game.appid)}
               onCancelDelete={() => setMenuMode('actions')}
             />
           ))}
@@ -443,14 +483,17 @@ export default function LibraryPage({
 
       {showAddModal && (
         <AddGameModal
-          onClose={() => setShowAddModal(false)}
-          onGameAdded={() => {
-            setShowAddModal(false)
-            setLoading(true)
-            window.api
-              .getAllGames()
-              .then(setGames)
-              .finally(() => setLoading(false))
+          prefill={addGamePrefill ?? undefined}
+          onClose={handleCloseAddGameModal}
+          onGameAdded={handleAddGameAdded}
+        />
+      )}
+      {showAddWantedModal && (
+        <AddWantedModal
+          onClose={() => setShowAddWantedModal(false)}
+          onAdded={() => {
+            setShowAddWantedModal(false)
+            void loadWantedGames()
           }}
         />
       )}

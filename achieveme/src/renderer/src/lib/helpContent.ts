@@ -216,12 +216,14 @@ export const HELP_SECTIONS: HelpSection[] = [
     id: 'library',
     title: 'Library',
     paragraphs: [
-      'Click a card to open game details. Right-click (or hold ~0.5s, or Shift+F10) for Play, Open, Open folder, Refresh, or Delete.'
+      'Click a card to open game details. Right-click (or hold ~0.5s, or Shift+F10) for Play, Open, Open folder, Refresh, or Delete.',
+      'Wanted now lives in the chrome rail at the center of the header: unowned Steam titles you plan to play. Covers use the same Store header cache as Library (`achieveme-img://`). Rail + opens Steam search to pin a title. Chip click opens the Steam Store. Chip + or context menu **Add to Library** opens the Goldberg DLL wizard for that AppID; **Remove from Wanted** drops the pin. Pins also come from News Popular, and auto-drop when the AppID enters your library.'
     ],
     bullets: [
-      'Search — filter by game name',
+      'Wanted rail — compact chips in chrome center, always visible on Library',
       'Least / Most / Recent — sort by completion, unlock count, or last unlock',
-      '+ Add game — Goldberg setup wizard for new titles',
+      '+ Add game — always opens Goldberg setup',
+      'Wanted + / Add to Library — open the Add Game DLL wizard for a pinned title',
       'Grid / list — layout preference, saved between sessions'
     ]
   },
@@ -310,8 +312,8 @@ export const HELP_SECTIONS: HelpSection[] = [
     id: 'news',
     title: 'News (popular releases & library announcements)',
     paragraphs: [
-      'News sits between Library and Tools. Popular releases lists Steam titles on the public popular-wishlist chart that are due this week or this month (exact wishlist counts are not published by Steam). Use genre chips to OR-filter by Steam tags (Action, RPG, Indie, and more); with none selected, everything in the window is shown. In-library titles sort to the top; Released chips mark titles that already shipped. Library news shows Steam community announcements for up to 20 games already in your library.',
-      'Release titles already in your library open game detail; others open the Steam Store. In Library news, the game name opens detail and Open on Steam opens the announcement. Startup always force-refreshes news during the splash warm; the News page Refresh button also force-refetches. AchieveMe does not scrape third-party repack or crack sites.'
+      'News sits between Library and Tools. Popular releases lists Steam titles on the public popular-wishlist chart that are due this week or this month (exact wishlist counts are not published by Steam). Use genre chips to OR-filter by Steam tags (Action, RPG, Indie, and more); with none selected, everything in the window is shown. In-library titles sort to the top; Released chips mark titles that already shipped. Unowned rows can pin to the Library Wanted rail. Library news shows Steam community announcements for up to 20 games already in your library.',
+      'Release titles already in your library open game detail; others open the Steam Store. Want on an unowned row adds it to Wanted. In Library news, the game name opens detail and Open on Steam opens the announcement. Startup always force-refreshes news during the splash warm; the News page Refresh button also force-refetches. AchieveMe does not scrape third-party repack or crack sites.'
     ]
   },
   {

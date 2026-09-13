@@ -102,6 +102,10 @@ function openMockDb() {
         }
       }
 
+      if (normalized.startsWith('DELETE FROM WANTED_GAMES')) {
+        return { run() {} }
+      }
+
       throw new Error(`Unexpected SQL in mock: ${sql}`)
     }
   }

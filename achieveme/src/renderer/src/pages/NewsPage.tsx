@@ -111,6 +111,31 @@ export default function NewsPage({
   const [refreshing, setRefreshing] = useState(false)
   const [genreFilters, setGenreFilters] = useState<number[]>(() => loadGenreFilters())
   const [olderExpanded, setOlderExpanded] = useState(false)
+  const [wantedAppids, setWantedAppids] = useState<Set<string>>(() => new Set())
+  const [pinningAppid, setPinningAppid] = useState<string | null>(null)
+
+  useEffect(() => {
+    void window.api.listWantedGames().then((games) => {
+      setWantedAppids(new Set(games.map((g) => g.appid)))
+    })
+  }, [])
+
+  const handlePinWanted = async (release: NewsRelease): Promise<void> => {
+    if (pinningAppid || wantedAppids.has(release.appid)) return
+    setPinningAppid(release.appid)
+    try {
+      const result = await window.api.addWantedGame({
+        appid: release.appid,
+        name: release.name,
+        coverUrl: release.headerImage || undefined
+      })
+      if (result.ok) {
+        setWantedAppids((prev) => new Set(prev).add(release.appid))
+      }
+    } finally {
+      setPinningAppid(null)
+    }
+  }
 
   const fetchNews = useCallback(
     (options: GetNewsOptions = {}) => {
@@ -322,15 +347,36 @@ export default function NewsPage({
                           <ReleaseRowContent release={release} />
                         </button>
                       ) : (
-                        <a
-                          className="news-release-row"
-                          href={storeUrl(release.appid)}
-                          target="_blank"
-                          rel="noreferrer"
-                          aria-label={`Open ${release.name} on Steam Store`}
-                        >
-                          <ReleaseRowContent release={release} />
-                        </a>
+                        <div className="news-release-list__unowned">
+                          <a
+                            className="news-release-row"
+                            href={storeUrl(release.appid)}
+                            target="_blank"
+                            rel="noreferrer"
+                            aria-label={`Open ${release.name} on Steam Store`}
+                          >
+                            <ReleaseRowContent release={release} />
+                          </a>
+                          <Chip
+                            className="news-wanted-pin"
+                            active={wantedAppids.has(release.appid)}
+                            disabled={
+                              pinningAppid === release.appid || wantedAppids.has(release.appid)
+                            }
+                            aria-label={
+                              wantedAppids.has(release.appid)
+                                ? `${release.name} is on Wanted`
+                                : `Add ${release.name} to Wanted`
+                            }
+                            onClick={() => void handlePinWanted(release)}
+                          >
+                            {wantedAppids.has(release.appid)
+                              ? 'Wanted'
+                              : pinningAppid === release.appid
+                                ? '…'
+                                : 'Want'}
+                          </Chip>
+                        </div>
                       )}
                     </li>
                   ))}
