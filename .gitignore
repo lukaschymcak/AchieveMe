@@ -11,6 +11,7 @@ release/
 build/
 .cursor/
 .superpowers/
+.agents
 # Vite cache
 .vite/
 goldberg-files
@@ -51,3 +52,11 @@ Resorces/
 # Plan files
 plans/
 LuaTools.py
+CLEANUP_PLAN.md
+
+# Local dev & tooling artifacts
+.wrangler/
+.codex/
+.impeccable/
+_icons_snip.txt
+_rebuild_library.py

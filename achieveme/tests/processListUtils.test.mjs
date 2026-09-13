@@ -36,6 +36,14 @@ test('parseProcessList parses pid, process name, and optional path', () => {
   ])
 })
 
+test('parseProcessList parses literal backtick-t delimited output', () => {
+  const text = ['22340`tDawnWalker`t', '8`tGame`tC:\\Games\\Game.exe'].join('\n')
+  assert.deepEqual(parseProcessList(text), [
+    { pid: 22340, name: 'dawnwalker', executablePath: '' },
+    { pid: 8, name: 'game', executablePath: 'C:\\Games\\Game.exe' }
+  ])
+})
+
 test('pathsEqual is case and slash insensitive', () => {
   assert.equal(pathsEqual('C:/Games/Game.exe', 'c:\\games\\game.exe'), true)
   assert.equal(pathsEqual('C:\\Games\\A.exe', 'C:\\Games\\B.exe'), false)

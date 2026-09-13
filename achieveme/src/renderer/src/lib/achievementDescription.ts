@@ -6,16 +6,9 @@ export function achievementDescription(
 ): string | null {
   const isHidden = hidden === 1
   const isEarned = earned === 1
-
-  if (isHidden && !isEarned && !showDescriptions) {
-    return null
-  }
-  if (description.trim()) {
-    return description
-  }
-  if (isHidden && !isEarned && showDescriptions) {
-    return 'Hidden achievement'
-  }
+  if (isHidden && !isEarned && !showDescriptions) return null
+  if (description.trim()) return description
+  if (isHidden && !isEarned && showDescriptions) return 'Hidden achievement'
   return null
 }
 

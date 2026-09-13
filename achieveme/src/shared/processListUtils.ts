@@ -119,15 +119,17 @@ export const parseProcessList = (text: string): ProcessInfo[] => {
     // Keep trailing tabs so `pid\t` / `pid\tname\t` is not collapsed.
     const line = rawLine.replace(/^\s+/, '')
     if (/^processid\b/i.test(line) || /^pid\b/i.test(line)) continue
-    if (!line.includes('\t')) continue
+    const hasTab = line.includes('\t')
+    const hasBacktickT = line.includes('`t')
+    if (!hasTab && !hasBacktickT) continue
 
-    const parts = line.split('\t')
+    const parts = hasTab ? line.split('\t') : line.split('`t')
     const pidStr = (parts[0] ?? '').trim()
     let nameRaw = ''
     let exePath = ''
     if (parts.length >= 3) {
       nameRaw = (parts[1] ?? '').trim()
-      exePath = parts.slice(2).join('\t').trim()
+      exePath = parts.slice(2).join(hasTab ? '\t' : '`t').trim()
     } else {
       exePath = (parts[1] ?? '').trim()
     }

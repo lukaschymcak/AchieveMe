@@ -2,10 +2,10 @@ import { spawn } from 'node:child_process'
 import type { ProcessListFetchResult } from '../../shared/playtimeSessionUtils'
 import { formatProcessListError, parseProcessList } from '../../shared/processListUtils'
 
-const LIST_TIMEOUT_MS = 4_000
+const LIST_TIMEOUT_MS = 10_000
 
 const GET_PROCESS_COMMAND =
-  "Get-Process | ForEach-Object { $p = ''; try { $p = $_.Path } catch {}; '{0}`t{1}`t{2}' -f $_.Id, $_.ProcessName, $p }"
+  '$t = [char]9; Get-Process | ForEach-Object { $p = ""; try { $p = $_.Path } catch {}; "$($_.Id)$t$($_.ProcessName)$t$p" }'
 
 /**
  * True when a PID still exists (Node signal 0). Used for Play PIDs missing from snapshots.

@@ -47,32 +47,12 @@ let lastGoodProcesses: ProcessInfo[] = []
 let consecutiveProcessListReuses = 0
 const extraBasenameCache = new Map<string, { key: string; names: string[] }>()
 
-/**
- * Info-level playtime log (Electron main / `npm run dev` terminal).
- *
- * @param event - Short event name
- * @param detail - Optional structured fields
- */
 function playtimeLog(event: string, detail?: Record<string, unknown>): void {
-  if (detail && Object.keys(detail).length > 0) {
-    console.log(PLAYTIME_LOG_PREFIX, event, detail)
-    return
-  }
-  console.log(PLAYTIME_LOG_PREFIX, event)
+  detail ? console.log(PLAYTIME_LOG_PREFIX, event, detail) : console.log(PLAYTIME_LOG_PREFIX, event)
 }
 
-/**
- * Warn-level playtime log.
- *
- * @param event - Short event name
- * @param detail - Optional structured fields
- */
 function playtimeWarn(event: string, detail?: Record<string, unknown>): void {
-  if (detail && Object.keys(detail).length > 0) {
-    console.warn(PLAYTIME_LOG_PREFIX, event, detail)
-    return
-  }
-  console.warn(PLAYTIME_LOG_PREFIX, event)
+  detail ? console.warn(PLAYTIME_LOG_PREFIX, event, detail) : console.warn(PLAYTIME_LOG_PREFIX, event)
 }
 
 /**
@@ -177,12 +157,17 @@ function hideMainIfNeeded(): void {
 }
 
 function restoreMainIfHiddenForPlay(): void {
-  if (!didHideForPlay) return
-  didHideForPlay = false
   const win = resolveMainWindow?.() ?? null
   if (!win || win.isDestroyed()) return
-  if (!win.isVisible()) win.show()
-  if (win.isMinimized()) win.restore()
+  if (didHideForPlay) {
+    didHideForPlay = false
+    if (!win.isVisible()) win.show()
+    if (win.isMinimized()) win.restore()
+    win.focus()
+  } else if (win.isMinimized()) {
+    win.restore()
+    win.focus()
+  }
 }
 
 function persistSessionColumns(appid: string, startedAt: number, lastFlushAt: number): void {
