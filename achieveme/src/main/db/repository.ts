@@ -614,6 +614,14 @@ export function isWantedGame(db: Database.Database, appid: string): boolean {
   return Boolean(row)
 }
 
+/**
+ * Returns distinct appids present in the wanted_games table.
+ */
+export function getAllWantedAppids(db: Database.Database): string[] {
+  const rows = db.prepare('SELECT appid FROM wanted_games').all() as Array<{ appid: string }>
+  return rows.map((r) => r.appid)
+}
+
 // ─── Achievements ─────────────────────────────────────────────────────────────
 
 function prepareAchievementUpsert(db: Database.Database): Database.Statement {

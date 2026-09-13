@@ -16,9 +16,11 @@ import {
   getSteamLibraryHeroUrl,
   normalizeSteamIconUrl
 } from '../../shared/steamUrls.ts'
+import fs from 'node:fs'
 import {
   getAchievementsForGame,
   getAllGameAppids,
+  listWantedGames,
   replaceAchievementsForGame,
   upsertGame
 } from '../db/repository.ts'
@@ -29,13 +31,32 @@ import {
   getDefaultImageCacheDeps,
   getImagesCacheRoot
 } from './imageCacheProtocol.ts'
-import { prefetchGameImages } from './imageCacheService.ts'
+import { coverFilePath, ensureCoverCached, prefetchGameImages } from './imageCacheService.ts'
 import { regenerateProfileStats } from './profileStatsService.ts'
 import { enrichApp, getStoreCoverUrl } from './steamApiClient.ts'
 import { getNews } from './steamNewsService.ts'
 
 export type { BootWarmProgressListener }
 export { rawFromPersistedAchievements }
+
+/**
+ * Warms covers for all wanted games if not already on disk.
+ */
+export async function warmWantedCovers(db: Database.Database): Promise<void> {
+  const wanted = listWantedGames(db)
+  const deps = getDefaultImageCacheDeps()
+  await Promise.allSettled(
+    wanted.map(async (w) => {
+      const dest = coverFilePath(deps.cacheRoot, w.appid)
+      if (fs.existsSync(dest)) return
+      const remote =
+        w.coverUrl ||
+        (await getStoreCoverUrl(db, w.appid, false)) ||
+        `https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/${w.appid}/header.jpg`
+      await ensureCoverCached(deps, w.appid, remote)
+    })
+  )
+}
 
 /**
  * Warms one library game: schema/covers if stale, rarities always, images, hunter.
@@ -100,7 +121,9 @@ export async function runBootWarm(
   depsPartial?: Partial<BootWarmCoreDeps>
 ): Promise<BootWarmResult> {
   const deps: BootWarmCoreDeps = { ...buildDefaultCoreDeps(db), ...depsPartial }
-  return runBootWarmCore(onProgress, deps)
+  const result = await runBootWarmCore(onProgress, deps)
+  await warmWantedCovers(db).catch(() => {})
+  return result
 }
 
 let inflight: Promise<BootWarmResult> | null = null

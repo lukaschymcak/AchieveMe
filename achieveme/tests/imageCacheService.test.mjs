@@ -174,3 +174,18 @@ test('prefetchGameImages downloads cover hero and icons', async () => {
   // cover + hero + one unique icon
   assert.equal(urls.length, 3)
 })
+
+test('ensureCoverCached hits disk without remoteUrl (offline / missing remote)', async () => {
+  const deps = { cacheRoot }
+  const dest = coverFilePath(cacheRoot, '570')
+  fs.mkdirSync(path.dirname(dest), { recursive: true })
+  fs.writeFileSync(dest, 'offline-cover-bytes')
+
+  const hitWithoutUrl = await ensureCoverCached(deps, '570')
+  const hitWithEmptyUrl = await ensureCoverCached(deps, '570', '')
+
+  assert.equal(hitWithoutUrl.status, 'hit')
+  assert.equal(hitWithoutUrl.filePath, dest)
+  assert.equal(hitWithEmptyUrl.status, 'hit')
+  assert.equal(hitWithEmptyUrl.filePath, dest)
+})

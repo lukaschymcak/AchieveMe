@@ -1,3 +1,4 @@
+import fs from 'node:fs'
 import path from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { app, protocol, net } from 'electron'
@@ -6,6 +7,9 @@ import { getSteamLibraryHeroUrl, normalizeSteamIconUrl } from '../../shared/stea
 import { getDb } from '../db/database'
 import { getStoreCoverUrl } from './steamApiClient'
 import {
+  coverFilePath,
+  heroFilePath,
+  iconFilePath,
   ensureCoverCached,
   ensureHeroCached,
   ensureIconCached,
@@ -64,14 +68,34 @@ export function registerImageCacheProtocol(): void {
 
     try {
       if (parsed.kind === 'cover') {
-        const remoteUrl = await getStoreCoverUrl(getDb(), parsed.appid)
-        if (!remoteUrl) return notFound()
+        const dest = coverFilePath(deps.cacheRoot, parsed.appid)
+        if (fs.existsSync(dest)) {
+          return net.fetch(pathToFileURL(dest).href)
+        }
+
+        let remoteUrl = await getStoreCoverUrl(getDb(), parsed.appid)
+        if (!remoteUrl) {
+          const wantedRow = getDb()
+            .prepare('SELECT cover_url FROM wanted_games WHERE appid = ?')
+            .get(parsed.appid) as { cover_url?: string } | undefined
+          if (wantedRow?.cover_url) {
+            remoteUrl = wantedRow.cover_url
+          }
+        }
+        if (!remoteUrl) {
+          remoteUrl = `https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/${parsed.appid}/header.jpg`
+        }
+
         const result = await ensureCoverCached(deps, parsed.appid, remoteUrl)
         if (result.status !== 'hit' && result.status !== 'downloaded') return notFound()
         return net.fetch(pathToFileURL(result.filePath).href)
       }
 
       if (parsed.kind === 'hero') {
+        const dest = heroFilePath(deps.cacheRoot, parsed.appid)
+        if (fs.existsSync(dest)) {
+          return net.fetch(pathToFileURL(dest).href)
+        }
         const remoteUrl = getSteamLibraryHeroUrl(parsed.appid)
         if (!remoteUrl) return notFound()
         const result = await ensureHeroCached(deps, parsed.appid, remoteUrl)
@@ -82,6 +106,10 @@ export function registerImageCacheProtocol(): void {
       // icon
       const filename = parsed.filename
       if (!filename) return notFound()
+      const dest = iconFilePath(deps.cacheRoot, parsed.appid, filename)
+      if (fs.existsSync(dest)) {
+        return net.fetch(pathToFileURL(dest).href)
+      }
       const remoteUrl = normalizeSteamIconUrl(parsed.appid, filename)
       if (!remoteUrl) return notFound()
       const result = await ensureIconCached(deps, parsed.appid, filename, remoteUrl)

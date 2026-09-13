@@ -16,6 +16,8 @@ import { assertScannedInstallPath, scanInstalledGamesWithDb } from '../achieveme
 import { proposeInstallScanRoots } from '../../shared/installedGamesScanUtils'
 import { getStoreCoverUrl } from '../achievement/steamApiClient'
 import { cacheCoverUrl } from '../../shared/imageCacheUrls'
+import { coverFilePath, ensureCoverCached } from '../achievement/imageCacheService'
+import { getDefaultImageCacheDeps, getImagesCacheRoot } from '../achievement/imageCacheProtocol'
 import type {
   BootWarmProgress,
   BootWarmResult,
@@ -44,18 +46,39 @@ export function registerMiscHandlers(): void {
   ipcMain.handle('wanted:list', async (): Promise<WantedGame[]> => {
     const db = getDb()
     const games = listWantedGames(db)
+    const cacheRoot = getImagesCacheRoot()
     const out: WantedGame[] = []
     for (const g of games) {
-      const remoteCover = await getStoreCoverUrl(db, g.appid)
-      out.push({ ...g, coverUrl: remoteCover ? cacheCoverUrl(g.appid) : '' })
+      const dest = coverFilePath(cacheRoot, g.appid)
+      if (fs.existsSync(dest)) {
+        out.push({ ...g, coverUrl: cacheCoverUrl(g.appid) })
+      } else {
+        const remoteCover = await getStoreCoverUrl(db, g.appid)
+        const effective =
+          remoteCover ||
+          g.coverUrl ||
+          `https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/${g.appid}/header.jpg`
+        out.push({ ...g, coverUrl: effective ? cacheCoverUrl(g.appid) : '' })
+        if (effective) {
+          void ensureCoverCached(getDefaultImageCacheDeps(), g.appid, effective).catch(() => {})
+        }
+      }
     }
     return out
   })
 
   ipcMain.handle(
     'wanted:add',
-    (_event, input: { appid: string; name: string; coverUrl?: string }): WantedAddResult =>
-      addWantedGame(getDb(), input)
+    (_event, input: { appid: string; name: string; coverUrl?: string }): WantedAddResult => {
+      const result = addWantedGame(getDb(), input)
+      if (result.ok && result.created) {
+        const remote =
+          input.coverUrl ||
+          `https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/${input.appid}/header.jpg`
+        void ensureCoverCached(getDefaultImageCacheDeps(), input.appid, remote).catch(() => {})
+      }
+      return result
+    }
   )
 
   ipcMain.handle('wanted:remove', (_event, appid: string): void => {

@@ -22,6 +22,8 @@ function openMockDb() {
   const cache = new Map()
   /** @type {Set<string>} */
   const games = new Set()
+  /** @type {Set<string>} */
+  const wanted = new Set()
 
   const cacheKey = (appid, type) => `${appid}\0${type}`
 
@@ -92,6 +94,14 @@ function openMockDb() {
         }
       }
 
+      if (normalized === 'SELECT APPID FROM WANTED_GAMES') {
+        return {
+          all() {
+            return [...wanted].map((appid) => ({ appid }))
+          }
+        }
+      }
+
       if (normalized.startsWith('INSERT INTO GAMES')) {
         return {
           run(appid) {
@@ -105,6 +115,10 @@ function openMockDb() {
     /** @param {string} appid */
     _addGame(appid) {
       games.add(String(appid))
+    },
+    /** @param {string} appid */
+    _addWanted(appid) {
+      wanted.add(String(appid))
     }
   }
 }
@@ -138,6 +152,24 @@ test('pruneObsoleteAppData removes ephemeral api_cache types and keeps durable',
   assert.deepEqual(listImageAppidDirs(imagesRoot).sort(), ['570'])
   assert.equal(result.orphanImageDirsRemoved, 1)
   assert.deepEqual(getAllGameAppids(db), ['570'])
+
+  fs.rmSync(imagesRoot, { recursive: true, force: true })
+})
+
+test('pruneObsoleteAppData preserves image directories for wanted games', () => {
+  const db = openMockDb()
+  db._addGame('570')
+  db._addWanted('1297900')
+
+  const imagesRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'achieveme-img-'))
+  fs.mkdirSync(path.join(imagesRoot, '570'))
+  fs.mkdirSync(path.join(imagesRoot, '1297900'))
+  fs.mkdirSync(path.join(imagesRoot, '999999'))
+
+  const result = pruneObsoleteAppData(db, imagesRoot)
+
+  assert.equal(result.orphanImageDirsRemoved, 1)
+  assert.deepEqual(listImageAppidDirs(imagesRoot).sort(), ['1297900', '570'])
 
   fs.rmSync(imagesRoot, { recursive: true, force: true })
 })

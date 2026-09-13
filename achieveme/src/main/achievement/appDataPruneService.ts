@@ -11,7 +11,8 @@ import {
 import {
   deleteCacheEntriesByType,
   deleteCacheEntriesByTypePrefix,
-  getAllGameAppids
+  getAllGameAppids,
+  getAllWantedAppids
 } from '../db/repository.ts'
 import { pruneGameImages } from './imageCacheService.ts'
 
@@ -21,7 +22,7 @@ export type AppDataPruneResult = {
 }
 
 /**
- * Deletes ephemeral/obsolete api_cache rows and image folders for non-library appids.
+ * Deletes ephemeral/obsolete api_cache rows and image folders for non-library and non-wanted appids.
  *
  * @param db - Open SQLite database.
  * @param imagesRoot - Absolute `userData/images` path.
@@ -38,7 +39,9 @@ export function pruneObsoleteAppData(
   apiCacheRowsDeleted += deleteCacheEntriesByTypePrefix(db, 'news:')
 
   let orphanImageDirsRemoved = 0
-  const live = new Set(getAllGameAppids(db).filter((id) => /^\d+$/.test(id)))
+  const libraryAppids = getAllGameAppids(db)
+  const wantedAppids = getAllWantedAppids(db)
+  const live = new Set([...libraryAppids, ...wantedAppids].filter((id) => /^\d+$/.test(id)))
 
   if (fs.existsSync(imagesRoot)) {
     let entries: string[] = []

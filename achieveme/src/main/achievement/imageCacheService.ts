@@ -158,14 +158,16 @@ function isSafeFilename(filename: string): boolean {
 export async function ensureCoverCached(
   deps: ImageCacheDeps,
   appid: string,
-  remoteUrl: string
+  remoteUrl?: string
 ): Promise<EnsureCachedResult> {
-  if (!SAFE_APPID_RE.test(appid) || !remoteUrl) return { status: 'error' }
+  if (!SAFE_APPID_RE.test(appid)) return { status: 'error' }
   const dest = coverFilePath(deps.cacheRoot, appid)
   if (fs.existsSync(dest)) return { status: 'hit', filePath: dest }
+  if (!remoteUrl) return { status: 'error' }
 
   return withInFlight(flightKey('cover', appid), async () => {
     if (fs.existsSync(dest)) return { status: 'hit', filePath: dest }
+    if (!remoteUrl) return { status: 'error' }
 
     const result = await resolveDownloader(deps)(remoteUrl)
     if (!result.ok) return { status: result.status === 404 ? 'missing' : 'error' }
@@ -189,17 +191,19 @@ export async function ensureCoverCached(
 export async function ensureHeroCached(
   deps: ImageCacheDeps,
   appid: string,
-  remoteUrl: string
+  remoteUrl?: string
 ): Promise<EnsureCachedResult> {
-  if (!SAFE_APPID_RE.test(appid) || !remoteUrl) return { status: 'error' }
+  if (!SAFE_APPID_RE.test(appid)) return { status: 'error' }
   const dest = heroFilePath(deps.cacheRoot, appid)
-  const missing = heroMissingPath(deps.cacheRoot, appid)
   if (fs.existsSync(dest)) return { status: 'hit', filePath: dest }
+  const missing = heroMissingPath(deps.cacheRoot, appid)
   if (fs.existsSync(missing)) return { status: 'missing' }
+  if (!remoteUrl) return { status: 'error' }
 
   return withInFlight(flightKey('hero', appid), async () => {
     if (fs.existsSync(dest)) return { status: 'hit', filePath: dest }
     if (fs.existsSync(missing)) return { status: 'missing' }
+    if (!remoteUrl) return { status: 'error' }
 
     const result = await resolveDownloader(deps)(remoteUrl)
     if (!result.ok) {
@@ -236,17 +240,19 @@ export async function ensureIconCached(
   deps: ImageCacheDeps,
   appid: string,
   filename: string,
-  remoteUrl: string
+  remoteUrl?: string
 ): Promise<EnsureCachedResult> {
-  if (!SAFE_APPID_RE.test(appid) || !isSafeFilename(filename) || !remoteUrl) {
+  if (!SAFE_APPID_RE.test(appid) || !isSafeFilename(filename)) {
     return { status: 'error' }
   }
 
   const dest = iconFilePath(deps.cacheRoot, appid, filename)
   if (fs.existsSync(dest)) return { status: 'hit', filePath: dest }
+  if (!remoteUrl) return { status: 'error' }
 
   return withInFlight(flightKey('icon', appid, filename), async () => {
     if (fs.existsSync(dest)) return { status: 'hit', filePath: dest }
+    if (!remoteUrl) return { status: 'error' }
 
     const result = await resolveDownloader(deps)(remoteUrl)
     if (!result.ok) return { status: result.status === 404 ? 'missing' : 'error' }

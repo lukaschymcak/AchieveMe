@@ -21,7 +21,8 @@ import { normalizeProfileStats, regenerateProfileStats } from '../achievement/pr
 import { processAppId } from '../achievement/processAppId'
 import { scanAllSources } from '../achievement/discoveryService'
 import { pruneOrphanedGames } from '../achievement/watcherService'
-import { pruneAppImages } from '../achievement/imageCacheProtocol'
+import { pruneAppImages, getImagesCacheRoot } from '../achievement/imageCacheProtocol'
+import { coverFilePath } from '../achievement/imageCacheService'
 import { notifyLibraryUpdated } from '../achievement/libraryNotifyService'
 import { runStartupUpdateCheck } from '../achievement/manifestCheckerService'
 import type { ProfileStats, GameSummary, GameDetail, GameHunterStats } from '../../shared/types'
@@ -41,13 +42,21 @@ export function registerLibraryHandlers(): void {
   ipcMain.handle('get-all-games', async (): Promise<GameSummary[]> => {
     const db = getDb()
     const games = getAllGames(db)
+    const cacheRoot = getImagesCacheRoot()
     const summaries: GameSummary[] = []
     for (const g of games) {
-      const remoteCover = await getStoreCoverUrl(db, g.appid)
+      const dest = coverFilePath(cacheRoot, g.appid)
+      let coverUrl = ''
+      if (fs.existsSync(dest)) {
+        coverUrl = cacheCoverUrl(g.appid)
+      } else {
+        const remoteCover = await getStoreCoverUrl(db, g.appid)
+        coverUrl = remoteCover ? cacheCoverUrl(g.appid) : ''
+      }
       summaries.push({
         appid: g.appid,
         name: g.name,
-        cover_url: remoteCover ? cacheCoverUrl(g.appid) : '',
+        cover_url: coverUrl,
         total_achievements: g.total_achievements,
         unlocked_achievements: g.unlocked_achievements,
         completion_pct: g.completion_pct,
