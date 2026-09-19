@@ -6762,15 +6762,15 @@ button.dashboard-near__row:focus-visible {
   flex: 1 1 auto;
   overflow-x: auto;
   overflow-y: hidden;
-  scrollbar-width: thin;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
   overscroll-behavior-x: contain;
 }
 
-/* Let expanded chip faces paint over neighbors without clipping */
-.wanted-rail__scroller:has(.wanted-chip:hover),
-.wanted-rail__scroller:has(.wanted-chip:focus-within),
-.wanted-rail__scroller:has(.wanted-chip--menu-open) {
-  overflow-x: visible;
+.wanted-rail__scroller::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
 }
 
 .wanted-rail__hint {

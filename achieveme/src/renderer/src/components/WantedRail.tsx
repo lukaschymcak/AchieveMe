@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import type { WantedGame } from '../../../shared/types'
 import type { MenuPosition } from './GameCardMenu'
@@ -27,6 +27,8 @@ export default function WantedRail({
 }: Props): React.ReactElement {
   const [menuAppid, setMenuAppid] = useState<string | null>(null)
   const [menuPosition, setMenuPosition] = useState<MenuPosition | null>(null)
+  const railRef = useRef<HTMLDivElement>(null)
+  const scrollerRef = useRef<HTMLDivElement>(null)
 
   function closeMenu(): void {
     setMenuAppid(null)
@@ -49,8 +51,36 @@ export default function WantedRail({
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [menuAppid])
 
+  useEffect(() => {
+    const rail = railRef.current
+    const scroller = scrollerRef.current
+    if (!rail || !scroller) return
+
+    function handleWheel(e: WheelEvent): void {
+      const scroller = scrollerRef.current
+      if (!scroller || scroller.scrollWidth <= scroller.clientWidth) return
+
+      let delta = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY
+      if (e.deltaMode === 1) {
+        delta *= 33
+      } else if (e.deltaMode === 2) {
+        delta *= scroller.clientWidth
+      }
+
+      if (delta !== 0) {
+        e.preventDefault()
+        scroller.scrollLeft += delta
+      }
+    }
+
+    rail.addEventListener('wheel', handleWheel, { passive: false })
+    return () => {
+      rail.removeEventListener('wheel', handleWheel)
+    }
+  }, [])
+
   return (
-    <div className="wanted-rail" aria-label="Wanted games">
+    <div ref={railRef} className="wanted-rail" aria-label="Wanted games">
       <div className="wanted-rail__inner">
         <button
           type="button"
@@ -61,7 +91,7 @@ export default function WantedRail({
         >
           +
         </button>
-        <div className="wanted-rail__scroller" role="list">
+        <div ref={scrollerRef} className="wanted-rail__scroller" role="list">
           {loading ? (
             <span className="wanted-rail__hint" role="status">
               Loading…

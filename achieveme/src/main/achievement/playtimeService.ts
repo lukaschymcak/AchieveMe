@@ -169,13 +169,12 @@ function hideMainIfNeeded(): void {
 function restoreMainIfHiddenForPlay(): void {
   const win = resolveMainWindow?.() ?? null
   if (!win || win.isDestroyed()) return
+  // Only restore the window if this service was the one that hid it.
+  // Never un-minimize a window the user deliberately minimized.
   if (didHideForPlay) {
     didHideForPlay = false
     if (!win.isVisible()) win.show()
     if (win.isMinimized()) win.restore()
-    win.focus()
-  } else if (win.isMinimized()) {
-    win.restore()
     win.focus()
   }
 }
