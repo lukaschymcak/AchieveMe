@@ -5,7 +5,13 @@ import { app } from 'electron'
 import { loadSettings } from '../settings'
 import { processAppId } from './processAppId'
 import { getDb } from '../db/database'
-import { updateGameInstallPath, unignoreAppid, removeWantedGame, saveGameToolApply } from '../db/repository'
+import {
+  updateGameInstallPath,
+  unignoreAppid,
+  removeWantedGame,
+  saveGameToolApply,
+  getGame
+} from '../db/repository'
 import type { GoldbergApplyRequest } from '../../shared/types'
 import { expandEnv } from './savePathUtils'
 import {
@@ -15,20 +21,67 @@ import {
   validateDllPath
 } from './goldbergFolderUtils'
 import { installSteamSettings } from './goldbergSteamSettingsUtils'
+import { syncGseSavesToLudusavi } from './ludusaviCustomGames'
+import { resolveLudusaviGuiConfigPath } from './ludusaviConfigPatch'
 
 function resolveGeneratorDir(): string {
+  const candidates: string[] = []
+
   if (app.isPackaged) {
-    return path.join(process.resourcesPath, 'generate_emu_config')
+    candidates.push(path.join(process.resourcesPath, 'generate_emu_config'))
+    if (process.env.PORTABLE_EXECUTABLE_DIR) {
+      candidates.push(
+        path.join(process.env.PORTABLE_EXECUTABLE_DIR, 'resources', 'generate_emu_config')
+      )
+    }
   }
-  return path.join(app.getAppPath(), '..', 'goldberg-files', 'generate_emu_config')
+
+  candidates.push(
+    path.join(app.getAppPath(), '..', 'goldberg-files', 'generate_emu_config'),
+    path.join(app.getAppPath(), 'goldberg-files', 'generate_emu_config'),
+    path.join(app.getAppPath(), '..', '..', 'goldberg-files', 'generate_emu_config')
+  )
+
+  for (const candidate of candidates) {
+    if (fs.existsSync(path.join(candidate, 'generate_emu_config.exe'))) {
+      return candidate
+    }
+  }
+
+  return app.isPackaged
+    ? path.join(process.resourcesPath, 'generate_emu_config')
+    : path.join(app.getAppPath(), '..', 'goldberg-files', 'generate_emu_config')
 }
 
 /** Goldberg release root containing `regular/{x64|x86}/`. */
 function resolveReleaseDir(): string {
+  const candidates: string[] = []
+
   if (app.isPackaged) {
-    return path.join(process.resourcesPath, 'goldberg_release')
+    candidates.push(path.join(process.resourcesPath, 'goldberg_release'))
+    if (process.env.PORTABLE_EXECUTABLE_DIR) {
+      candidates.push(path.join(process.env.PORTABLE_EXECUTABLE_DIR, 'resources', 'goldberg_release'))
+    }
   }
-  return path.join(app.getAppPath(), '..', 'goldberg-files', 'release')
+
+  candidates.push(
+    path.join(app.getAppPath(), '..', 'goldberg-files', 'release'),
+    path.join(app.getAppPath(), 'goldberg-files', 'release'),
+    path.join(app.getAppPath(), '..', '..', 'goldberg-files', 'release')
+  )
+
+  for (const candidate of candidates) {
+    if (
+      fs.existsSync(path.join(candidate, 'regular', 'x64', 'steam_api64.dll')) ||
+      fs.existsSync(path.join(candidate, 'x64', 'steam_api64.dll'))
+    ) {
+      return candidate
+    }
+  }
+
+  return app.isPackaged
+    ? path.join(process.resourcesPath, 'goldberg_release')
+    : path.join(app.getAppPath(), '..', 'goldberg-files', 'release')
 }
 
 function readIniValue(iniText: string, section: string, key: string): string | null {
@@ -191,6 +244,16 @@ export async function applyGoldberg(
   unignoreAppid(getDb(), appid)
   removeWantedGame(getDb(), appid)
   await processAppId(appid, settings, true, true)
+  const game = getGame(getDb(), appid)
+  const gameTitle = game?.ludusavi_title || game?.name
+  const guiConfigPath = resolveLudusaviGuiConfigPath()
+  if (gameTitle && guiConfigPath) {
+    try {
+      syncGseSavesToLudusavi(appid, gameTitle, [savesDir], guiConfigPath)
+    } catch {
+      // Non-blocking
+    }
+  }
   updateGameInstallPath(getDb(), appid, gameDir)
   saveGameToolApply(getDb(), appid, {
     goldbergApplied: true,

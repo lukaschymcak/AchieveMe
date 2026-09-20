@@ -1,5 +1,9 @@
 import type { AppSettings, Game } from '../../shared/types'
-import type { LudusaviBackupResult } from './ludusaviService'
+import {
+  getActiveLudusaviConfigDir,
+  LUDUSAVI_FULL_BACKUP_LIMIT,
+  type LudusaviBackupResult
+} from './ludusaviService.ts'
 import {
   isChangedLudusaviBackup,
   isSafeLudusaviBackupId,
@@ -7,7 +11,11 @@ import {
   LUDUSAVI_UNCHANGED_SNAPSHOT_NOTE
 } from '../../shared/ludusaviApiUtils.ts'
 import { cloudSavesConfigured } from '../../shared/r2CloudSaveUtils.ts'
-import { isCloudSnapshotBackupId } from './ludusaviBackupArchive.ts'
+import {
+  isCloudSnapshotBackupId,
+  pruneOldLudusaviSnapshots,
+  resolveLudusaviGameBackupDir
+} from './ludusaviBackupArchive.ts'
 import { cloudSavesLog, cloudSavesWarn } from './cloudSavesDebugLog.ts'
 
 export type LudusaviBackupReason = 'startup' | 'session' | 'add' | 'manual'
@@ -38,6 +46,10 @@ export interface LudusaviBackupQueueDeps {
     appid: string
     title: string
   }) => Promise<{ ok: boolean; softNote?: string }>
+  /**
+   * Optional snapshot pruning callback. Defaults to pruning local snapshots beyond limit.
+   */
+  pruneSnapshots?: (title: string) => Promise<void>
   nowSeconds?: () => number
 }
 
@@ -175,6 +187,21 @@ export function createLudusaviBackupQueue(deps: LudusaviBackupQueueDeps): Ludusa
       if (result.ok) {
         let softNote = ''
         if (op === 'backup') {
+          // Rotate local snapshots: prune oldest beyond limit
+          if (deps.pruneSnapshots) {
+            await deps.pruneSnapshots(title).catch(() => undefined)
+          } else {
+            try {
+              const configDir = getActiveLudusaviConfigDir()
+              if (configDir && title) {
+                const gameDir = resolveLudusaviGameBackupDir(configDir, title, { apiBackupPath: null })
+                await pruneOldLudusaviSnapshots(gameDir, LUDUSAVI_FULL_BACKUP_LIMIT)
+              }
+            } catch {
+              // Non-blocking
+            }
+          }
+
           if (isUnchangedLudusaviBackup(result)) {
             softNote = LUDUSAVI_UNCHANGED_SNAPSHOT_NOTE
             cloudSavesLog('queue.auto-upload.skip', {

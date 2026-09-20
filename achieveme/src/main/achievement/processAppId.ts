@@ -1,3 +1,4 @@
+import path from 'node:path'
 import { getDb } from '../db/database'
 import {
   upsertGame,
@@ -14,7 +15,13 @@ import { parseAchievementsBySource } from './parsers/parseBySource'
 import { mergeRawAchievements } from './rawMerge'
 import { enrichApp, getStoreCoverUrl } from './steamApiClient'
 import { regenerateProfileStats } from './profileStatsService'
-import { encodePortablePath, GOLDBERG_JSON_SOURCES } from './savePathUtils'
+import {
+  encodePortablePath,
+  GOLDBERG_JSON_SOURCES,
+  getGseSaveFoldersForAppid
+} from './savePathUtils'
+import { syncGseSavesToLudusavi } from './ludusaviCustomGames'
+import { resolveLudusaviGuiConfigPath } from './ludusaviConfigPatch'
 import { notifyLibraryUpdated } from './libraryNotifyService'
 import { diffAchievements } from './achievementDiff'
 import { notifyPlatinumUnlock, notifyUnlocks } from './unlockNotifyService'
@@ -105,6 +112,24 @@ export async function processAppId(
   // 5. Write to SQLite (replace drops orphan rows like invented INI meta names)
   upsertGame(db, enriched.game)
   replaceAchievementsForGame(db, appid, enriched.achievements)
+
+  // 5b. Auto-register GSE / Goldberg save folders into Ludusavi GUI config.yaml
+  try {
+    const guiConfigPath = resolveLudusaviGuiConfigPath()
+    const title = enriched.game.ludusavi_title || enriched.game.name
+    if (guiConfigPath && title) {
+      const gseFromDiscovery = forThisApp
+        .filter((d) => GOLDBERG_JSON_SOURCES.includes(d.source))
+        .map((d) => path.dirname(d.filePath))
+      const gseFromRoots = getGseSaveFoldersForAppid(appid, settings)
+      const saveFolders = [...new Set([...gseFromRoots, ...gseFromDiscovery])]
+      if (saveFolders.length > 0) {
+        syncGseSavesToLudusavi(appid, title, saveFolders, guiConfigPath)
+      }
+    }
+  } catch {
+    // Non-blocking
+  }
 
   // 6. Rebuild profile_stats.json
   regenerateProfileStats(db)

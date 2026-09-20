@@ -1,6 +1,7 @@
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
+import { cleanCustomGamesYaml } from './ludusaviCustomGames.ts'
 
 /**
  * Ensures parent directories exist and returns the config.yaml path.
@@ -83,7 +84,16 @@ export function syncIsolatedLudusaviConfigFromGui(
   }
 
   if (gui) {
-    fs.copyFileSync(gui, dest)
+    try {
+      const guiRaw = fs.readFileSync(gui, 'utf8')
+      const cleaned = cleanCustomGamesYaml(guiRaw)
+      fs.writeFileSync(dest, cleaned, 'utf8')
+      if (cleaned !== guiRaw) {
+        fs.writeFileSync(gui, cleaned, 'utf8')
+      }
+    } catch {
+      fs.copyFileSync(gui, dest)
+    }
   } else if (!fs.existsSync(dest)) {
     return { ok: false, syncedFromGui: false }
   }
@@ -110,7 +120,7 @@ export function patchRclonePathInConfigYaml(configYaml: string, rcloneExe: strin
   const exe = String(rcloneExe || '').trim().replace(/\\/g, '/')
   if (!exe) return String(configYaml || '')
 
-  let text = String(configYaml || '')
+  const text = String(configYaml || '')
   // Match apps.rclone.path: "..." or path: ... under a rclone block (best-effort).
   const pathLineRe = /^([ \t]*path:[ \t]*).+$/m
   if (/^\s*rclone\s*:/m.test(text) && pathLineRe.test(text)) {
@@ -153,7 +163,7 @@ export function patchRclonePathInConfigYaml(configYaml: string, rcloneExe: strin
  */
 export function patchCloudSynchronizeInConfigYaml(configYaml: string, enabled: boolean): string {
   const value = enabled ? 'true' : 'false'
-  let text = String(configYaml || '')
+  const text = String(configYaml || '')
   if (/^\s*synchronize\s*:/m.test(text)) {
     return text.replace(/^([ \t]*synchronize:[ \t]*).+$/m, `$1${value}`)
   }

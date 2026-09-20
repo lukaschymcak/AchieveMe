@@ -332,3 +332,104 @@ test('create and extract archive round-trips paths longer than 100 bytes', async
   )
   assert.equal(await fs.promises.readFile(restored, 'utf8'), 'LONGPATH')
 })
+
+test('pruneOldLudusaviSnapshots rotates oldest snapshots, protects cloud-* and files', async () => {
+  const { pruneOldLudusaviSnapshots } = await import(
+    pathToFileURL(path.join(rootDir, '../src/main/achievement/ludusaviBackupArchive.ts')).href
+  )
+  const base = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'achieveme-prune-test-'))
+  const gameDir = path.join(base, 'Game')
+  await fs.promises.mkdir(gameDir, { recursive: true })
+
+  // Create mapping.yaml file (must be preserved)
+  await fs.promises.writeFile(path.join(gameDir, 'mapping.yaml'), 'name: Game\n')
+
+  // Create 6 local snapshots (oldest to newest)
+  const snaps = [
+    '2024-01-01T10-00-00', // oldest
+    '2024-01-02T10-00-00',
+    '2024-01-03T10-00-00',
+    '2024-01-04T10-00-00',
+    '2024-01-05T10-00-00',
+    '2024-01-06T10-00-00'  // newest
+  ]
+  for (const snap of snaps) {
+    await fs.promises.mkdir(path.join(gameDir, snap), { recursive: true })
+    await fs.promises.writeFile(path.join(gameDir, snap, 'data.bin'), snap)
+  }
+
+  // Create a cloud snapshot folder (MUST NOT be pruned)
+  const cloudSnap = 'cloud-11112222333344445555666677778888'
+  await fs.promises.mkdir(path.join(gameDir, cloudSnap), { recursive: true })
+  await fs.promises.writeFile(path.join(gameDir, cloudSnap, 'cloud.bin'), 'cloud')
+
+  try {
+    // Non-existent folder returns pruned 0
+    assert.deepEqual(await pruneOldLudusaviSnapshots(path.join(base, 'missing'), 5), { pruned: 0 })
+
+    // When limit is 6, none pruned
+    assert.deepEqual(await pruneOldLudusaviSnapshots(gameDir, 6), { pruned: 0 })
+
+    // When limit is 5, 1 pruned (the oldest: 2024-01-01T10-00-00)
+    const result = await pruneOldLudusaviSnapshots(gameDir, 5)
+    assert.deepEqual(result, { pruned: 1 })
+
+    // Check disk: oldest is deleted
+    assert.equal(fs.existsSync(path.join(gameDir, '2024-01-01T10-00-00')), false)
+    // The other 5 local snapshots remain
+    for (let i = 1; i < snaps.length; i++) {
+      assert.equal(fs.existsSync(path.join(gameDir, snaps[i])), true)
+    }
+
+    // Cloud snapshot is completely untouched
+    assert.equal(fs.existsSync(path.join(gameDir, cloudSnap)), true)
+
+    // mapping.yaml is completely untouched
+    assert.equal(fs.existsSync(path.join(gameDir, 'mapping.yaml')), true)
+
+    // Prune down to 3
+    const pruneToThree = await pruneOldLudusaviSnapshots(gameDir, 3)
+    assert.deepEqual(pruneToThree, { pruned: 2 })
+    // Remaining snapshots should be the 3 newest: 2024-01-04, 2024-01-05, 2024-01-06
+    assert.equal(fs.existsSync(path.join(gameDir, '2024-01-02T10-00-00')), false)
+    assert.equal(fs.existsSync(path.join(gameDir, '2024-01-03T10-00-00')), false)
+    assert.equal(fs.existsSync(path.join(gameDir, '2024-01-04T10-00-00')), true)
+    assert.equal(fs.existsSync(path.join(gameDir, '2024-01-05T10-00-00')), true)
+    assert.equal(fs.existsSync(path.join(gameDir, '2024-01-06T10-00-00')), true)
+    assert.equal(fs.existsSync(path.join(gameDir, cloudSnap)), true)
+  } finally {
+    await fs.promises.rm(base, { recursive: true, force: true })
+  }
+})
+
+test('pruneOldLudusaviSnapshots correctly parses and sorts Ludusavi backup-YYYYMMDDTHHMMSSZ naming', async () => {
+  const { pruneOldLudusaviSnapshots } = await import(
+    pathToFileURL(path.join(rootDir, '../src/main/achievement/ludusaviBackupArchive.ts')).href
+  )
+  const base = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'achieveme-compact-prune-'))
+  const gameDir = path.join(base, 'Onimusha')
+  await fs.promises.mkdir(gameDir, { recursive: true })
+
+  const snaps = [
+    'backup-20260911T100000Z', // oldest
+    'backup-20260912T100000Z',
+    'backup-20260913T100000Z',
+    'backup-20260914T100000Z'  // newest
+  ]
+  for (const snap of snaps) {
+    await fs.promises.mkdir(path.join(gameDir, snap))
+  }
+
+  try {
+    const res = await pruneOldLudusaviSnapshots(gameDir, 2)
+    assert.equal(res.pruned, 2)
+    assert.equal(fs.existsSync(path.join(gameDir, 'backup-20260911T100000Z')), false)
+    assert.equal(fs.existsSync(path.join(gameDir, 'backup-20260912T100000Z')), false)
+    assert.equal(fs.existsSync(path.join(gameDir, 'backup-20260913T100000Z')), true)
+    assert.equal(fs.existsSync(path.join(gameDir, 'backup-20260914T100000Z')), true)
+  } finally {
+    await fs.promises.rm(base, { recursive: true, force: true })
+  }
+})
+
+

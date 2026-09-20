@@ -1,3 +1,4 @@
+import fs from 'node:fs'
 import path from 'node:path'
 import type { AppSettings, SourceId } from '../../shared/types'
 
@@ -108,3 +109,47 @@ export function encodePortablePath(
     relativePath: path.basename(filePath)
   }
 }
+
+/**
+ * Returns existing Goldberg/GSE save folder directories for an appid.
+ * Checks default roots (%APPDATA%\GSE Saves, %APPDATA%\Goldberg SteamEmu Saves)
+ * and settings.customWatchFolders.
+ */
+export function getGseSaveFoldersForAppid(appid: string, settings: AppSettings): string[] {
+  const cleanAppid = String(appid || '').trim()
+  if (!cleanAppid) return []
+
+  const candidateDirs: string[] = []
+  for (const source of GOLDBERG_JSON_SOURCES) {
+    for (const root of getDefaultRootsForSource(source)) {
+      if (root) {
+        candidateDirs.push(path.join(root, cleanAppid))
+      }
+    }
+  }
+  for (const customRoot of settings.customWatchFolders || []) {
+    if (customRoot && customRoot.trim()) {
+      candidateDirs.push(path.join(customRoot.trim(), cleanAppid))
+    }
+  }
+
+  const existingFolders: string[] = []
+  const seen = new Set<string>()
+
+  for (const dir of candidateDirs) {
+    const resolved = path.resolve(dir)
+    const key = resolved.toLowerCase()
+    if (seen.has(key)) continue
+    seen.add(key)
+    try {
+      if (fs.existsSync(resolved) && fs.statSync(resolved).isDirectory()) {
+        existingFolders.push(resolved)
+      }
+    } catch {
+      // Ignore filesystem access errors
+    }
+  }
+
+  return existingFolders
+}
+

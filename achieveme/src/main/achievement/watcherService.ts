@@ -8,6 +8,9 @@ import { getWatchRoots, scanAllSources } from './discoveryService'
 import { processAppId } from './processAppId'
 import { regenerateProfileStats } from './profileStatsService'
 import { pruneAppImages } from './imageCacheProtocol'
+import { getGseSaveFoldersForAppid } from './savePathUtils'
+import { syncGseSavesToLudusavi } from './ludusaviCustomGames'
+import { resolveLudusaviGuiConfigPath } from './ludusaviConfigPatch'
 
 let watcher: FSWatcher | null = null
 const debounceTimers = new Map<string, NodeJS.Timeout>()
@@ -76,6 +79,25 @@ async function runInitialScan(settings: AppSettings): Promise<void> {
 
   for (const appid of appids) {
     await processAppId(appid, settings)
+  }
+
+  // Backfill GSE / Goldberg save folders into Ludusavi GUI config for all active games in library
+  try {
+    const guiConfigPath = resolveLudusaviGuiConfigPath()
+    if (guiConfigPath) {
+      const allGames = getAllGames(getDb())
+      for (const game of allGames) {
+        if (ignored.has(game.appid)) continue
+        const title = game.ludusavi_title || game.name
+        if (!title) continue
+        const gseFolders = getGseSaveFoldersForAppid(game.appid, settings)
+        if (gseFolders.length > 0) {
+          syncGseSavesToLudusavi(game.appid, title, gseFolders, guiConfigPath)
+        }
+      }
+    }
+  } catch {
+    // Non-blocking
   }
 }
 

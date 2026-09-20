@@ -559,3 +559,28 @@ test('restore missing title sets missing status', async () => {
   const last = statuses[statuses.length - 1]
   assert.equal(last.status, 'missing')
 })
+
+test('backup queue triggers pruneSnapshots callback after successful backup', async () => {
+  const prunedTitles = []
+  const queue = createLudusaviBackupQueue({
+    loadSettings: () => baseSettings(),
+    getAllGames: () => [],
+    getGame: () => makeGame('570', { ludusavi_title: 'Dota 2' }),
+    updateGameBackupStatus: () => undefined,
+    notifyLibraryUpdated: () => undefined,
+    validateLudusaviPath: (p) => p,
+    findTitleBySteamId: async () => 'Dota 2',
+    backupGame: async () => ({ ok: true, change: 'Different' }),
+    restoreGame: async () => ({ ok: true }),
+    pruneSnapshots: async (title) => {
+      prunedTitles.push(title)
+    },
+    nowSeconds: () => 10
+  })
+
+  queue.scheduleGameBackup('570', 'manual')
+  await queue.drain()
+
+  assert.deepEqual(prunedTitles, ['Dota 2'])
+})
+

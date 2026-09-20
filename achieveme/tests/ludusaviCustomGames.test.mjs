@@ -80,12 +80,12 @@ test('addCustomGameFilePath is idempotent', () => {
   assert.equal(once, fixture)
 })
 
-test('addCustomGameFilePath creates merge game when title is new', () => {
+test('addCustomGameFilePath creates extend game when title is new', () => {
   const next = addCustomGameFilePath(fixture, 'Balatro', 'E:\\Saves\\Balatro')
   const paths = listCustomGameFilePaths(next, 'Balatro')
   assert.deepEqual(paths, ['E:/Saves/Balatro'])
   assert.match(next, /name:\s*"Balatro"/)
-  assert.match(next, /integration:\s*merge/)
+  assert.match(next, /integration:\s*extend/)
 })
 
 test('addCustomGameFilePath creates customGames block when missing', () => {
@@ -150,3 +150,142 @@ test('write helpers persist custom path into a GUI config file', async () => {
     fs.rmSync(base, { recursive: true, force: true })
   }
 })
+
+test('syncGseSavesToLudusavi registers existing save folders idempotently', async () => {
+  const { syncGseSavesToLudusavi, listLudusaviGuiCustomPaths } = await import(
+    pathToFileURL(path.join(rootDir, '../src/main/achievement/ludusaviCustomGames.ts')).href
+  )
+  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'ludusavi-sync-gse-'))
+  const guiFile = path.join(base, 'config.yaml')
+  fs.writeFileSync(guiFile, fixture, 'utf8')
+  const gseDir = path.join(base, '2638890')
+  fs.mkdirSync(gseDir)
+
+  try {
+    // Missing config or empty folders returns ok with empty added
+    assert.deepEqual(syncGseSavesToLudusavi('2638890', 'Onimusha: Way of the Sword', [], guiFile), {
+      ok: true,
+      added: []
+    })
+    assert.deepEqual(syncGseSavesToLudusavi('2638890', 'Onimusha: Way of the Sword', [gseDir], null), {
+      ok: true,
+      added: []
+    })
+
+    // First sync adds the folder
+    const firstSync = syncGseSavesToLudusavi('2638890', 'Onimusha: Way of the Sword', [gseDir], guiFile)
+    assert.equal(firstSync.ok, true)
+    assert.equal(firstSync.added.length, 1)
+
+    const listed = listLudusaviGuiCustomPaths(guiFile, 'Onimusha: Way of the Sword')
+    assert.ok(listed.some((p) => p.toLowerCase() === gseDir.replace(/\\/g, '/').toLowerCase()))
+
+    // Second sync is idempotent
+    const secondSync = syncGseSavesToLudusavi('2638890', 'Onimusha: Way of the Sword', [gseDir], guiFile)
+    assert.equal(secondSync.ok, true)
+    assert.equal(secondSync.added.length, 1)
+
+    const listedAfter = listLudusaviGuiCustomPaths(guiFile, 'Onimusha: Way of the Sword')
+    // No duplicate entries
+    const matching = listedAfter.filter(
+      (p) => p.toLowerCase() === gseDir.replace(/\\/g, '/').toLowerCase()
+    )
+    assert.equal(matching.length, 1)
+  } finally {
+    fs.rmSync(base, { recursive: true, force: true })
+  }
+})
+
+test('getGseSaveFoldersForAppid returns existing folders and skips missing', async () => {
+  const { getGseSaveFoldersForAppid } = await import(
+    pathToFileURL(path.join(rootDir, '../src/main/achievement/savePathUtils.ts')).href
+  )
+  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'save-folders-test-'))
+  const customWatch = path.join(base, 'CustomSaves')
+  const customAppidDir = path.join(customWatch, '12345')
+  fs.mkdirSync(customAppidDir, { recursive: true })
+
+  try {
+    const settings = {
+      customWatchFolders: [customWatch]
+    }
+    const found = getGseSaveFoldersForAppid('12345', settings)
+    assert.ok(found.some((p) => p.toLowerCase() === customAppidDir.toLowerCase()))
+
+    // Non-existent appid returns empty
+    const notFound = getGseSaveFoldersForAppid('999999999', settings)
+    assert.equal(notFound.length, 0)
+  } finally {
+    fs.rmSync(base, { recursive: true, force: true })
+  }
+})
+
+test('addCustomGameFilePath properly replaces customGames: [] without creating duplicates', async () => {
+  const { addCustomGameFilePath } = await import(
+    pathToFileURL(path.join(rootDir, '../src/main/achievement/ludusaviCustomGames.ts')).href
+  )
+  const yamlWithEmpty = [
+    'backup:',
+    '  path: "C:/Users/Luky/ludusavi-backup"',
+    'customGames: []',
+    'apps:',
+    '  rclone:',
+    '    path: ""'
+  ].join('\n')
+
+  const updated = addCustomGameFilePath(
+    yamlWithEmpty,
+    'Onimusha: Way of the Sword',
+    'C:/Users/Luky/AppData/Roaming/GSE Saves/2638890'
+  )
+
+  // Must have exactly one customGames: occurrence
+  const matches = updated.match(/customGames:/g) || []
+  assert.equal(matches.length, 1)
+  assert.equal(updated.includes('customGames: []'), false)
+  assert.match(updated, /name: "Onimusha: Way of the Sword"/)
+})
+
+test('cleanCustomGamesYaml and addCustomGameFilePath heal duplicate customGames: sections', async () => {
+  const { cleanCustomGamesYaml, addCustomGameFilePath, listCustomGameFilePaths } = await import(
+    pathToFileURL(path.join(rootDir, '../src/main/achievement/ludusaviCustomGames.ts')).href
+  )
+  const duplicatedYaml = [
+    'backup:',
+    '  path: "C:/Users/Luky/ludusavi-backup"',
+    'customGames: []',
+    'customGames:',
+    '  - name: "Dragon\'s Dogma 2"',
+    '    integration: merge',
+    '    files:',
+    '      - "C:/Users/Luky/AppData/Roaming/GSE Saves/2054970"',
+    '    registry: []',
+    '    installDir: []',
+    '    winePrefix: []'
+  ].join('\n')
+
+  // cleanCustomGamesYaml collapses into 1 section
+  const cleaned = cleanCustomGamesYaml(duplicatedYaml)
+  const cleanedMatches = cleaned.match(/customGames:/g) || []
+  assert.equal(cleanedMatches.length, 1)
+  assert.deepEqual(listCustomGameFilePaths(cleaned, "Dragon's Dogma 2"), [
+    'C:/Users/Luky/AppData/Roaming/GSE Saves/2054970'
+  ])
+
+  // addCustomGameFilePath also heals the duplication while adding a second game
+  const withBoth = addCustomGameFilePath(
+    duplicatedYaml,
+    'Onimusha: Way of the Sword',
+    'C:/Users/Luky/AppData/Roaming/GSE Saves/2638890'
+  )
+  const withBothMatches = withBoth.match(/customGames:/g) || []
+  assert.equal(withBothMatches.length, 1)
+  assert.deepEqual(listCustomGameFilePaths(withBoth, "Dragon's Dogma 2"), [
+    'C:/Users/Luky/AppData/Roaming/GSE Saves/2054970'
+  ])
+  assert.deepEqual(listCustomGameFilePaths(withBoth, 'Onimusha: Way of the Sword'), [
+    'C:/Users/Luky/AppData/Roaming/GSE Saves/2638890'
+  ])
+})
+
+

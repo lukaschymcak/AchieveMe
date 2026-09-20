@@ -912,3 +912,108 @@ export async function extractLudusaviBackupArchive(
     }
   }
 }
+
+/**
+ * Prunes the oldest local Ludusavi snapshot directories in a game's backup directory,
+ * keeping at most `limit` newest snapshots.
+ *
+ * Rules:
+ * - Skips cloud snapshots (`isCloudSnapshotBackupId` / starting with `cloud-`)
+ * - Protects mapping.yaml and files (only inspects directories)
+ * - Safe path checking (must be strictly inside gameBackupDir)
+ * - Sorts by timestamp in name or mtimeMs descending (newest first)
+ * - Deletes any snapshot beyond `limit`
+ * - Non-blocking error handling
+ *
+ * @param gameBackupDir - Absolute path to `{backupRoot}/{title}` directory.
+ * @param limit - Max number of local snapshots to retain (default: 5).
+ */
+export async function pruneOldLudusaviSnapshots(
+  gameBackupDir: string,
+  limit: number = 5
+): Promise<{ pruned: number }> {
+  const root = path.resolve(String(gameBackupDir || '').trim())
+  if (!root || limit <= 0) return { pruned: 0 }
+
+  try {
+    if (!fs.existsSync(root) || !fs.statSync(root).isDirectory()) {
+      return { pruned: 0 }
+    }
+  } catch {
+    return { pruned: 0 }
+  }
+
+  let entries: fs.Dirent[]
+  try {
+    entries = await fs.promises.readdir(root, { withFileTypes: true })
+  } catch {
+    return { pruned: 0 }
+  }
+
+  const snapshots: Array<{ name: string; fullPath: string; timeMs: number }> = []
+
+  for (const entry of entries) {
+    if (!entry.isDirectory()) continue
+    const name = entry.name
+    // Skip cloud snapshots
+    if (isCloudSnapshotBackupId(name)) continue
+    // Skip hidden folders
+    if (name.startsWith('.')) continue
+
+    const fullPath = path.resolve(root, name)
+    if (!isDirInsideRoot(root, fullPath)) continue
+
+    let timeMs = 0
+    const compactMatch = /^backup-(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})(.*)$/i.exec(name)
+    if (compactMatch) {
+      const iso = `${compactMatch[1]}-${compactMatch[2]}-${compactMatch[3]}T${compactMatch[4]}:${compactMatch[5]}:${compactMatch[6]}${compactMatch[7] || 'Z'}`
+      const parsed = Date.parse(iso)
+      if (Number.isFinite(parsed) && parsed > 0) timeMs = parsed
+    }
+
+    if (!timeMs) {
+      const isoLike = name.replace(/^(\d{4}-\d{2}-\d{2})T(\d{2})[-_](\d{2})[-_](\d{2})(.*)$/, '$1T$2:$3:$4$5')
+      const parsedIso = Date.parse(isoLike)
+      if (Number.isFinite(parsedIso) && parsedIso > 0) {
+        timeMs = parsedIso
+      } else {
+        const direct = Date.parse(name)
+        if (Number.isFinite(direct) && direct > 0) {
+          timeMs = direct
+        } else {
+          try {
+            const stat = fs.statSync(fullPath)
+            timeMs = stat.mtimeMs
+          } catch {
+            timeMs = 0
+          }
+        }
+      }
+    }
+
+    snapshots.push({ name, fullPath, timeMs })
+  }
+
+  snapshots.sort((a, b) => b.timeMs - a.timeMs)
+
+  if (snapshots.length <= limit) {
+    return { pruned: 0 }
+  }
+
+  const toPrune = snapshots.slice(limit)
+  let prunedCount = 0
+
+  for (const snap of toPrune) {
+    try {
+      if (isDirInsideRoot(root, snap.fullPath) && !isCloudSnapshotBackupId(snap.name)) {
+        await fs.promises.rm(snap.fullPath, { recursive: true, force: true })
+        prunedCount++
+      }
+    } catch {
+      // Ignore individual deletion failures
+    }
+  }
+
+  return { pruned: prunedCount }
+}
+

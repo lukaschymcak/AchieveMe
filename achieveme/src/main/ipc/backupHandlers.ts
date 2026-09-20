@@ -10,7 +10,8 @@ import {
   listGameBackups,
   refreshAchieveMeLudusaviConfigFromGui,
   restoreGame,
-  validateLudusaviPath
+  validateLudusaviPath,
+  LUDUSAVI_FULL_BACKUP_LIMIT
 } from '../achievement/ludusaviService'
 import {
   addLudusaviGuiCustomPath,
@@ -18,6 +19,10 @@ import {
   removeLudusaviGuiCustomPath
 } from '../achievement/ludusaviCustomGames'
 import { resolveLudusaviGuiConfigPath } from '../achievement/ludusaviConfigPatch'
+import {
+  pruneOldLudusaviSnapshots,
+  resolveLudusaviGameBackupDir
+} from '../achievement/ludusaviBackupArchive'
 import type { LudusaviSnapshot } from '../../shared/ludusaviApiUtils'
 import { isSafeLudusaviBackupId } from '../../shared/ludusaviApiUtils'
 import { getAchieveMeLudusaviConfigDir } from '../../shared/ludusaviCloudUtils'
@@ -77,6 +82,11 @@ export function initBackupQueue(): void {
       const result = await uploadGameCloudSave({ settings, appid, title, configDir, outputDir })
       if (result.ok) return { ok: true }
       return { ok: false, softNote: result.softNote || undefined }
+    },
+    pruneSnapshots: async (title: string) => {
+      const configDir = getAchieveMeLudusaviConfigDir(app.getPath('userData'))
+      const gameDir = resolveLudusaviGameBackupDir(configDir, title, { apiBackupPath: null })
+      await pruneOldLudusaviSnapshots(gameDir, LUDUSAVI_FULL_BACKUP_LIMIT)
     }
   })
 }
