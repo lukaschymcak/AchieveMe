@@ -1,0 +1,52 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'achieveme/**'
+      - 'goldberg-files/**'
+      - '.github/workflows/release.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build & Publish Release
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: achieveme/package-lock.json
+
+      - name: Install dependencies
+        working-directory: achieveme
+        run: npm ci
+
+      - name: Rebuild native dependencies
+        working-directory: achieveme
+        run: npm run postinstall
+
+      - name: Run automated tests
+        working-directory: achieveme
+        run: npm test
+
+      - name: Run TypeScript typecheck
+        working-directory: achieveme
+        run: npm run typecheck
+
+      - name: Build and publish release
+        working-directory: achieveme
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npm run build -- --publish always

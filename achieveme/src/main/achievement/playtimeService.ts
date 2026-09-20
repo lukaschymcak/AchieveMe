@@ -27,7 +27,6 @@ import {
 
 const POLL_INTERVAL_MS = 2_000
 const PROCESS_LIST_REUSE_LOG_EVERY = 15
-const PLAYTIME_LOG_PREFIX = '[playtime]'
 
 type ActiveSession = {
   sessionStartMs: number

@@ -7005,3 +7005,113 @@ button.dashboard-near__row:focus-visible {
     transform: none !important;
   }
 }
+
+/* ─────────────────────────────────────────────────────────────
+   In-App Auto-Update Banner
+   ───────────────────────────────────────────────────────────── */
+
+.update-banner {
+  position: fixed;
+  top: 18px;
+  right: 24px;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 18px;
+  max-width: min(520px, calc(100vw - 48px));
+  background: oklch(14% 0.016 275 / 0.96);
+  border: 1px solid color-mix(in oklch, var(--color-progress) 45%, var(--border-dim));
+  border-radius: 12px;
+  box-shadow: 0 16px 36px oklch(4% 0.02 275 / 0.65), 0 0 20px color-mix(in oklch, var(--color-progress) 15%, transparent);
+  backdrop-filter: blur(12px);
+  animation: update-banner-in 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes update-banner-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.update-banner--downloading {
+  border-color: color-mix(in oklch, var(--color-gold) 35%, var(--border-dim));
+  box-shadow: 0 16px 36px oklch(4% 0.02 275 / 0.65), 0 0 20px color-mix(in oklch, var(--color-gold) 15%, transparent);
+}
+
+.update-banner__content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.update-banner__badge {
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-progress);
+  background: color-mix(in oklch, var(--color-progress) 12%, transparent);
+  border: 1px solid color-mix(in oklch, var(--color-progress) 30%, transparent);
+  border-radius: 6px;
+  padding: 3px 8px;
+  white-space: nowrap;
+}
+
+.update-banner--downloading .update-banner__badge {
+  color: var(--color-gold);
+  background: color-mix(in oklch, var(--color-gold) 12%, transparent);
+  border-color: color-mix(in oklch, var(--color-gold) 30%, transparent);
+}
+
+.update-banner__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.update-banner__title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.update-banner__subtitle {
+  font-size: 11px;
+  color: var(--ink-muted);
+}
+
+.update-banner__progress-bar {
+  width: 140px;
+  height: 4px;
+  border-radius: 2px;
+  background: oklch(25% 0.02 275);
+  overflow: hidden;
+  margin-top: 4px;
+}
+
+.update-banner__progress-fill {
+  height: 100%;
+  background: var(--color-gold);
+  transition: width 0.2s ease-out;
+}
+
+.update-banner__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+

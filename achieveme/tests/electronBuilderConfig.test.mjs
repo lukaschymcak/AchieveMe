@@ -127,3 +127,13 @@ test('electron-builder does not bundle ludusavi or rclone', () => {
   assert.doesNotMatch(blob, /ludusavi/)
   assert.doesNotMatch(blob, /rclone/)
 })
+
+test('electron-builder config configures GitHub publish provider', () => {
+  const config = loadElectronBuilderConfig()
+  assert.deepEqual(config.publish, {
+    provider: 'github',
+    owner: 'lukaschymcak',
+    repo: 'AchieveMe'
+  })
+})
+

@@ -16,6 +16,7 @@ import {
   registerImageCacheProtocol,
   registerImageCacheSchemes
 } from './achievement/imageCacheProtocol'
+import { initAutoUpdater } from './autoUpdateService'
 
 // Allow unlock-sound Audio.play() from the hidden sound window without a user gesture.
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required')
@@ -106,6 +107,7 @@ function bootApp(): void {
     startPlaytimeTracker()
 
     createWindow()
+    if (mainWindow) initAutoUpdater(mainWindow)
     initTray(() => mainWindow)
     setUnlockNavigationHandler(showMainWindowAndNavigate)
     setSessionRecapMainWindow(() => mainWindow)

@@ -645,3 +645,30 @@ export interface ActiveDepotSession {
   installEmuDll?: boolean
   denuvoOfflineActivated?: boolean
 }
+
+/** In-app updater lifecycle states */
+export type AppUpdateStatus =
+  | 'idle'
+  | 'checking'
+  | 'available'
+  | 'downloading'
+  | 'downloaded'
+  | 'not-available'
+  | 'error'
+
+/** Detailed state for auto-updates (version, progress, release notes) */
+export interface AppUpdateState {
+  status: AppUpdateStatus
+  currentVersion: string
+  newVersion?: string
+  releaseDate?: string
+  releaseNotes?: string
+  progressPercent?: number
+  bytesPerSecond?: number
+  transferredBytes?: number
+  totalBytes?: number
+  error?: string
+  devMode?: boolean
+  checkedAt?: number
+}
+

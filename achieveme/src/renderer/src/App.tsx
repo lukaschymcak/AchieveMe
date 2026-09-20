@@ -6,7 +6,8 @@ import type {
   DepotProgressEvent,
   GameSummary,
   NewsPayload,
-  SessionRecapPayload
+  SessionRecapPayload,
+  AppUpdateState
 } from '../../shared/types'
 import DashboardPage from './pages/DashboardPage'
 import LibraryPage from './pages/LibraryPage'
@@ -23,6 +24,7 @@ import TransfersDock from './components/TransfersDock'
 import UpdateTransferModal from './components/UpdateTransferModal'
 import AddGameModal from './components/AddGameModal'
 import InstalledGamesScanModal from './components/InstalledGamesScanModal'
+import UpdateBanner from './components/UpdateBanner'
 import { shouldShowFirstRun } from './lib/helpStorage'
 import type { AppPage } from './lib/appNavigation'
 import { pruneNewsPayloadForLibrary } from '../../shared/newsUtils'
@@ -62,6 +64,7 @@ export default function App(): React.ReactElement {
   const [newsPayload, setNewsPayload] = useState<NewsPayload | null>(null)
   const [newsError, setNewsError] = useState<string | null>(null)
   const [newsLoadState, setNewsLoadState] = useState<NewsLoadState>('loading')
+  const [updateState, setUpdateState] = useState<AppUpdateState | null>(null)
   const depotSessionRef = useRef<ActiveDepotSession | null>(null)
   const updateSessionRef = useRef<ActiveUpdateSession | null>(null)
   const updateJobRunningRef = useRef(false)
@@ -130,6 +133,22 @@ export default function App(): React.ReactElement {
   useEffect(() => {
     updateSessionRef.current = activeUpdateSession
   }, [activeUpdateSession])
+
+  useEffect(() => {
+    if (!window.api?.getUpdateState) return
+    void window.api.getUpdateState().then(setUpdateState)
+    const handleUpdateChange = (state: AppUpdateState) => {
+      setUpdateState(state)
+    }
+    window.api.onUpdateStateChanged(handleUpdateChange)
+    return () => {
+      window.api?.offUpdateStateChanged?.(handleUpdateChange)
+    }
+  }, [])
+
+  const handleInstallUpdate = useCallback(() => {
+    void window.api?.installUpdate()
+  }, [])
 
   const handleUpdateSessionChange = useCallback((session: ActiveUpdateSession | null): void => {
     updateSessionRef.current = session
@@ -543,6 +562,10 @@ export default function App(): React.ReactElement {
     </>
   )
 
+  const updateOverlay = (
+    <UpdateBanner updateState={updateState} onInstall={handleInstallUpdate} />
+  )
+
   if (!bootReady || bootSplashPreview) {
     const previewSample: BootWarmProgress = {
       phase: 'games',
@@ -578,6 +601,7 @@ export default function App(): React.ReactElement {
       <>
         {recapOverlay}
         {depotOverlay}
+        {updateOverlay}
         {addGameOverlay}
         <div className="app-shell app-shell--game-detail">
           <main className="app-main">
@@ -623,6 +647,7 @@ export default function App(): React.ReactElement {
       <>
         {recapOverlay}
         {depotOverlay}
+        {updateOverlay}
         {showFirstRun && <FirstRunWelcome onDismiss={() => setShowFirstRun(false)} />}
         <div className="app-shell">
           <main className="app-main">
@@ -647,6 +672,7 @@ export default function App(): React.ReactElement {
       <>
         {recapOverlay}
         {depotOverlay}
+        {updateOverlay}
         <div className="app-shell">
           <main className="app-main">
             <NewsPage
@@ -669,6 +695,7 @@ export default function App(): React.ReactElement {
       <>
         {recapOverlay}
         {depotOverlay}
+        {updateOverlay}
         <div className="app-shell">
           <main className="app-main">
             <ToolsPage
@@ -697,6 +724,7 @@ export default function App(): React.ReactElement {
       <>
         {recapOverlay}
         {depotOverlay}
+        {updateOverlay}
         <div className="app-shell">
           <main className="app-main">
             <SettingsPage page={page} onNavigate={setPage} />
@@ -711,6 +739,7 @@ export default function App(): React.ReactElement {
       <>
         {recapOverlay}
         {depotOverlay}
+        {updateOverlay}
         {bootError ? (
           <div className="boot-warm-banner" role="status">
             <span>
@@ -746,6 +775,7 @@ export default function App(): React.ReactElement {
       <>
         {recapOverlay}
         {depotOverlay}
+        {updateOverlay}
         <div className="app-shell">
           <main className="app-main">
             <HelpPage page={page} onNavigate={setPage} />
@@ -759,6 +789,7 @@ export default function App(): React.ReactElement {
     <>
       {recapOverlay}
       {depotOverlay}
+      {updateOverlay}
     </>
   )
 }

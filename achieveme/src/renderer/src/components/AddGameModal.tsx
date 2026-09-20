@@ -60,7 +60,7 @@ export default function AddGameModal({
         if (found) setDllInfo(found)
       })
       .catch(() => undefined)
-  }, [])
+  }, [prefill?.installPath])
 
   function handleQueryChange(value: string): void {
     setQuery(value)

@@ -1,7 +1,8 @@
 import React from 'react'
-import type { AppSettings, SourceId } from '../../../shared/types'
+import type { AppSettings, SourceId, AppUpdateState } from '../../../shared/types'
 import { ALL_SOURCES } from '../../../shared/types'
 import { DEFAULT_GAMES_ROOT_CANDIDATES } from '../../../shared/installedGamesScanUtils'
+import { formatUpdateStatusLabel } from '../../../shared/autoUpdateUtils'
 import {
   SETTINGS_GROUPS,
   SETTINGS_COPY,
@@ -60,12 +61,37 @@ export default function SettingsPage({ page, onNavigate }: Props): React.ReactEl
   } | null>(null)
   const [cloudBusy, setCloudBusy] = React.useState(false)
   const [cloudMessage, setCloudMessage] = React.useState('')
+  const [updateState, setUpdateState] = React.useState<AppUpdateState | null>(null)
+  const [checkingUpdates, setCheckingUpdates] = React.useState(false)
 
   const refreshCloudStatus = (): void => {
     void window.api
       .ludusaviCloudStatus()
       .then(setCloudStatus)
       .catch(() => setCloudStatus(null))
+  }
+
+  React.useEffect(() => {
+    if (!window.api?.getUpdateState) return
+    void window.api.getUpdateState().then(setUpdateState)
+    const handleUpdate = (state: AppUpdateState) => {
+      setUpdateState(state)
+    }
+    window.api.onUpdateStateChanged(handleUpdate)
+    return () => {
+      window.api?.offUpdateStateChanged?.(handleUpdate)
+    }
+  }, [])
+
+  const handleCheckForUpdates = async (): Promise<void> => {
+    if (!window.api?.checkForUpdates) return
+    setCheckingUpdates(true)
+    try {
+      const res = await window.api.checkForUpdates()
+      setUpdateState(res)
+    } finally {
+      setCheckingUpdates(false)
+    }
   }
 
   const showSaveNotice = (kind: 'ok' | 'error', text: string): void => {
@@ -117,6 +143,7 @@ export default function SettingsPage({ page, onNavigate }: Props): React.ReactEl
       mountedRef.current = false
       if (saveNoticeTimer.current) clearTimeout(saveNoticeTimer.current)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const handleToggleSource = (source: SourceId, checked: boolean): void => {
@@ -652,6 +679,34 @@ export default function SettingsPage({ page, onNavigate }: Props): React.ReactEl
                 aria-label={SETTINGS_CHIP_LABELS.clearDepotFolder}
               >
                 {SETTINGS_COPY.clear}
+              </Chip>
+            )}
+          </FieldRow>
+          <FieldRow label={SETTINGS_COPY.appVersion}>
+            <span className="settings-row__status">
+              {updateState?.currentVersion ? `v${updateState.currentVersion}` : ''}
+              {updateState ? ` • ${formatUpdateStatusLabel(updateState)}` : ''}
+            </span>
+            {updateState?.status === 'downloaded' ? (
+              <Chip
+                aria-label={SETTINGS_CHIP_LABELS.installUpdate}
+                onClick={() => void window.api.installUpdate()}
+              >
+                {SETTINGS_COPY.updateReady}
+              </Chip>
+            ) : (
+              <Chip
+                aria-label={SETTINGS_CHIP_LABELS.checkForUpdates}
+                onClick={() => void handleCheckForUpdates()}
+                disabled={
+                  checkingUpdates ||
+                  updateState?.status === 'checking' ||
+                  updateState?.status === 'downloading'
+                }
+              >
+                {checkingUpdates || updateState?.status === 'checking'
+                  ? SETTINGS_COPY.checkingUpdates
+                  : SETTINGS_COPY.checkForUpdates}
               </Chip>
             )}
           </FieldRow>

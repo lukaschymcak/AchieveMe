@@ -27,7 +27,8 @@ import type {
   BootWarmProgress,
   BootWarmResult,
   WantedGame,
-  WantedAddResult
+  WantedAddResult,
+  AppUpdateState
 } from '../../shared/types'
 import type { LudusaviSnapshot } from '../../shared/ludusaviApiUtils'
 
@@ -185,6 +186,11 @@ declare global {
       offNavigateToGame(cb: (appid: string) => void): void
       onSessionRecap(cb: (payload: SessionRecapPayload) => void): void
       offSessionRecap(cb: (payload: SessionRecapPayload) => void): void
+      checkForUpdates(): Promise<AppUpdateState>
+      installUpdate(): Promise<void>
+      getUpdateState(): Promise<AppUpdateState>
+      onUpdateStateChanged(cb: (payload: AppUpdateState) => void): void
+      offUpdateStateChanged(cb: (payload: AppUpdateState) => void): void
     }
   }
 }

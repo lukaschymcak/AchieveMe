@@ -107,9 +107,13 @@ async function downloadManifestZipOnce(options: DownloadManifestZipOptions): Pro
   let promoted = false
   try {
     try {
-      while (true) {
+      let reading = true
+      while (reading) {
         const { done, value } = await reader.read()
-        if (done) break
+        if (done) {
+          reading = false
+          break
+        }
         if (!value) continue
         received += value.length
         file.write(Buffer.from(value))

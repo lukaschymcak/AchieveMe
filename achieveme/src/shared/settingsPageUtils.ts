@@ -54,7 +54,11 @@ export const SETTINGS_COPY = {
   cloudConfirmLead: 'Download cloud backups for library games?',
   cloudConfirmBody:
     'Adds snapshots in Ludusavi. Live saves stay until you Install backup on Game Detail.',
-  cloudNotConfigured: 'Set Cloud URL and token in Settings → Backups first.'
+  cloudNotConfigured: 'Set Cloud URL and token in Settings → Backups first.',
+  appVersion: 'App version',
+  checkForUpdates: 'Check for updates',
+  checkingUpdates: 'Checking…',
+  updateReady: 'Restart & install'
 } as const
 
 /**
@@ -75,7 +79,9 @@ export const SETTINGS_CHIP_LABELS = {
   clearCloudToken: 'Clear Cloud token',
   clearSteamless: 'Clear Steamless',
   clearHubcapKey: 'Clear Hubcap key',
-  clearDepotFolder: 'Clear depot folder'
+  clearDepotFolder: 'Clear depot folder',
+  checkForUpdates: 'Check for updates',
+  installUpdate: 'Restart and install update'
 } as const
 
 /** Settings page group ids — one scroll, four headings. */

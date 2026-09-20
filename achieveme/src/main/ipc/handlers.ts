@@ -9,6 +9,7 @@ import { registerGameLaunchHandlers } from './gameLaunchHandlers'
 import { registerLibraryHandlers } from './libraryHandlers'
 import { registerMiscHandlers } from './miscHandlers'
 import { registerSettingsHandlers } from './settingsHandlers'
+import { registerUpdateHandlers } from './updateHandlers'
 
 export function registerIpcHandlers(): void {
   // One-time startup wiring for Ludusavi isolated config directory.
@@ -29,4 +30,5 @@ export function registerIpcHandlers(): void {
   registerBackupHandlers()
   registerDepotHandlers()
   registerMiscHandlers()
+  registerUpdateHandlers()
 }

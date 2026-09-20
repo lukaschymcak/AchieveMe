@@ -7,14 +7,17 @@ node_modules/
 dist/
 dist-electron/
 out/
-release/
+/release/
+achieveme/release/
 build/
 .cursor/
 .superpowers/
 .agents
 # Vite cache
 .vite/
-goldberg-files
+# Goldberg files - ignore generated outputs and sensitive credentials
+goldberg-files/**/_OUTPUT/
+goldberg-files/**/my_login.txt
 GoldbergAssistant
 # TypeScript
 *.tsbuildinfo

@@ -28,9 +28,18 @@ import type {
   BootWarmProgress,
   BootWarmResult,
   WantedGame,
-  WantedAddResult
+  WantedAddResult,
+  AppUpdateState
 } from '../shared/types'
 import type { LudusaviSnapshot } from '../shared/ludusaviApiUtils'
+
+const updateStateCallbacks = new Set<(payload: AppUpdateState) => void>()
+
+function dispatchUpdateState(_event: IpcRendererEvent, payload: AppUpdateState): void {
+  for (const cb of updateStateCallbacks) {
+    cb(payload)
+  }
+}
 
 const libraryUpdatedCallbacks = new Set<(payload: LibraryUpdatedPayload) => void>()
 
@@ -412,6 +421,29 @@ contextBridge.exposeInMainWorld('api', {
     sessionRecapCallbacks.delete(cb)
     if (sessionRecapCallbacks.size === 0) {
       ipcRenderer.removeListener('session-recap', dispatchSessionRecap)
+    }
+  },
+
+  checkForUpdates: (): Promise<AppUpdateState> =>
+    ipcRenderer.invoke('app:check-for-updates'),
+
+  installUpdate: (): Promise<void> =>
+    ipcRenderer.invoke('app:install-update'),
+
+  getUpdateState: (): Promise<AppUpdateState> =>
+    ipcRenderer.invoke('app:get-update-state'),
+
+  onUpdateStateChanged: (cb: (payload: AppUpdateState) => void): void => {
+    if (updateStateCallbacks.size === 0) {
+      ipcRenderer.on('app:update-state', dispatchUpdateState)
+    }
+    updateStateCallbacks.add(cb)
+  },
+
+  offUpdateStateChanged: (cb: (payload: AppUpdateState) => void): void => {
+    updateStateCallbacks.delete(cb)
+    if (updateStateCallbacks.size === 0) {
+      ipcRenderer.removeListener('app:update-state', dispatchUpdateState)
     }
   }
 })
