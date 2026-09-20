@@ -133,7 +133,8 @@ test('electron-builder config configures GitHub publish provider', () => {
   assert.deepEqual(config.publish, {
     provider: 'github',
     owner: 'lukaschymcak',
-    repo: 'AchieveMe'
+    repo: 'AchieveMe',
+    releaseType: 'release'
   })
 })
 

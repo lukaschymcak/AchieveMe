@@ -10,7 +10,8 @@
   "publish": {
     "provider": "github",
     "owner": "lukaschymcak",
-    "repo": "AchieveMe"
+    "repo": "AchieveMe",
+    "releaseType": "release"
   },
   "files": [
     "out"
