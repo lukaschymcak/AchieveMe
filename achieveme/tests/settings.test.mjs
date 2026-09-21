@@ -135,3 +135,10 @@ test('normalizeAppSettings defaults cloudSaves fields and keeps legacy rclone ke
   assert.equal(normalized.cloudSavesApiToken, '')
   assert.equal(normalized.rclonePath, 'C:\\Tools\\rclone.exe')
 })
+
+test('normalizeAppSettings preserves lastSeenVersion when set', () => {
+  const normalized = normalizeAppSettings({
+    lastSeenVersion: '0.1.5'
+  })
+  assert.equal(normalized.lastSeenVersion, '0.1.5')
+})

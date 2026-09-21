@@ -6,9 +6,10 @@ import { HELP_SECTIONS } from '../lib/helpContent'
 interface Props {
   page: AppPage
   onNavigate: (page: AppPage) => void
+  onOpenChangelog?: () => void
 }
 
-export default function HelpPage({ page, onNavigate }: Props): React.ReactElement {
+export default function HelpPage({ page, onNavigate, onOpenChangelog }: Props): React.ReactElement {
   const sectionCountLabel = `${HELP_SECTIONS.length} ${
     HELP_SECTIONS.length === 1 ? 'section' : 'sections'
   }`
@@ -18,9 +19,21 @@ export default function HelpPage({ page, onNavigate }: Props): React.ReactElemen
       <AppChrome
         left={<AppNav page={page} onNavigate={onNavigate} />}
         right={
-          <span className="app-chrome__count library-chrome__count" aria-live="polite">
-            {sectionCountLabel}
-          </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+            {onOpenChangelog && (
+              <button
+                type="button"
+                className="library-chip"
+                onClick={onOpenChangelog}
+                aria-label="View What's New changelog"
+              >
+                What&apos;s New
+              </button>
+            )}
+            <span className="app-chrome__count library-chrome__count" aria-live="polite">
+              {sectionCountLabel}
+            </span>
+          </div>
         }
       />
 

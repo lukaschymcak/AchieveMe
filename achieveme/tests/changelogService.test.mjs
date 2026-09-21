@@ -10,7 +10,10 @@ const {
   checkPendingChangelog,
   savePendingChangelog,
   getPendingChangelog,
-  getPendingChangelogPath
+  getPendingChangelogPath,
+  ensurePendingChangelog,
+  readStoredLastSeenVersion,
+  updateStoredLastSeenVersion
 } = await import(
   pathToFileURL(path.join(rootDir, '../src/main/changelogService.ts')).href
 )
@@ -51,6 +54,40 @@ test('changelogService lifecycle: save, check, caching, and cleanup', () => {
     // 5. getPendingChangelog() returns the cached payload
     const cached = getPendingChangelog()
     assert.deepEqual(cached, matched)
+  } finally {
+    fs.rmSync(tempDir, { recursive: true, force: true })
+  }
+})
+
+test('ensurePendingChangelog handles first run, repeat runs, and upgrade fallback', async () => {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'achieveme-ensure-changelog-test-'))
+
+  try {
+    // 1. First run: no lastSeenVersion in settings. Should record version and return null.
+    const firstRun = await ensurePendingChangelog('0.1.4', tempDir)
+    assert.equal(firstRun, null)
+    assert.equal(readStoredLastSeenVersion(tempDir), '0.1.4')
+
+    // 2. Repeat run on same version: should return null.
+    const sameRun = await ensurePendingChangelog('0.1.4', tempDir)
+    assert.equal(sameRun, null)
+
+    // 3. Upgrade to 0.1.5 without pre-saved file: should invoke fallback fetcher and return payload.
+    const mockFetcher = async (version) => ({
+      version,
+      notes: 'feat: new version via github fallback',
+      releaseDate: '2026-09-21'
+    })
+
+    const upgraded = await ensurePendingChangelog('0.1.5', tempDir, mockFetcher)
+    assert.ok(upgraded)
+    assert.equal(upgraded.version, '0.1.5')
+    assert.equal(upgraded.notes, 'feat: new version via github fallback')
+    assert.equal(readStoredLastSeenVersion(tempDir), '0.1.5')
+
+    // 4. Subsequent run on 0.1.5: should not pop again
+    const subsequent = await ensurePendingChangelog('0.1.5', tempDir, mockFetcher)
+    assert.equal(subsequent, null)
   } finally {
     fs.rmSync(tempDir, { recursive: true, force: true })
   }

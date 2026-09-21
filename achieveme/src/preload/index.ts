@@ -459,6 +459,9 @@ contextBridge.exposeInMainWorld('api', {
   getPendingChangelog: (): Promise<PendingChangelog | null> =>
     ipcRenderer.invoke('app:get-pending-changelog'),
 
+  getLatestChangelog: (): Promise<PendingChangelog | null> =>
+    ipcRenderer.invoke('app:get-latest-changelog'),
+
   onShowChangelog: (cb: (payload: PendingChangelog) => void): void => {
     if (showChangelogCallbacks.size === 0) {
       ipcRenderer.on('app:show-changelog', dispatchShowChangelog)

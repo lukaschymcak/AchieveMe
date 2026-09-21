@@ -21,6 +21,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -45,8 +47,14 @@ jobs:
         working-directory: achieveme
         run: npm run typecheck
 
+      - name: Generate release notes
+        shell: pwsh
+        run: |
+          $notes = git log -n 15 --no-merges --pretty=format:"* %s"
+          Set-Content -Path achieveme/release-notes.md -Value $notes
+
       - name: Build and publish release
         working-directory: achieveme
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npm run build -- --publish always
+        run: npm run build -- --publish always -c.releaseInfo.releaseNotesFile=release-notes.md

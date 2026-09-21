@@ -102,6 +102,8 @@ export function normalizeAppSettings(
     ludusaviBackupOnSessionEnd:
       parsed?.ludusaviBackupOnSessionEnd ?? DEFAULT_APP_SETTINGS.ludusaviBackupOnSessionEnd,
     ludusaviBackupOnAddGame:
-      parsed?.ludusaviBackupOnAddGame ?? DEFAULT_APP_SETTINGS.ludusaviBackupOnAddGame
+      parsed?.ludusaviBackupOnAddGame ?? DEFAULT_APP_SETTINGS.ludusaviBackupOnAddGame,
+    lastSeenVersion:
+      typeof parsed?.lastSeenVersion === 'string' ? parsed.lastSeenVersion : undefined
   }
 }

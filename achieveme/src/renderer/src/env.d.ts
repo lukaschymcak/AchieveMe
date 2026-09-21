@@ -193,6 +193,7 @@ declare global {
       onUpdateStateChanged(cb: (payload: AppUpdateState) => void): void
       offUpdateStateChanged(cb: (payload: AppUpdateState) => void): void
       getPendingChangelog(): Promise<PendingChangelog | null>
+      getLatestChangelog(): Promise<PendingChangelog | null>
       onShowChangelog(cb: (payload: PendingChangelog) => void): void
       offShowChangelog(cb: (payload: PendingChangelog) => void): void
     }

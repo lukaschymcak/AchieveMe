@@ -806,7 +806,15 @@ export default function App(): React.ReactElement {
         {updateOverlay}
         <div className="app-shell">
           <main className="app-main">
-            <HelpPage page={page} onNavigate={setPage} />
+            <HelpPage
+              page={page}
+              onNavigate={setPage}
+              onOpenChangelog={() => {
+                void window.api.getLatestChangelog().then((res) => {
+                  if (res) setChangelogPayload(res)
+                })
+              }}
+            />
           </main>
         </div>
       </>

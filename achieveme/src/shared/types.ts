@@ -113,6 +113,8 @@ export interface AppSettings {
    * @deprecated
    */
   ludusaviBackupOnAddGame: boolean
+  /** Last seen app version, used to trigger the changelog modal upon update. */
+  lastSeenVersion?: string
 }
 
 export interface UnlockChange {
