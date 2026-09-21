@@ -138,3 +138,8 @@ test('electron-builder config configures GitHub publish provider', () => {
   })
 })
 
+test('electron-builder config configures releaseNotesFile', () => {
+  const config = loadElectronBuilderConfig()
+  assert.equal(config.releaseInfo?.releaseNotesFile, 'release-notes.md')
+})
+

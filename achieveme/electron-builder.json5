@@ -13,6 +13,9 @@
     "repo": "AchieveMe",
     "releaseType": "release"
   },
+  "releaseInfo": {
+    "releaseNotesFile": "release-notes.md"
+  },
   "files": [
     "out"
   ],
