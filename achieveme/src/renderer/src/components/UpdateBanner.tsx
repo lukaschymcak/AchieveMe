@@ -22,10 +22,10 @@ export default function UpdateBanner({ updateState, onInstall }: Props): React.R
           <div className="update-banner__badge">UPDATE READY</div>
           <div className="update-banner__text">
             <span className="update-banner__title">
-              AchieveMe {updateState.newVersion ? `v${updateState.newVersion}` : ''} is ready to install
+              AchieveMe {updateState.newVersion ? `v${updateState.newVersion}` : ''} is ready
             </span>
             <span className="update-banner__subtitle">
-              Restart to apply the latest update and features.
+              The app will close and reopen updated — takes a few seconds.
             </span>
           </div>
         </div>
@@ -35,7 +35,7 @@ export default function UpdateBanner({ updateState, onInstall }: Props): React.R
             className="library-chip library-chip--active"
             onClick={onInstall}
           >
-            Restart & Install
+            Restart now
           </button>
           <button
             type="button"
@@ -59,7 +59,7 @@ export default function UpdateBanner({ updateState, onInstall }: Props): React.R
           <div className="update-banner__badge">DOWNLOADING</div>
           <div className="update-banner__text">
             <span className="update-banner__title">
-              Downloading AchieveMe {updateState.newVersion ? `v${updateState.newVersion}` : 'update'} ({pct}%)
+              Downloading update{updateState.newVersion ? ` v${updateState.newVersion}` : ''} ({pct}%)
             </span>
             <div className="update-banner__progress-bar">
               <div

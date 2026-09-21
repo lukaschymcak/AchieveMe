@@ -65,9 +65,8 @@
     ]
   },
   "nsis": {
-    "oneClick": false,
+    "oneClick": true,
     "perMachine": false,
-    "allowToChangeInstallationDirectory": true,
     "deleteAppDataOnUninstall": false,
     "artifactName": "${productName}-Windows-${version}-Setup.${ext}"
   },

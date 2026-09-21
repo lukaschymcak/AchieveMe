@@ -151,8 +151,8 @@ export function getUpdateState(): AppUpdateState {
  */
 export function installUpdate(): void {
   if (currentState.status === 'downloaded') {
-    // isSilent = false (show installer progress), isForceRunAfter = true (reopen app after update)
+    // isSilent = true (no installer window), isForceRunAfter = true (reopen app after update)
     const updater = getAutoUpdater()
-    updater.quitAndInstall(false, true)
+    updater.quitAndInstall(true, true)
   }
 }

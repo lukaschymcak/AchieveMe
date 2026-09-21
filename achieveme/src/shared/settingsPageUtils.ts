@@ -60,7 +60,7 @@ export const SETTINGS_COPY = {
   appVersion: 'App version',
   checkForUpdates: 'Check for updates',
   checkingUpdates: 'Checking…',
-  updateReady: 'Restart & install'
+  updateReady: 'Restart now'
 } as const
 
 /**
