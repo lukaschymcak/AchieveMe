@@ -130,7 +130,8 @@ function resolveSaveRoot(gameDir: string, steamSettingsDir: string): string {
 async function runGenerator(
   appid: string,
   generatorDir: string,
-  log: (line: string) => void
+  log: (line: string) => void,
+  credentials?: { username: string; password: string }
 ): Promise<string> {
   const generatorExe = path.join(generatorDir, 'generate_emu_config.exe')
 
@@ -146,10 +147,17 @@ async function runGenerator(
 
   log(`Running generator for AppID ${appid}...`)
 
+  const spawnEnv: NodeJS.ProcessEnv = { ...process.env }
+  if (credentials?.username) {
+    spawnEnv['GSE_CFG_USERNAME'] = credentials.username
+    spawnEnv['GSE_CFG_PASSWORD'] = credentials.password || ''
+  }
+
   await new Promise<void>((resolve, reject) => {
     const child = spawn(generatorExe, ['-acw', appid], {
       cwd: generatorDir,
-      windowsHide: true
+      windowsHide: true,
+      env: spawnEnv
     })
 
     child.stdout.on('data', (chunk: Buffer) => {
@@ -209,7 +217,11 @@ export async function applyGoldberg(
   }
 
   const generatorDir = resolveGeneratorDir()
-  const settingsSource = await runGenerator(appid, generatorDir, log)
+  const credentials =
+    settings.gseUsername?.trim()
+      ? { username: settings.gseUsername.trim(), password: settings.gsePassword?.trim() || '' }
+      : undefined
+  const settingsSource = await runGenerator(appid, generatorDir, log, credentials)
 
   const settingsTarget = path.join(gameDir, 'steam_settings')
   installSteamSettings({

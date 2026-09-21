@@ -682,6 +682,25 @@ export default function SettingsPage({ page, onNavigate }: Props): React.ReactEl
               </Chip>
             )}
           </FieldRow>
+          <FieldRow label={SETTINGS_COPY.gseUsername}>
+            <AppSearchInput
+              type="text"
+              value={settings.gseUsername}
+              onChange={(e) => handleToggleSetting('gseUsername', e.target.value)}
+              placeholder="your_steam_username"
+              spellCheck={false}
+              autoComplete="off"
+            />
+          </FieldRow>
+          <FieldRow label={SETTINGS_COPY.gsePassword}>
+            <AppSearchInput
+              type="password"
+              value={settings.gsePassword}
+              onChange={(e) => handleToggleSetting('gsePassword', e.target.value)}
+              spellCheck={false}
+              autoComplete="off"
+            />
+          </FieldRow>
           <FieldRow label={SETTINGS_COPY.appVersion}>
             <span className="settings-row__status">
               {updateState?.currentVersion ? `v${updateState.currentVersion}` : ''}

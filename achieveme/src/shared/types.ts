@@ -62,6 +62,16 @@ export interface AppSettings {
   hubcapApiKey: string
   /** Default folder for DepotDownloader output, or empty to ask each time. */
   depotDownloadPath: string
+  /**
+   * Steam username passed as GSE_CFG_USERNAME env var to generate_emu_config.exe.
+   * Prevents the interactive username prompt when setting up Goldberg achievements.
+   */
+  gseUsername: string
+  /**
+   * Steam password passed as GSE_CFG_PASSWORD env var to generate_emu_config.exe.
+   * Stored in settings.json; treat as sensitive.
+   */
+  gsePassword: string
   /** Absolute path to user-linked ludusavi.exe, or empty. */
   ludusaviPath: string
   /**
