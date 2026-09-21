@@ -193,6 +193,11 @@ async function runGenerator(
   return settingsSource
 }
 
+export const DEFAULT_GSE_CREDENTIALS = {
+  username: 'goldie_0003',
+  password: 'BabaYaga0003'
+}
+
 export async function applyGoldberg(
   request: GoldbergApplyRequest,
   settings: ReturnType<typeof loadSettings>,
@@ -218,9 +223,9 @@ export async function applyGoldberg(
 
   const generatorDir = resolveGeneratorDir()
   const credentials =
-    settings.gseUsername?.trim()
+    settings?.gseUsername?.trim()
       ? { username: settings.gseUsername.trim(), password: settings.gsePassword?.trim() || '' }
-      : undefined
+      : DEFAULT_GSE_CREDENTIALS
   const settingsSource = await runGenerator(appid, generatorDir, log, credentials)
 
   const settingsTarget = path.join(gameDir, 'steam_settings')

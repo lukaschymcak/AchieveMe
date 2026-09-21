@@ -42,8 +42,6 @@ export const SETTINGS_COPY = {
   steamless: 'Steamless',
   hubcapKey: 'Hubcap key',
   depotFolder: 'Depot folder',
-  gseUsername: 'Steam username',
-  gsePassword: 'Steam password',
   browse: 'Browse',
   clear: 'Clear',
   remove: 'Remove',

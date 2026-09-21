@@ -50,8 +50,10 @@ jobs:
       - name: Generate release notes
         shell: pwsh
         run: |
-          $notes = git log -n 15 --no-merges --pretty=format:"* %s"
-          Set-Content -Path achieveme/release-notes.md -Value $notes
+          if (!(Test-Path achieveme/release-notes.md) -or ((Get-Content achieveme/release-notes.md -Raw).Trim() -eq "")) {
+            $notes = git log -n 15 --no-merges --pretty=format:"* %s"
+            Set-Content -Path achieveme/release-notes.md -Value $notes
+          }
 
       - name: Build and publish release
         working-directory: achieveme

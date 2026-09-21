@@ -1,1 +1,2 @@
-* Initial release notes placeholder
+- Zero-Setup Goldberg: Generating achievement configs now uses built-in credentials automatically, so you will never be prompted for a Steam login or password.
+- Cleaner Settings: Removed the manual Steam credential fields since everything now works out of the box.
