@@ -2,7 +2,7 @@ import { spawn } from 'node:child_process'
 import type { ProcessListFetchResult } from '../../shared/playtimeSessionUtils'
 import { formatProcessListError, parseProcessList } from '../../shared/processListUtils.ts'
 
-export const LIST_TIMEOUT_MS = 4_000
+export const LIST_TIMEOUT_MS = 10_000
 
 export const GET_PROCESS_COMMAND =
   '$t = [char]9; Get-CimInstance Win32_Process -Property ProcessId,Name,ExecutablePath | ForEach-Object { "$($_.ProcessId)$t$($_.Name)$t$($_.ExecutablePath)" }'
@@ -25,15 +25,15 @@ export function isPidAlive(pid: number): boolean {
 /**
  * Runs a PowerShell command and kills it if it exceeds the timeout (Windows SIGTERM is unreliable).
  *
- * @param command - -Command string
+ * @param args - Full argument array passed to powershell.exe
  * @param timeoutMs - Kill after this many ms
  */
 function runPowershellCommand(
-  command: string,
+  args: string[],
   timeoutMs: number = LIST_TIMEOUT_MS
 ): Promise<string> {
   return new Promise((resolve, reject) => {
-    const child = spawn('powershell.exe', ['-NoProfile', '-Command', command], {
+    const child = spawn('powershell.exe', args, {
       windowsHide: true
     })
     let stdout = ''
@@ -86,6 +86,54 @@ function runPowershellCommand(
   })
 }
 
+const CIM_ARGS = [
+  '-NoLogo',
+  '-NoProfile',
+  '-NonInteractive',
+  '-ExecutionPolicy',
+  'Bypass',
+  '-Command',
+  GET_PROCESS_COMMAND
+]
+
+const FALLBACK_COMMAND =
+  '$t = [char]9; Get-Process | ForEach-Object { "$($_.Id)$t$($_.ProcessName)$t$($_.Path)" }'
+
+const FALLBACK_ARGS = [
+  '-NoLogo',
+  '-NoProfile',
+  '-NonInteractive',
+  '-Command',
+  FALLBACK_COMMAND
+]
+
+/**
+ * Primary CIM-based process query.
+ */
+async function runPrimaryQuery(): Promise<string> {
+  return runPowershellCommand(CIM_ARGS)
+}
+
+/**
+ * Fallback using Get-Process when CIM/WMI is unavailable or times out.
+ * Output format is identical (pid\tname\tpath) so parseProcessList handles it.
+ */
+async function runFallbackQuery(): Promise<string> {
+  return runPowershellCommand(FALLBACK_ARGS)
+}
+
+/**
+ * Runs the CIM query and falls back to Get-Process if it times out or errors.
+ * WMI/CIM enumeration can fail intermittently on hosted Windows runners.
+ */
+async function queryProcesses(): Promise<string> {
+  try {
+    return await runPrimaryQuery()
+  } catch {
+    return await runFallbackQuery()
+  }
+}
+
 /**
  * Lists running processes (Windows). Failures return `{ ok: false }` so the
  * tracker can keep the last snapshot and still overlay live Play PIDs.
@@ -96,9 +144,11 @@ export async function listRunningProcesses(): Promise<ProcessListFetchResult> {
   }
 
   try {
-    const stdout = await runPowershellCommand(GET_PROCESS_COMMAND)
+    const stdout = await queryProcesses()
     return { ok: true, processes: parseProcessList(stdout) }
   } catch (err) {
     return { ok: false, processes: [], error: formatProcessListError(err) }
   }
 }
+
+

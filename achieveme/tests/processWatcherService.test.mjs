@@ -13,8 +13,8 @@ const {
   pathToFileURL(path.join(rootDir, '../src/main/achievement/processWatcherService.ts')).href
 )
 
-test('LIST_TIMEOUT_MS is configured to 4000ms', () => {
-  assert.equal(LIST_TIMEOUT_MS, 4000)
+test('LIST_TIMEOUT_MS is configured for Windows CI process enumeration', () => {
+  assert.equal(LIST_TIMEOUT_MS, 10_000)
 })
 
 test('GET_PROCESS_COMMAND uses Get-CimInstance Win32_Process with ProcessId, Name, ExecutablePath', () => {
