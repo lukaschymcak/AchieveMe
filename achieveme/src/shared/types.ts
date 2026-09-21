@@ -682,3 +682,10 @@ export interface AppUpdateState {
   checkedAt?: number
 }
 
+/** Pending changelog payload shown after auto-update restart */
+export interface PendingChangelog {
+  version: string
+  notes: string
+  releaseDate?: string
+}
+

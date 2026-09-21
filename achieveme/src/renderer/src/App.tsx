@@ -7,7 +7,8 @@ import type {
   GameSummary,
   NewsPayload,
   SessionRecapPayload,
-  AppUpdateState
+  AppUpdateState,
+  PendingChangelog
 } from '../../shared/types'
 import DashboardPage from './pages/DashboardPage'
 import LibraryPage from './pages/LibraryPage'
@@ -19,6 +20,7 @@ import HelpPage from './pages/HelpPage'
 import FirstRunWelcome from './components/FirstRunWelcome'
 import BootSplash from './components/BootSplash'
 import SessionRecapModal from './components/SessionRecapModal'
+import ChangelogModal from './components/ChangelogModal'
 import DepotWizard from './components/DepotWizard'
 import TransfersDock from './components/TransfersDock'
 import UpdateTransferModal from './components/UpdateTransferModal'
@@ -65,6 +67,7 @@ export default function App(): React.ReactElement {
   const [newsError, setNewsError] = useState<string | null>(null)
   const [newsLoadState, setNewsLoadState] = useState<NewsLoadState>('loading')
   const [updateState, setUpdateState] = useState<AppUpdateState | null>(null)
+  const [changelogPayload, setChangelogPayload] = useState<PendingChangelog | null>(null)
   const depotSessionRef = useRef<ActiveDepotSession | null>(null)
   const updateSessionRef = useRef<ActiveUpdateSession | null>(null)
   const updateJobRunningRef = useRef(false)
@@ -243,6 +246,17 @@ export default function App(): React.ReactElement {
     window.api.onSessionRecap(handleSessionRecap)
     return () => {
       window.api.offSessionRecap(handleSessionRecap)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!window.api?.onShowChangelog) return
+    const handleShowChangelog = (payload: PendingChangelog) => {
+      setChangelogPayload(payload)
+    }
+    window.api.onShowChangelog(handleShowChangelog)
+    return () => {
+      window.api?.offShowChangelog?.(handleShowChangelog)
     }
   }, [])
 
@@ -512,6 +526,13 @@ export default function App(): React.ReactElement {
     <SessionRecapModal payload={sessionRecap} onDismiss={dismissSessionRecap} />
   ) : null
 
+  const changelogOverlay = changelogPayload ? (
+    <ChangelogModal
+      payload={changelogPayload}
+      onDismiss={() => setChangelogPayload(null)}
+    />
+  ) : null
+
   const transferRows = buildTransferDockRows({
     depot: activeDepotSession,
     update: activeUpdateSession,
@@ -600,6 +621,7 @@ export default function App(): React.ReactElement {
     return (
       <>
         {recapOverlay}
+        {changelogOverlay}
         {depotOverlay}
         {updateOverlay}
         {addGameOverlay}
@@ -646,6 +668,7 @@ export default function App(): React.ReactElement {
     return (
       <>
         {recapOverlay}
+        {changelogOverlay}
         {depotOverlay}
         {updateOverlay}
         {showFirstRun && <FirstRunWelcome onDismiss={() => setShowFirstRun(false)} />}
@@ -671,6 +694,7 @@ export default function App(): React.ReactElement {
     return (
       <>
         {recapOverlay}
+        {changelogOverlay}
         {depotOverlay}
         {updateOverlay}
         <div className="app-shell">
@@ -694,6 +718,7 @@ export default function App(): React.ReactElement {
     return (
       <>
         {recapOverlay}
+        {changelogOverlay}
         {depotOverlay}
         {updateOverlay}
         <div className="app-shell">
@@ -723,6 +748,7 @@ export default function App(): React.ReactElement {
     return (
       <>
         {recapOverlay}
+        {changelogOverlay}
         {depotOverlay}
         {updateOverlay}
         <div className="app-shell">
@@ -738,6 +764,7 @@ export default function App(): React.ReactElement {
     return (
       <>
         {recapOverlay}
+        {changelogOverlay}
         {depotOverlay}
         {updateOverlay}
         {bootError ? (
@@ -774,6 +801,7 @@ export default function App(): React.ReactElement {
     return (
       <>
         {recapOverlay}
+        {changelogOverlay}
         {depotOverlay}
         {updateOverlay}
         <div className="app-shell">
@@ -788,6 +816,7 @@ export default function App(): React.ReactElement {
   return (
     <>
       {recapOverlay}
+      {changelogOverlay}
       {depotOverlay}
       {updateOverlay}
     </>

@@ -3790,6 +3790,190 @@ button:focus-visible {
   font-size: 0.875rem;
 }
 
+/* --- Changelog Modal --- */
+.changelog-modal-overlay {
+  z-index: 2200;
+}
+
+.changelog-modal {
+  width: min(580px, 100%);
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface-1);
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+}
+
+.changelog-modal__header {
+  margin-bottom: var(--space-4);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.changelog-modal__title-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.changelog-modal__eyebrow {
+  margin: 0 0 var(--space-1);
+  font-family: var(--font-stats);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-progress);
+}
+
+.changelog-modal__title {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.changelog-modal__version-badge {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.changelog-modal__version-label {
+  font-family: var(--font-stats);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  padding: 2px 8px;
+  background: var(--surface-3);
+  border: 1px solid var(--border-subtle);
+  border-radius: 9999px;
+  color: var(--ink);
+}
+
+.changelog-modal__date {
+  font-size: 0.6875rem;
+  color: var(--ink-muted);
+}
+
+.changelog-modal__body {
+  overflow-y: auto;
+  flex: 1;
+  min-height: 120px;
+  max-height: 380px;
+  margin-bottom: var(--space-4);
+  padding-right: var(--space-2);
+}
+
+.changelog-modal__empty {
+  margin: var(--space-3) 0;
+  font-size: 0.875rem;
+  color: var(--ink-muted);
+}
+
+.changelog-modal__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.changelog-item {
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: var(--ink);
+}
+
+.changelog-item__line {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.changelog-item__bullet-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-progress);
+  flex-shrink: 0;
+  margin-top: 6px;
+  margin-left: 4px;
+  margin-right: 2px;
+}
+
+.changelog-badge {
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--font-stats);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 1px 6px;
+  border-radius: 4px;
+  flex-shrink: 0;
+  line-height: 1.3;
+}
+
+.changelog-badge--feat {
+  background: color-mix(in oklch, var(--color-progress) 20%, transparent);
+  color: var(--color-progress);
+  border: 1px solid color-mix(in oklch, var(--color-progress) 40%, transparent);
+}
+
+.changelog-badge--fix {
+  background: color-mix(in oklch, var(--tier-gold) 20%, transparent);
+  color: var(--tier-gold);
+  border: 1px solid color-mix(in oklch, var(--tier-gold) 40%, transparent);
+}
+
+.changelog-badge--perf {
+  background: color-mix(in oklch, var(--tier-silver) 20%, transparent);
+  color: var(--tier-silver);
+  border: 1px solid color-mix(in oklch, var(--tier-silver) 40%, transparent);
+}
+
+.changelog-badge--refactor {
+  background: color-mix(in oklch, var(--ink-secondary) 15%, transparent);
+  color: var(--ink-secondary);
+  border: 1px solid var(--border-subtle);
+}
+
+.changelog-badge--docs,
+.changelog-badge--style,
+.changelog-badge--test,
+.changelog-badge--chore,
+.changelog-badge--build {
+  background: var(--surface-3);
+  color: var(--ink-muted);
+  border: 1px solid var(--border-subtle);
+}
+
+.changelog-item__scope {
+  font-weight: 600;
+  color: var(--ink-secondary);
+}
+
+.changelog-item__text {
+  color: var(--ink);
+  word-break: break-word;
+}
+
+.changelog-item__paragraph {
+  margin: 0;
+  color: var(--ink-muted);
+}
+
+.changelog-modal__dismiss {
+  cursor: pointer;
+}
+
 .help-page__header {
   display: flex;
   flex-direction: column;

@@ -17,6 +17,7 @@ import {
   registerImageCacheSchemes
 } from './achievement/imageCacheProtocol'
 import { initAutoUpdater } from './autoUpdateService'
+import { checkPendingChangelog, getPendingChangelog } from './changelogService'
 
 // Allow unlock-sound Audio.play() from the hidden sound window without a user gesture.
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required')
@@ -55,6 +56,15 @@ function createWindow(): void {
       mainWindow?.show()
     }
     void runStartupUpdateCheck(getDb()).catch(() => undefined)
+
+    const pendingChangelog = getPendingChangelog()
+    if (pendingChangelog) {
+      setTimeout(() => {
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.send('app:show-changelog', pendingChangelog)
+        }
+      }, 2000)
+    }
   })
 
   mainWindow.on('close', (event) => {
@@ -99,6 +109,7 @@ function bootApp(): void {
     })
 
     initDb()
+    checkPendingChangelog()
     registerImageCacheProtocol()
     registerIpcHandlers()
     const settings = loadSettings()

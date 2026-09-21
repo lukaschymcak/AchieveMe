@@ -1,6 +1,7 @@
 import { app, type BrowserWindow } from 'electron'
 import electronUpdater, { type UpdateInfo, type ProgressInfo, type AppUpdater } from 'electron-updater'
 import type { AppUpdateState } from '../shared/types'
+import { savePendingChangelog } from './changelogService'
 
 function getAutoUpdater(): AppUpdater {
   const mod = (electronUpdater as unknown as { default?: typeof electronUpdater }).default ?? electronUpdater
@@ -74,11 +75,29 @@ export function initAutoUpdater(window: BrowserWindow): void {
   })
 
   updater.on('update-downloaded', (info: UpdateInfo) => {
+    const rawNotes = Array.isArray(info.releaseNotes)
+      ? info.releaseNotes
+          .map((r) => (typeof r === 'string' ? r : r?.note))
+          .filter(Boolean)
+          .join('\n')
+      : typeof info.releaseNotes === 'string'
+        ? info.releaseNotes
+        : ''
+
+    const trimmedNotes = rawNotes.trim()
+    if (trimmedNotes) {
+      savePendingChangelog({
+        version: info.version,
+        notes: trimmedNotes,
+        releaseDate: info.releaseDate
+      })
+    }
+
     broadcastState({
       status: 'downloaded',
       newVersion: info.version,
       releaseDate: info.releaseDate,
-      releaseNotes: typeof info.releaseNotes === 'string' ? info.releaseNotes : undefined,
+      releaseNotes: trimmedNotes || undefined,
       progressPercent: 100,
       checkedAt: Date.now(),
       error: undefined

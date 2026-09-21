@@ -28,7 +28,8 @@ import type {
   BootWarmResult,
   WantedGame,
   WantedAddResult,
-  AppUpdateState
+  AppUpdateState,
+  PendingChangelog
 } from '../../shared/types'
 import type { LudusaviSnapshot } from '../../shared/ludusaviApiUtils'
 
@@ -191,6 +192,9 @@ declare global {
       getUpdateState(): Promise<AppUpdateState>
       onUpdateStateChanged(cb: (payload: AppUpdateState) => void): void
       offUpdateStateChanged(cb: (payload: AppUpdateState) => void): void
+      getPendingChangelog(): Promise<PendingChangelog | null>
+      onShowChangelog(cb: (payload: PendingChangelog) => void): void
+      offShowChangelog(cb: (payload: PendingChangelog) => void): void
     }
   }
 }

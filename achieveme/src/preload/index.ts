@@ -29,9 +29,18 @@ import type {
   BootWarmResult,
   WantedGame,
   WantedAddResult,
-  AppUpdateState
+  AppUpdateState,
+  PendingChangelog
 } from '../shared/types'
 import type { LudusaviSnapshot } from '../shared/ludusaviApiUtils'
+
+const showChangelogCallbacks = new Set<(payload: PendingChangelog) => void>()
+
+function dispatchShowChangelog(_event: IpcRendererEvent, payload: PendingChangelog): void {
+  for (const cb of showChangelogCallbacks) {
+    cb(payload)
+  }
+}
 
 const updateStateCallbacks = new Set<(payload: AppUpdateState) => void>()
 
@@ -444,6 +453,23 @@ contextBridge.exposeInMainWorld('api', {
     updateStateCallbacks.delete(cb)
     if (updateStateCallbacks.size === 0) {
       ipcRenderer.removeListener('app:update-state', dispatchUpdateState)
+    }
+  },
+
+  getPendingChangelog: (): Promise<PendingChangelog | null> =>
+    ipcRenderer.invoke('app:get-pending-changelog'),
+
+  onShowChangelog: (cb: (payload: PendingChangelog) => void): void => {
+    if (showChangelogCallbacks.size === 0) {
+      ipcRenderer.on('app:show-changelog', dispatchShowChangelog)
+    }
+    showChangelogCallbacks.add(cb)
+  },
+
+  offShowChangelog: (cb: (payload: PendingChangelog) => void): void => {
+    showChangelogCallbacks.delete(cb)
+    if (showChangelogCallbacks.size === 0) {
+      ipcRenderer.removeListener('app:show-changelog', dispatchShowChangelog)
     }
   }
 })
