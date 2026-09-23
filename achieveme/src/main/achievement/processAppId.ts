@@ -28,7 +28,7 @@ import { notifyPlatinumUnlock, notifyUnlocks } from './unlockNotifyService'
 import { isNewPlatinum } from '../../shared/unlockToastUtils'
 import { getSteamLibraryHeroUrl, normalizeSteamIconUrl } from '../../shared/steamUrls'
 import { iconFilenameFromSteamValue } from '../../shared/imageCacheUrls'
-import { prefetchGameImages } from './imageCacheService'
+import { prefetchGameImages, type PrefetchIconSpec } from './imageCacheService'
 import { getDefaultImageCacheDeps, pruneAppImages } from './imageCacheProtocol'
 import { planProcessAppId } from '../../shared/libraryRetentionUtils'
 import type { AppSettings } from '../../shared/types'
@@ -37,7 +37,8 @@ export async function processAppId(
   appid: string,
   settings: AppSettings,
   forceRefresh = false,
-  suppressNotifications = false
+  suppressNotifications = false,
+  dllDir?: string
 ): Promise<void> {
   const db = getDb()
   const previousAchievements = getAchievementsForGame(db, appid)
@@ -100,7 +101,20 @@ export async function processAppId(
   const mergedRaw = mergeRawAchievements(parsedRows)
 
   // 4. Enrich with Steam API data (schema, global %, app name)
-  const enriched = await enrichApp(appid, settings.steamApiKey, mergedRaw, db, forceRefresh)
+  const resolvedDllDir =
+    dllDir ??
+    (previousGame?.goldberg_dll_path
+      ? path.dirname(previousGame.goldberg_dll_path)
+      : undefined)
+
+  const enriched = await enrichApp(
+    appid,
+    settings.steamApiKey,
+    mergedRaw,
+    db,
+    forceRefresh,
+    resolvedDllDir
+  )
 
   const diff = diffAchievements(previousAchievements, enriched.achievements)
   const newlyPlatinum = isNewPlatinum(
@@ -137,14 +151,15 @@ export async function processAppId(
   // 7. Warm local image cache (non-blocking)
   void (async () => {
     const coverRemoteUrl = await getStoreCoverUrl(db, appid)
-    const icons: { filename: string; remoteUrl: string }[] = []
+    const icons: PrefetchIconSpec[] = []
     for (const ach of enriched.achievements) {
       for (const value of [ach.icon_url, ach.icon_gray_url]) {
         if (!value) continue
         const filename = iconFilenameFromSteamValue(value)
         const remoteUrl = normalizeSteamIconUrl(appid, value)
         if (!filename || !remoteUrl) continue
-        icons.push({ filename, remoteUrl })
+        const localPath = enriched.localIconSources?.get(filename)
+        icons.push(localPath ? { filename, remoteUrl, localPath } : { filename, remoteUrl })
       }
     }
     await prefetchGameImages(getDefaultImageCacheDeps(), appid, {

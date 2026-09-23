@@ -175,6 +175,62 @@ test('prefetchGameImages downloads cover hero and icons', async () => {
   assert.equal(urls.length, 3)
 })
 
+test('prefetchGameImages copies a local icon and skips the CDN download', async () => {
+  const sourceDir = fs.mkdtempSync(path.join(os.tmpdir(), 'achieveme-local-icon-'))
+  try {
+    const filename = 'ACH_WIN_ONE_GAME.jpg'
+    const localPath = path.join(sourceDir, filename)
+    fs.writeFileSync(localPath, 'local-icon-bytes')
+
+    let calls = 0
+    const download = async (url) => {
+      calls += 1
+      return { ok: true, body: Buffer.from(url) }
+    }
+
+    await prefetchGameImages({ cacheRoot, download }, '570', {
+      coverRemoteUrl: '',
+      heroRemoteUrl: '',
+      icons: [
+        {
+          filename,
+          remoteUrl: `https://cdn.example/${filename}`,
+          localPath
+        }
+      ]
+    })
+
+    assert.equal(calls, 0)
+    assert.equal(fs.readFileSync(iconFilePath(cacheRoot, '570', filename), 'utf8'), 'local-icon-bytes')
+  } finally {
+    fs.rmSync(sourceDir, { recursive: true, force: true })
+  }
+})
+
+test('prefetchGameImages downloads when the local icon file is missing', async () => {
+  const filename = 'ACH_MISSING.jpg'
+  let calls = 0
+  const download = async () => {
+    calls += 1
+    return { ok: true, body: Buffer.from('cdn-icon') }
+  }
+
+  await prefetchGameImages({ cacheRoot, download }, '570', {
+    coverRemoteUrl: '',
+    heroRemoteUrl: '',
+    icons: [
+      {
+        filename,
+        remoteUrl: `https://cdn.example/${filename}`,
+        localPath: path.join(os.tmpdir(), 'achieveme-missing-local-icon.jpg')
+      }
+    ]
+  })
+
+  assert.equal(calls, 1)
+  assert.equal(fs.readFileSync(iconFilePath(cacheRoot, '570', filename), 'utf8'), 'cdn-icon')
+})
+
 test('ensureCoverCached hits disk without remoteUrl (offline / missing remote)', async () => {
   const deps = { cacheRoot }
   const dest = coverFilePath(cacheRoot, '570')

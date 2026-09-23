@@ -2,6 +2,7 @@
  * Orchestrates boot prune + network warm so the splash exits with data ready.
  */
 
+import path from 'node:path'
 import type Database from 'better-sqlite3'
 import {
   BOOT_WARM_CONCURRENCY,
@@ -20,6 +21,7 @@ import fs from 'node:fs'
 import {
   getAchievementsForGame,
   getAllGameAppids,
+  getGame,
   listWantedGames,
   replaceAchievementsForGame,
   upsertGame
@@ -31,7 +33,12 @@ import {
   getDefaultImageCacheDeps,
   getImagesCacheRoot
 } from './imageCacheProtocol.ts'
-import { coverFilePath, ensureCoverCached, prefetchGameImages } from './imageCacheService.ts'
+import {
+  coverFilePath,
+  ensureCoverCached,
+  prefetchGameImages,
+  type PrefetchIconSpec
+} from './imageCacheService.ts'
 import { regenerateProfileStats } from './profileStatsService.ts'
 import { enrichApp, getStoreCoverUrl } from './steamApiClient.ts'
 import { getNews } from './steamNewsService.ts'
@@ -68,19 +75,24 @@ export async function warmLibraryGame(
 ): Promise<void> {
   const previous = getAchievementsForGame(db, appid)
   const mergedRaw = rawFromPersistedAchievements(previous)
-  const enriched = await enrichApp(appid, apiKey, mergedRaw, db, false)
+  const gameRecord = getGame(db, appid)
+  const dllDir = gameRecord?.goldberg_dll_path
+    ? path.dirname(gameRecord.goldberg_dll_path)
+    : undefined
+  const enriched = await enrichApp(appid, apiKey, mergedRaw, db, false, dllDir)
   upsertGame(db, enriched.game)
   replaceAchievementsForGame(db, appid, enriched.achievements)
 
   const coverRemoteUrl = await getStoreCoverUrl(db, appid, false)
-  const icons: { filename: string; remoteUrl: string }[] = []
+  const icons: PrefetchIconSpec[] = []
   for (const ach of enriched.achievements) {
     for (const value of [ach.icon_url, ach.icon_gray_url]) {
       if (!value) continue
       const filename = iconFilenameFromSteamValue(value)
       const remoteUrl = normalizeSteamIconUrl(appid, value)
       if (!filename || !remoteUrl) continue
-      icons.push({ filename, remoteUrl })
+      const localPath = enriched.localIconSources?.get(filename)
+      icons.push(localPath ? { filename, remoteUrl, localPath } : { filename, remoteUrl })
     }
   }
 

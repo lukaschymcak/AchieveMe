@@ -14,7 +14,33 @@ import { resolveLudusaviGuiConfigPath } from './ludusaviConfigPatch'
 
 let watcher: FSWatcher | null = null
 const debounceTimers = new Map<string, NodeJS.Timeout>()
+/** AppIDs whose save-folder events must not start a competing `processAppId`. */
+const watcherSuppressed = new Set<string>()
 const DEBOUNCE_MS = 600
+
+/**
+ * Ignore save-folder events for `appid` until `unsuppressWatcherForAppid`.
+ * Used while Goldberg setup seeds the save and writes the library row itself.
+ */
+export function suppressWatcherForAppid(appid: string): void {
+  const clean = String(appid ?? '').trim()
+  if (!clean) return
+  watcherSuppressed.add(clean)
+}
+
+/**
+ * Allow save-folder events for `appid` again and drop any debounce already queued.
+ */
+export function unsuppressWatcherForAppid(appid: string): void {
+  const clean = String(appid ?? '').trim()
+  if (!clean) return
+  watcherSuppressed.delete(clean)
+  const existing = debounceTimers.get(clean)
+  if (existing) {
+    clearTimeout(existing)
+    debounceTimers.delete(clean)
+  }
+}
 
 // Extract the appid from a file path given the known watch root.
 // e.g. root="C:\GSE Saves", filePath="C:\GSE Saves\1234567\achievements.json" → "1234567"
@@ -28,6 +54,7 @@ function extractAppId(filePath: string, root: string): string | null {
 }
 
 function scheduleProcess(appid: string, settings: AppSettings): void {
+  if (watcherSuppressed.has(appid)) return
   if (isAppidIgnored(getDb(), appid)) return
 
   const existing = debounceTimers.get(appid)
@@ -35,6 +62,7 @@ function scheduleProcess(appid: string, settings: AppSettings): void {
 
   const timer = setTimeout(() => {
     debounceTimers.delete(appid)
+    if (watcherSuppressed.has(appid)) return
     processAppId(appid, settings).catch(() => {
       // processAppId failing for one game should not crash the watcher
     })

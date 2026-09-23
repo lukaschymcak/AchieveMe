@@ -285,6 +285,36 @@ export function clearHeroMissingMarker(cacheRoot: string, appid: string): void {
 export interface PrefetchIconSpec {
   filename: string
   remoteUrl: string
+  /** Absolute path to a local icon file. Used when Steam CDN has no schema art yet. */
+  localPath?: string
+}
+
+/**
+ * Copies a local achievement icon into the cache. Falls back to the CDN download
+ * when the local file is missing or the copy fails.
+ */
+async function cachePrefetchIcon(
+  deps: ImageCacheDeps,
+  appid: string,
+  icon: PrefetchIconSpec
+): Promise<EnsureCachedResult> {
+  if (!SAFE_APPID_RE.test(appid) || !isSafeFilename(icon.filename)) {
+    return { status: 'error' }
+  }
+
+  const dest = iconFilePath(deps.cacheRoot, appid, icon.filename)
+  if (fs.existsSync(dest)) return { status: 'hit', filePath: dest }
+
+  if (icon.localPath && fs.existsSync(icon.localPath)) {
+    try {
+      atomicWriteFile(dest, fs.readFileSync(icon.localPath))
+      return { status: 'downloaded', filePath: dest }
+    } catch {
+      /* fall through to CDN */
+    }
+  }
+
+  return ensureIconCached(deps, appid, icon.filename, icon.remoteUrl)
 }
 
 export interface PrefetchGameImagesInput {
@@ -323,7 +353,7 @@ export async function prefetchGameImages(
   for (const icon of input.icons) {
     if (!icon.filename || seen.has(icon.filename)) continue
     seen.add(icon.filename)
-    tasks.push(ensureIconCached(deps, appid, icon.filename, icon.remoteUrl))
+    tasks.push(cachePrefetchIcon(deps, appid, icon))
   }
 
   await Promise.allSettled(tasks)

@@ -4,6 +4,7 @@ import path from 'node:path'
 import { app } from 'electron'
 import { loadSettings } from '../settings'
 import { processAppId } from './processAppId'
+import { suppressWatcherForAppid, unsuppressWatcherForAppid } from './watcherService'
 import { getDb } from '../db/database'
 import {
   updateGameInstallPath,
@@ -249,32 +250,39 @@ export async function applyGoldberg(
 
   log(`Emulator save root: ${saveRoot}`)
 
-  if (fs.existsSync(savesFile)) {
-    log('Save file already exists — skipping seed to preserve existing progress.')
-  } else {
-    fs.mkdirSync(savesDir, { recursive: true })
-    fs.writeFileSync(savesFile, JSON.stringify(progress, null, 2), 'utf8')
-    log(`Seeded achievements.json at: ${savesFile}`)
-  }
-
-  log('Processing game into library...')
-  unignoreAppid(getDb(), appid)
-  removeWantedGame(getDb(), appid)
-  await processAppId(appid, settings, true, true)
-  const game = getGame(getDb(), appid)
-  const gameTitle = game?.ludusavi_title || game?.name
-  const guiConfigPath = resolveLudusaviGuiConfigPath()
-  if (gameTitle && guiConfigPath) {
-    try {
-      syncGseSavesToLudusavi(appid, gameTitle, [savesDir], guiConfigPath)
-    } catch {
-      // Non-blocking
+  // Seeding the save fires the watcher. Hold it off until this setup writes
+  // goldberg_dll_path, or a parallel processAppId (no dll dir) stores 0 achievements.
+  suppressWatcherForAppid(appid)
+  try {
+    if (fs.existsSync(savesFile)) {
+      log('Save file already exists — skipping seed to preserve existing progress.')
+    } else {
+      fs.mkdirSync(savesDir, { recursive: true })
+      fs.writeFileSync(savesFile, JSON.stringify(progress, null, 2), 'utf8')
+      log(`Seeded achievements.json at: ${savesFile}`)
     }
+
+    log('Processing game into library...')
+    unignoreAppid(getDb(), appid)
+    removeWantedGame(getDb(), appid)
+    await processAppId(appid, settings, true, true, path.dirname(dllPath))
+    const game = getGame(getDb(), appid)
+    const gameTitle = game?.ludusavi_title || game?.name
+    const guiConfigPath = resolveLudusaviGuiConfigPath()
+    if (gameTitle && guiConfigPath) {
+      try {
+        syncGseSavesToLudusavi(appid, gameTitle, [savesDir], guiConfigPath)
+      } catch {
+        // Non-blocking
+      }
+    }
+    updateGameInstallPath(getDb(), appid, gameDir)
+    saveGameToolApply(getDb(), appid, {
+      goldbergApplied: true,
+      goldbergDllPath: dllPath
+    })
+    log('Done. Game added to library.')
+  } finally {
+    unsuppressWatcherForAppid(appid)
   }
-  updateGameInstallPath(getDb(), appid, gameDir)
-  saveGameToolApply(getDb(), appid, {
-    goldbergApplied: true,
-    goldbergDllPath: dllPath
-  })
-  log('Done. Game added to library.')
 }

@@ -16,6 +16,7 @@ import {
 } from '../db/repository.ts'
 import { isFresh } from './cacheUtils.ts'
 import { ensureSteamDbHiddenDescriptions } from './steamDbScraper.ts'
+import { readSteamSettingsSchema } from './steamSettingsSchemaReader.ts'
 import type Database from 'better-sqlite3'
 
 export type { SteamSchemaAchievement }
@@ -289,6 +290,8 @@ function buildGameRecord(
 export interface EnrichResult {
   game: Game
   achievements: Achievement[]
+  /** Basename → absolute path when the catalog came from `steam_settings/achievements.json`. */
+  localIconSources?: Map<string, string>
 }
 
 export async function enrichApp(
@@ -296,12 +299,21 @@ export async function enrichApp(
   apiKey: string,
   mergedRaw: Record<string, RawAchievement>,
   db: Database.Database,
-  forceRefresh = false
+  forceRefresh = false,
+  dllDir?: string
 ): Promise<EnrichResult> {
   const existingGame = getGame(db, appid)
   const isNewGame = !existingGame
 
-  const schema = await fetchSchema(db, appid, apiKey, forceRefresh)
+  let schema = await fetchSchema(db, appid, apiKey, forceRefresh)
+  let localIconSources: Map<string, string> | undefined
+  if ((!schema || schema.length === 0) && dllDir?.trim()) {
+    const local = readSteamSettingsSchema(dllDir)
+    if (local) {
+      schema = local.schema
+      localIconSources = local.iconSources
+    }
+  }
   const percentages = await fetchPercentages(db, appid, forceRefresh)
 
   let gameName = existingGame?.name ?? `Game ${appid}`
@@ -315,8 +327,10 @@ export async function enrichApp(
     percentages,
     normalizeSteamIconUrl
   )
-  await ensureSteamDbHiddenDescriptions(db, appid, achievements, forceRefresh)
+  if (!localIconSources) {
+    await ensureSteamDbHiddenDescriptions(db, appid, achievements, forceRefresh)
+  }
 
   const game = buildGameRecord(appid, gameName, achievements, schema, existingGame)
-  return { game, achievements }
+  return { game, achievements, localIconSources }
 }
