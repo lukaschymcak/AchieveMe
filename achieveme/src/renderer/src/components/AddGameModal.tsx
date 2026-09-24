@@ -151,6 +151,11 @@ export default function AddGameModal({
     onClose()
   }
 
+  function handleClose(): void {
+    if (applyState === 'running') void window.api.cancelGoldberg()
+    onClose()
+  }
+
   return (
     <div
       style={{
@@ -164,7 +169,7 @@ export default function AddGameModal({
         backdropFilter: 'blur(6px)'
       }}
       onClick={(e) => {
-        if (e.target === e.currentTarget) onClose()
+        if (e.target === e.currentTarget) handleClose()
       }}
     >
       <div
@@ -199,7 +204,7 @@ export default function AddGameModal({
           </h2>
           <button
             type="button"
-            onClick={onClose}
+            onClick={handleClose}
             aria-label="Close"
             style={{
               background: 'none',
@@ -268,7 +273,7 @@ export default function AddGameModal({
         >
           {step === 'search' && (
             <>
-              <Chip onClick={onClose}>Cancel</Chip>
+              <Chip onClick={handleClose}>Cancel</Chip>
               <Chip active onClick={goToDllStep} disabled={!selected}>
                 Next
               </Chip>

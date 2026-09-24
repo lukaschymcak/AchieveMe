@@ -382,6 +382,11 @@ export default function DepotWizard({
     }
   }
 
+  function handleClose(): void {
+    if (applyState === 'running') void window.api.cancelGoldberg()
+    onClose()
+  }
+
   function handleDone(): void {
     onGameAdded?.()
     onSessionChange(null)
@@ -423,7 +428,7 @@ export default function DepotWizard({
           <button
             type="button"
             className="depot-wizard__close"
-            onClick={onClose}
+            onClick={handleClose}
             aria-label="Close"
           >
             ×

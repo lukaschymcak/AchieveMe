@@ -76,6 +76,7 @@ declare global {
       previewSessionRecap(): Promise<void>
       sessionRecapDone(): void
       applyGoldberg(request: GoldbergApplyRequest): Promise<void>
+      cancelGoldberg(): Promise<void>
       browseGameInstallFolder(): Promise<string | null>
       listGameExecutables(installPath: string, gameName?: string): Promise<GameExecutable[]>
       resolveGameExecutables(

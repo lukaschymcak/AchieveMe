@@ -117,7 +117,7 @@ test('published catalog keeps -acw, copies settings, and does not skip generator
   const steps = goldbergSetupSteps('480', published)
   assert.equal(steps.skipGenerator, false)
   assert.equal(steps.copySteamSettings, true)
-  assert.equal(steps.seedAchievements, false)
+  assert.equal(steps.seedAchievements, true)
   assert.equal(steps.addToLibrary, true)
 })
 

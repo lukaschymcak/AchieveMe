@@ -84,7 +84,7 @@ export function goldbergSetupSteps(
     skipGenerator: empty,
     generatorArgs: goldbergGeneratorArgs(appid, schema),
     copySteamSettings: !empty,
-    seedAchievements: false,
+    seedAchievements: !empty,
     addToLibrary: true
   }
 }

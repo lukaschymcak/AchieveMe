@@ -181,6 +181,8 @@ contextBridge.exposeInMainWorld('api', {
   applyGoldberg: (request: GoldbergApplyRequest): Promise<void> =>
     ipcRenderer.invoke('apply-goldberg', request),
 
+  cancelGoldberg: (): Promise<void> => ipcRenderer.invoke('cancel-goldberg'),
+
   browseGameInstallFolder: (): Promise<string | null> =>
     ipcRenderer.invoke('browse-game-install-folder'),
 

@@ -11,7 +11,7 @@ import {
   setGameLaunchConfig
 } from '../achievement/gameLaunchService'
 import { runSteamlessUnpack } from '../achievement/steamlessService'
-import { applyGoldberg } from '../achievement/goldbergSetupService'
+import { applyGoldberg, cancelGoldbergGenerator } from '../achievement/goldbergSetupService'
 import { loadSettings } from '../settings'
 import type {
   AppSettings,
@@ -75,6 +75,10 @@ export function registerGameLaunchHandlers(): void {
       directory: path.dirname(dllPath),
       architecture: lower === 'steam_api64.dll' ? 'x64' : 'x86'
     }
+  })
+
+  ipcMain.handle('cancel-goldberg', (): void => {
+    cancelGoldbergGenerator()
   })
 
   ipcMain.handle('apply-goldberg', async (event, request: GoldbergApplyRequest): Promise<void> => {

@@ -1,4 +1,4 @@
-import { spawn } from 'node:child_process'
+import { spawn, type ChildProcess } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
 import { app } from 'electron'
@@ -131,6 +131,22 @@ function resolveSaveRoot(gameDir: string, steamSettingsDir: string): string {
   return path.join(expandEnv('%APPDATA%'), folderName)
 }
 
+let activeGenerator: ChildProcess | null = null
+let generatorCancelled = false
+
+/** Stops the generator started by the current Goldberg setup, if it is still running. */
+export function cancelGoldbergGenerator(): void {
+  generatorCancelled = true
+  const child = activeGenerator
+  activeGenerator = null
+  if (!child?.pid) return
+  if (process.platform === 'win32') {
+    spawn('taskkill', ['/PID', String(child.pid), '/T', '/F'], { windowsHide: true })
+  } else {
+    child.kill()
+  }
+}
+
 async function runGenerator(
   appid: string,
   generatorDir: string,
@@ -150,6 +166,10 @@ async function runGenerator(
     fs.rmSync(outputDir, { recursive: true, force: true })
   }
 
+  if (generatorCancelled) {
+    throw new Error('Generator cancelled.')
+  }
+
   log(`Running generator for AppID ${appid} with args: ${generatorArgs.join(' ')}`)
 
   const spawnEnv: NodeJS.ProcessEnv = { ...process.env }
@@ -164,6 +184,7 @@ async function runGenerator(
       windowsHide: true,
       env: spawnEnv
     })
+    activeGenerator = child
 
     child.stdout.on('data', (chunk: Buffer) => {
       const lines = chunk.toString().split(/\r?\n/)
@@ -180,7 +201,12 @@ async function runGenerator(
     })
 
     child.on('close', (code) => {
+      if (activeGenerator === child) activeGenerator = null
       log(`[generator] Process exited with code ${code}. Output dir exists: ${fs.existsSync(outputDir)}`)
+      if (generatorCancelled) {
+        reject(new Error('Generator cancelled.'))
+        return
+      }
       if (code === 0 || fs.existsSync(outputDir)) {
         resolve()
       } else {
@@ -209,6 +235,7 @@ export async function applyGoldberg(
   settings: ReturnType<typeof loadSettings>,
   log: (line: string) => void
 ): Promise<void> {
+  generatorCancelled = false
   const { appid, dllPath, installEmuDll, denuvoOfflineActivated } = request
   if (!/^\d+$/.test(appid)) {
     throw new Error(`Invalid AppID: ${appid}`)
