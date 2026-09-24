@@ -15,6 +15,8 @@ export interface TransferDockRow {
   pct: number
   statusLabel: string
   openTarget: TransferOpenTarget
+  /** Whether the row's X can stop real background work (vs just dismissing the row). */
+  cancellable: boolean
 }
 
 /**
@@ -32,23 +34,16 @@ export interface UpdateDockSession {
   phase?: string
 }
 
-const DEPOT_DOCK_PHASES: ReadonlySet<DepotPhase> = new Set([
-  'fetching',
-  'depots',
-  'downloading',
-  'prompt',
-  'dll',
-  'emu',
-  'apply',
-  'complete',
-  'failed',
-  'canceled'
-])
+/**
+ * Phases where work runs automatically and the user is only waiting.
+ * Interactive steps (`depots`, Goldberg setup) and terminal states stay out of
+ * the dock — closing the wizard on those clears the session instead.
+ */
+const DEPOT_DOCK_PHASES: ReadonlySet<DepotPhase> = new Set(['fetching', 'downloading'])
 
 /**
  * Whether a depot session should appear in the Transfers dock.
- * Search is excluded. Download, Goldberg setup (`prompt` through `complete`),
- * and failed/canceled stay until the session is dismissed.
+ * Only automated in-progress work qualifies: manifest fetch and the file download.
  *
  * @param session - Live depot wizard session, or null.
  */
@@ -67,7 +62,8 @@ export function shouldShowUpdateInDock(session: UpdateDockSession | null | undef
   if (session.busy) return true
   const phase = session.phase
   if (!phase || phase === 'pick_depots' || phase === 'done') return false
-  if (phase === 'error') return true
+  // Errors are surfaced inside the modal; closing it dismisses the session.
+  if (phase === 'error') return false
   if (phase.startsWith('reapply_')) return true
   if (phase === 'running') return true
   return false
@@ -96,7 +92,9 @@ export function buildTransferDockRows(input: {
       title: depot.gameName?.trim() || 'Download',
       pct: Math.max(0, Math.min(100, depot.pct ?? 0)),
       statusLabel: depot.status?.trim() || depot.phase,
-      openTarget: 'depot'
+      openTarget: 'depot',
+      // Only the file download can be stopped through the cancel IPC.
+      cancellable: depot.phase === 'downloading'
     })
   }
 
@@ -109,7 +107,9 @@ export function buildTransferDockRows(input: {
       title: update.gameName?.trim() || modeLabel,
       pct: Math.max(0, Math.min(100, update.pct ?? 0)),
       statusLabel: update.label?.trim() || update.error?.trim() || update.phase || modeLabel,
-      openTarget: 'update'
+      openTarget: 'update',
+      // No cancel IPC exists for updates; dismissing the row only clears the session.
+      cancellable: false
     })
   }
 

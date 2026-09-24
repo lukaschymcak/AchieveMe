@@ -91,7 +91,7 @@ export default function DepotWizard({
   const local = session ?? createEmptySession()
   const phase = local.phase
 
-  const [query, setQuery] = useState('')
+  const [query, setQuery] = useState(local.phase === 'search' ? local.gameName : '')
   const [searching, setSearching] = useState(false)
   const [results, setResults] = useState<DepotSearchResult[]>([])
   const [selectedResult, setSelectedResult] = useState<DepotSearchResult | null>(null)
@@ -132,6 +132,15 @@ export default function DepotWizard({
       window.api.offGoldbergLog()
       if (searchRef.current) clearTimeout(searchRef.current)
     }
+  }, [])
+
+  const initialSearchRan = useRef(false)
+  useEffect(() => {
+    if (initialSearchRan.current || local.phase !== 'search' || !local.gameName.trim()) return
+    initialSearchRan.current = true
+    void runSearch(local.gameName)
+    // Seed the search box from a prefilled session exactly once on open.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   function patchSession(patch: Partial<ActiveDepotSession>): void {

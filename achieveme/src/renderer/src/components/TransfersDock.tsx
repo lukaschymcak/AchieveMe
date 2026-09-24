@@ -6,6 +6,7 @@ interface Props {
   expanded: boolean
   onToggle: () => void
   onOpenRow: (row: TransferDockRow) => void
+  onCancelRow: (row: TransferDockRow) => void
 }
 
 /**
@@ -15,7 +16,8 @@ export default function TransfersDock({
   rows,
   expanded,
   onToggle,
-  onOpenRow
+  onOpenRow,
+  onCancelRow
 }: Props): React.ReactElement | null {
   if (rows.length === 0) return null
 
@@ -50,7 +52,7 @@ export default function TransfersDock({
         <div id="transfers-dock-panel" className="transfers-dock__panel">
           <ul className="transfers-dock__list">
             {rows.map((row) => (
-              <li key={row.id}>
+              <li key={row.id} className="transfers-dock__item">
                 <button
                   type="button"
                   className="transfers-dock__row"
@@ -66,6 +68,17 @@ export default function TransfersDock({
                     />
                   </span>
                   <span className="transfers-dock__row-pct">{Math.round(row.pct)}%</span>
+                </button>
+                <button
+                  type="button"
+                  className="transfers-dock__cancel"
+                  onClick={() => onCancelRow(row)}
+                  aria-label={
+                    row.cancellable ? `Cancel ${row.title}` : `Dismiss ${row.title}`
+                  }
+                  title={row.cancellable ? 'Cancel' : 'Dismiss'}
+                >
+                  ×
                 </button>
               </li>
             ))}

@@ -32,6 +32,8 @@ import type { AppPage } from './lib/appNavigation'
 import { pruneNewsPayloadForLibrary } from '../../shared/newsUtils'
 import {
   buildTransferDockRows,
+  shouldShowDepotInDock,
+  shouldShowUpdateInDock,
   type TransferDockRow
 } from '../../shared/transfersDockUtils'
 import { nextUpdatePhaseAfterSuccess } from '../../shared/updateTransferUtils'
@@ -497,7 +499,9 @@ export default function App(): React.ReactElement {
 
   const handleCloseUpdateModal = useCallback((): void => {
     const session = updateSessionRef.current
-    if (session?.phase === 'pick_depots' && !session.busy) {
+    // Only in-progress work survives closing the modal (it moves to the dock).
+    // Interactive, error, and finished phases are dropped with the modal.
+    if (!shouldShowUpdateInDock(session)) {
       handleUpdateSessionChange(null)
       setUpdateManifestGidsJson('')
     }
@@ -549,6 +553,31 @@ export default function App(): React.ReactElement {
     setUpdateModalOpen(true)
   }
 
+  function handleCancelTransferRow(row: TransferDockRow): void {
+    if (row.openTarget === 'depot') {
+      const session = activeDepotSession
+      if (session?.phase === 'downloading') {
+        void window.api.depotCancelDownload(session.channelId, 'keep')
+      }
+      setActiveDepotSession(null)
+      setDepotWizardOpen(false)
+      return
+    }
+    // Updates have no cancel IPC; dismissing the row drops the session.
+    handleUpdateSessionChange(null)
+    setUpdateManifestGidsJson('')
+    setUpdateModalOpen(false)
+  }
+
+  function handleCloseDepotWizard(): void {
+    setDepotWizardOpen(false)
+    // Interactive and terminal phases are not tracked in the dock, so closing
+    // the wizard on them ends the session instead of leaving a stuck row.
+    if (activeDepotSession && !shouldShowDepotInDock(activeDepotSession)) {
+      setActiveDepotSession(null)
+    }
+  }
+
   const depotOverlay = (
     <>
       <TransfersDock
@@ -556,12 +585,13 @@ export default function App(): React.ReactElement {
         expanded={transfersExpanded}
         onToggle={() => setTransfersExpanded((open) => !open)}
         onOpenRow={handleOpenTransferRow}
+        onCancelRow={handleCancelTransferRow}
       />
       {depotWizardOpen && (
         <DepotWizard
           session={activeDepotSession}
           onSessionChange={handleDepotSessionChange}
-          onClose={() => setDepotWizardOpen(false)}
+          onClose={handleCloseDepotWizard}
           onGameAdded={() => {
             void window.api.getAllGames().then(setLibraryGames)
             void window.api.refresh()
@@ -683,6 +713,25 @@ export default function App(): React.ReactElement {
               onRefresh={handleRefresh}
               refreshing={refreshing}
               onDisplayedGamesChange={setLibraryGames}
+              onOpenDepotWizard={(prefill) => {
+                if (prefill) {
+                  setActiveDepotSession({
+                    channelId: `download:${crypto.randomUUID()}`,
+                    appId: '',
+                    gameName: prefill.name,
+                    phase: 'search',
+                    gameData: null,
+                    selectedDepots: [],
+                    outputPath: '',
+                    logs: [],
+                    pct: 0,
+                    speedBps: null,
+                    etaSec: null,
+                    status: ''
+                  })
+                }
+                setDepotWizardOpen(true)
+              }}
             />
           </main>
         </div>

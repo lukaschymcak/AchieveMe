@@ -90,14 +90,14 @@ test('completed update with done phase and not busy is excluded', () => {
   )
 })
 
-test('update reapply and error phases stay in dock when not busy', () => {
+test('update reapply phases stay in dock when not busy, errors do not', () => {
   assert.equal(
     shouldShowUpdateInDock(makeUpdate({ busy: false, phase: 'reapply_ask' })),
     true
   )
   assert.equal(
     shouldShowUpdateInDock(makeUpdate({ busy: false, phase: 'error', error: 'fail' })),
-    true
+    false
   )
 })
 
@@ -112,24 +112,33 @@ test('search depot phase stays out of the dock', () => {
   assert.equal(shouldShowDepotInDock(makeDepot({ phase: 'search' })), false)
 })
 
-test('depot post-download Goldberg phases stay in the dock', () => {
-  for (const phase of ['prompt', 'dll', 'emu', 'apply', 'complete']) {
-    assert.equal(
-      shouldShowDepotInDock(makeDepot({ phase, pct: 100, status: 'Download complete' })),
-      true,
-      phase
-    )
+test('only automated in-progress depot phases stay in the dock', () => {
+  for (const phase of ['fetching', 'downloading']) {
+    assert.equal(shouldShowDepotInDock(makeDepot({ phase })), true, phase)
+  }
+  for (const phase of ['depots', 'prompt', 'dll', 'emu', 'apply', 'complete', 'failed', 'canceled']) {
+    assert.equal(shouldShowDepotInDock(makeDepot({ phase })), false, phase)
   }
 })
 
-test('buildTransferDockRows keeps depot after download completes', () => {
+test('buildTransferDockRows drops depot once the download finishes', () => {
   const rows = buildTransferDockRows({
     depot: makeDepot({ phase: 'prompt', pct: 100, status: 'Download complete' })
   })
-  assert.equal(rows.length, 1)
-  assert.equal(rows[0].kind, 'depot')
-  assert.equal(rows[0].pct, 100)
-  assert.equal(isTransfersDockVisible(rows), true)
+  assert.deepEqual(rows, [])
+  assert.equal(isTransfersDockVisible(rows), false)
+})
+
+test('depot download rows are cancellable, manifest fetch rows are not', () => {
+  const [downloading] = buildTransferDockRows({ depot: makeDepot({ phase: 'downloading' }) })
+  assert.equal(downloading.cancellable, true)
+  const [fetching] = buildTransferDockRows({ depot: makeDepot({ phase: 'fetching' }) })
+  assert.equal(fetching.cancellable, false)
+})
+
+test('update rows are never cancellable', () => {
+  const [row] = buildTransferDockRows({ update: makeUpdate() })
+  assert.equal(row.cancellable, false)
 })
 
 test('buildTransferDockRows hides depot row when depot modal is open', () => {

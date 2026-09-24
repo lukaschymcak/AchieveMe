@@ -5,6 +5,7 @@ import { formatPlaytimeCompact } from '../../../shared/playtimeUtils'
 import { wantedStoreUrl } from '../../../shared/wantedGamesUtils'
 import SteamApiKeyForm from '../components/SteamApiKeyForm'
 import AddGameModal from '../components/AddGameModal'
+import AddToLibraryPickerModal from '../components/AddToLibraryPickerModal'
 import AddWantedModal from '../components/AddWantedModal'
 import WantedRail from '../components/WantedRail'
 import GameCardMenu, {
@@ -48,6 +49,7 @@ interface Props {
   onRefresh: () => void
   refreshing: boolean
   onDisplayedGamesChange?: (games: GameSummary[]) => void
+  onOpenDepotWizard?: (prefill?: { appid: string; name: string }) => void
 }
 
 const SORT_OPTIONS: Array<{ id: SortOption; label: string; shortLabel: string }> = [
@@ -64,7 +66,8 @@ export default function LibraryPage({
   onNavigate,
   onRefresh,
   refreshing,
-  onDisplayedGamesChange
+  onDisplayedGamesChange,
+  onOpenDepotWizard
 }: Props): React.ReactElement {
   const [hasApiKey, setHasApiKey] = useState<boolean | null>(null)
   const [games, setGames] = useState<GameSummary[]>([])
@@ -84,6 +87,8 @@ export default function LibraryPage({
   const [wantedGames, setWantedGames] = useState<WantedGame[]>([])
   const [wantedLoading, setWantedLoading] = useState(false)
   const [showAddWantedModal, setShowAddWantedModal] = useState(false)
+  const [showPickerModal, setShowPickerModal] = useState(false)
+  const [pickerGame, setPickerGame] = useState<WantedGame | null>(null)
 
   useEffect(() => {
     localStorage.setItem(LIBRARY_VIEW_MODE_KEY, viewMode)
@@ -215,8 +220,28 @@ export default function LibraryPage({
   }
 
   function handleAddWantedToLibrary(game: WantedGame): void {
-    setAddGamePrefill({ appid: game.appid, name: game.name })
+    setPickerGame(game)
+    setShowPickerModal(true)
+  }
+
+  function closePicker(): void {
+    setShowPickerModal(false)
+    setPickerGame(null)
+  }
+
+  function handlePickerInstalled(): void {
+    if (!pickerGame) return
+    setAddGamePrefill({ appid: pickerGame.appid, name: pickerGame.name })
+    closePicker()
     setShowAddModal(true)
+  }
+
+  function handlePickerDepot(): void {
+    const prefill = pickerGame
+      ? { appid: pickerGame.appid, name: pickerGame.name }
+      : undefined
+    closePicker()
+    onOpenDepotWizard?.(prefill)
   }
 
   function handleCloseAddGameModal(): void {
@@ -481,6 +506,14 @@ export default function LibraryPage({
         <LibraryCoachMark onDismiss={() => setShowLongPressHint(false)} />
       )}
 
+      {showPickerModal && pickerGame && (
+        <AddToLibraryPickerModal
+          game={pickerGame}
+          onInstalled={handlePickerInstalled}
+          onDepot={handlePickerDepot}
+          onClose={closePicker}
+        />
+      )}
       {showAddModal && (
         <AddGameModal
           prefill={addGamePrefill ?? undefined}
