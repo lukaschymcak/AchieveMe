@@ -6,6 +6,7 @@ import type {
   HubcapUserStats
 } from '../../shared/types'
 import { downloadManifestZip } from './manifestZipDownload'
+import { pickSteamAppDetailsEntry } from '../../shared/steamAppDetailsUtils'
 
 const baseUrl = 'https://hubcapmanifest.com/api/v1'
 
@@ -230,6 +231,7 @@ async function getSteamDetails(appId: string): Promise<SteamDetails | undefined>
         data?: {
           type?: unknown
           name?: unknown
+          steam_appid?: unknown
           header_image?: unknown
           short_description?: unknown
           release_date?: { date?: unknown }
@@ -237,7 +239,7 @@ async function getSteamDetails(appId: string): Promise<SteamDetails | undefined>
         }
       }
     >
-    const data = json[appId]?.success ? json[appId]?.data : undefined
+    const data = pickSteamAppDetailsEntry(json, appId)
     if (!data) return undefined
     const header =
       typeof data.header_image === 'string' && data.header_image.trim()

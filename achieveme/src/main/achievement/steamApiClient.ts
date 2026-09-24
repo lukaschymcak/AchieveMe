@@ -8,6 +8,7 @@ import {
   type SteamSchemaAchievement
 } from '../../shared/achievementSchemaUtils.ts'
 import { normalizeSteamIconUrl } from '../../shared/steamUrls.ts'
+import { pickSteamAppDetailsEntry } from '../../shared/steamAppDetailsUtils.ts'
 import {
   getCacheEntry,
   setCacheEntry,
@@ -181,7 +182,9 @@ export async function fetchPercentages(
     const list = parsed?.achievementpercentages?.achievements ?? []
     const map: Record<string, number> = {}
     for (const item of list) {
-      map[item.name] = item.percent
+      const percent = Number(item.percent)
+      if (!item.name || !Number.isFinite(percent)) continue
+      map[item.name] = percent
     }
     return map
   } catch {
@@ -191,8 +194,8 @@ export async function fetchPercentages(
 
 interface AppDetailsResponse {
   [appid: string]: {
-    success: boolean
-    data?: { name?: string; header_image?: string }
+    success?: boolean
+    data?: { name?: string; header_image?: string; steam_appid?: unknown }
   }
 }
 
@@ -215,7 +218,7 @@ async function fetchAppDetails(
     const url = `https://store.steampowered.com/api/appdetails?appids=${appid}&filters=basic`
     const body = await httpGet(url)
     const parsed = JSON.parse(body) as AppDetailsResponse
-    const data = parsed?.[appid]?.data
+    const data = pickSteamAppDetailsEntry(parsed, appid)
     if (!data?.name) return null
     const result: AppDetailsData = { name: data.name, header_image: data.header_image }
     writeCache(db, appid, 'appdetails', result)
