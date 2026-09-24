@@ -4,6 +4,7 @@ import path from 'node:path'
 import { app } from 'electron'
 import { loadSettings } from '../settings'
 import { processAppId } from './processAppId'
+import { fetchSchema } from './steamApiClient'
 import { suppressWatcherForAppid, unsuppressWatcherForAppid } from './watcherService'
 import { getDb } from '../db/database'
 import {
@@ -16,10 +17,11 @@ import {
 import type { GoldbergApplyRequest } from '../../shared/types'
 import { expandEnv } from './savePathUtils'
 import {
-  buildProgressFromSchema,
+  goldbergSetupSteps,
   installGoldbergEmuDll,
-  readAchievementSchema,
-  validateDllPath
+  seedGoldbergAchievementSave,
+  validateDllPath,
+  writeMinimalSteamSettings
 } from './goldbergFolderUtils'
 import { installSteamSettings } from './goldbergSteamSettingsUtils'
 import { syncGseSavesToLudusavi } from './ludusaviCustomGames'
@@ -108,11 +110,12 @@ function readIniValue(iniText: string, section: string, key: string): string | n
   return null
 }
 
-/** Resolve emulator save root from steam_settings/configs.user.ini (matches Goldberg/GSE runtime). */
+/** Resolve emulator save root from steam_settings/configs.user.ini (matches Goldberg/GSE runtime).
+ *  Falls back to %APPDATA%\GSE Saves when configs.user.ini is absent (minimal steam_settings). */
 function resolveSaveRoot(gameDir: string, steamSettingsDir: string): string {
   const configsPath = path.join(steamSettingsDir, 'configs.user.ini')
   if (!fs.existsSync(configsPath)) {
-    throw new Error(`configs.user.ini was not found: ${configsPath}`)
+    return path.join(expandEnv('%APPDATA%'), 'GSE Saves')
   }
 
   const ini = fs.readFileSync(configsPath, 'utf8')
@@ -132,7 +135,8 @@ async function runGenerator(
   appid: string,
   generatorDir: string,
   log: (line: string) => void,
-  credentials?: { username: string; password: string }
+  credentials: { username: string; password: string } | undefined,
+  generatorArgs: string[]
 ): Promise<string> {
   const generatorExe = path.join(generatorDir, 'generate_emu_config.exe')
 
@@ -146,7 +150,7 @@ async function runGenerator(
     fs.rmSync(outputDir, { recursive: true, force: true })
   }
 
-  log(`Running generator for AppID ${appid}...`)
+  log(`Running generator for AppID ${appid} with args: ${generatorArgs.join(' ')}`)
 
   const spawnEnv: NodeJS.ProcessEnv = { ...process.env }
   if (credentials?.username) {
@@ -155,7 +159,7 @@ async function runGenerator(
   }
 
   await new Promise<void>((resolve, reject) => {
-    const child = spawn(generatorExe, ['-acw', appid], {
+    const child = spawn(generatorExe, generatorArgs, {
       cwd: generatorDir,
       windowsHide: true,
       env: spawnEnv
@@ -176,6 +180,7 @@ async function runGenerator(
     })
 
     child.on('close', (code) => {
+      log(`[generator] Process exited with code ${code}. Output dir exists: ${fs.existsSync(outputDir)}`)
       if (code === 0 || fs.existsSync(outputDir)) {
         resolve()
       } else {
@@ -227,23 +232,37 @@ export async function applyGoldberg(
     settings?.gseUsername?.trim()
       ? { username: settings.gseUsername.trim(), password: settings.gsePassword?.trim() || '' }
       : DEFAULT_GSE_CREDENTIALS
-  const settingsSource = await runGenerator(appid, generatorDir, log, credentials)
+  log(`[catalog] Checking Steam achievement schema for AppID ${appid}...`)
+  const catalog = await fetchSchema(getDb(), appid, settings?.steamApiKey?.trim() || '', true)
+  const catalogDesc =
+    catalog === null
+      ? 'null (failed fetch or no API key)'
+      : catalog.length === 0
+        ? '[] (empty catalog — unreleased or unpublished)'
+        : `[...] (${catalog.length} achievements published)`
+  log(`[catalog] Result: ${catalogDesc}`)
+  const steps = goldbergSetupSteps(appid, catalog)
+  log(`[generator] skipGenerator=${steps.skipGenerator} seedAchievements=${steps.seedAchievements}`)
 
   const settingsTarget = path.join(gameDir, 'steam_settings')
-  installSteamSettings({
-    source: settingsSource,
-    target: settingsTarget,
-    preserveDenuvoConfigs: denuvoOfflineActivated,
-    log
-  })
 
-  const schemaPath = path.join(settingsSource, 'achievements.json')
+  if (steps.skipGenerator) {
+    log('Skipping generator (no published achievement data) — writing minimal steam_settings...')
+    writeMinimalSteamSettings(gameDir, appid)
+    log(`Wrote steam_appid.txt to: ${settingsTarget}`)
+  } else {
+    log(`[generator] Args: ${steps.generatorArgs.join(' ')}`)
+    const settingsSource = await runGenerator(appid, generatorDir, log, credentials, steps.generatorArgs)
+    log('[generator] Finished.')
+    installSteamSettings({
+      source: settingsSource,
+      target: settingsTarget,
+      preserveDenuvoConfigs: denuvoOfflineActivated,
+      log
+    })
+  }
 
-  log('Reading achievement schema...')
-  const schema = readAchievementSchema(schemaPath)
-  const progress = buildProgressFromSchema(schema)
-  log(`Found ${Object.keys(progress).length} achievements.`)
-
+  const schemaPath = path.join(settingsTarget, 'achievements.json')
   const saveRoot = resolveSaveRoot(gameDir, settingsTarget)
   const savesDir = path.join(saveRoot, appid)
   const savesFile = path.join(savesDir, 'achievements.json')
@@ -254,12 +273,18 @@ export async function applyGoldberg(
   // goldberg_dll_path, or a parallel processAppId (no dll dir) stores 0 achievements.
   suppressWatcherForAppid(appid)
   try {
-    if (fs.existsSync(savesFile)) {
-      log('Save file already exists — skipping seed to preserve existing progress.')
-    } else {
-      fs.mkdirSync(savesDir, { recursive: true })
-      fs.writeFileSync(savesFile, JSON.stringify(progress, null, 2), 'utf8')
-      log(`Seeded achievements.json at: ${savesFile}`)
+    if (steps.seedAchievements) {
+      log('Reading achievement schema...')
+      const seeded = seedGoldbergAchievementSave({
+        emptyCatalog: false,
+        schemaPath,
+        savesFile
+      })
+      if (seeded === 'skipped-existing') {
+        log('Save file already exists — skipping seed to preserve existing progress.')
+      } else {
+        log(`Seeded achievements.json at: ${savesFile}`)
+      }
     }
 
     log('Processing game into library...')

@@ -55,6 +55,74 @@ export function readAchievementSchema(schemaPath: string): Array<{ name?: string
   return schema
 }
 
+/**
+ * Generator switches for one AppID.
+ * `-acw` only when Steam returned a non-empty achievement list.
+ * `null` (no schema / unreleased / failed fetch) and `[]` both use `-skip_ach`.
+ */
+export function goldbergGeneratorArgs(appid: string, schema: unknown[] | null): string[] {
+  if (schema && schema.length > 0) return ['-acw', appid]
+  return ['-skip_ach', appid]
+}
+
+/**
+ * When the catalog is null or empty, skip the generator entirely and write a
+ * minimal steam_settings folder (steam_appid.txt only). No Steam connection needed.
+ */
+export function goldbergSetupSteps(
+  appid: string,
+  schema: unknown[] | null
+): {
+  skipGenerator: boolean
+  generatorArgs: string[]
+  copySteamSettings: boolean
+  seedAchievements: boolean
+  addToLibrary: true
+} {
+  const empty = isEmptyAchievementCatalog(schema)
+  return {
+    skipGenerator: empty,
+    generatorArgs: goldbergGeneratorArgs(appid, schema),
+    copySteamSettings: !empty,
+    seedAchievements: false,
+    addToLibrary: true
+  }
+}
+
+/**
+ * Writes a minimal steam_settings folder beside the game DLL.
+ * Only creates steam_appid.txt — enough for Goldberg to identify the game.
+ * Used when the achievement catalog is unavailable (unreleased / no API key).
+ */
+export function writeMinimalSteamSettings(gameDir: string, appid: string): string {
+  const steamSettingsDir = path.join(gameDir, 'steam_settings')
+  fs.mkdirSync(steamSettingsDir, { recursive: true })
+  fs.writeFileSync(path.join(steamSettingsDir, 'steam_appid.txt'), appid, 'utf8')
+  return steamSettingsDir
+}
+
+export function isEmptyAchievementCatalog(schema: unknown[] | null): boolean {
+  return !schema || schema.length === 0
+}
+
+/**
+ * Writes a locked achievement save from `achievements.json`.
+ * An empty catalog does not read the schema and does not create a save file.
+ */
+export function seedGoldbergAchievementSave(options: {
+  emptyCatalog: boolean
+  schemaPath: string
+  savesFile: string
+}): 'skipped-empty-catalog' | 'skipped-existing' | 'seeded' {
+  if (options.emptyCatalog) return 'skipped-empty-catalog'
+  if (fs.existsSync(options.savesFile)) return 'skipped-existing'
+
+  const progress = buildProgressFromSchema(readAchievementSchema(options.schemaPath))
+  fs.mkdirSync(path.dirname(options.savesFile), { recursive: true })
+  fs.writeFileSync(options.savesFile, JSON.stringify(progress, null, 2), 'utf8')
+  return 'seeded'
+}
+
 export function buildProgressFromSchema(schema: Array<{ name?: string }>): GoldbergProgress {
   const progress: GoldbergProgress = {}
   for (const entry of schema) {

@@ -100,7 +100,7 @@ export function readAnySchemaCache(
   }
 }
 
-async function fetchSchema(
+export async function fetchSchema(
   db: Database.Database,
   appid: string,
   apiKey: string,
