@@ -3,6 +3,7 @@ import type {
   ActiveDepotSession,
   DepotPhase,
   DepotProgressEvent,
+  DepotSearchResponse,
   DepotSearchResult,
   GameData,
   SteamApiDllInfo
@@ -92,7 +93,9 @@ export default function DepotWizard({
   const phase = local.phase
 
   const [query, setQuery] = useState(local.phase === 'search' ? local.gameName : '')
+  const [searchMode, setSearchMode] = useState<'games' | 'dlc'>('games')
   const [searching, setSearching] = useState(false)
+  const [searchResponse, setSearchResponse] = useState<DepotSearchResponse | null>(null)
   const [results, setResults] = useState<DepotSearchResult[]>([])
   const [selectedResult, setSelectedResult] = useState<DepotSearchResult | null>(null)
   const [fetchPct, setFetchPct] = useState(0)
@@ -138,7 +141,7 @@ export default function DepotWizard({
   useEffect(() => {
     if (initialSearchRan.current || local.phase !== 'search' || !local.gameName.trim()) return
     initialSearchRan.current = true
-    void runSearch(local.gameName)
+    void runSearch(local.gameName, searchMode)
     // Seed the search box from a prefilled session exactly once on open.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -152,22 +155,37 @@ export default function DepotWizard({
     if (searchRef.current) clearTimeout(searchRef.current)
     if (!value.trim()) {
       setResults([])
+      setSearchResponse(null)
       return
     }
     searchRef.current = setTimeout(() => {
-      void runSearch(value)
+      void runSearch(value, searchMode)
     }, 400)
   }
 
-  async function runSearch(q: string): Promise<void> {
+  function handleSearchModeChange(mode: 'games' | 'dlc'): void {
+    setSearchMode(mode)
+    setResults([])
+    setSearchResponse(null)
+    if (query.trim()) {
+      if (searchRef.current) clearTimeout(searchRef.current)
+      searchRef.current = setTimeout(() => {
+        void runSearch(query, mode)
+      }, 100)
+    }
+  }
+
+  async function runSearch(q: string, mode: 'games' | 'dlc' = 'games'): Promise<void> {
     setSearching(true)
     setErrorMsg('')
     try {
-      const res = await window.api.depotSearch(q, 'games')
+      const res = await window.api.depotSearch(q, mode)
+      setSearchResponse(res)
       setResults(res.results)
     } catch (err) {
       setErrorMsg(err instanceof Error ? err.message : String(err))
       setResults([])
+      setSearchResponse(null)
     } finally {
       setSearching(false)
     }
@@ -446,8 +464,11 @@ export default function DepotWizard({
             <SearchStep
               query={query}
               onQueryChange={handleQueryChange}
+              searchMode={searchMode}
+              onSearchModeChange={handleSearchModeChange}
               searching={searching}
               results={results}
+              searchResponse={searchResponse}
               selected={selectedResult}
               onSelect={(r) => void handleSelectGame(r)}
             />
@@ -646,35 +667,79 @@ export default function DepotWizard({
 function SearchStep({
   query,
   onQueryChange,
+  searchMode,
+  onSearchModeChange,
   searching,
   results,
+  searchResponse,
   selected,
   onSelect
 }: {
   query: string
   onQueryChange: (v: string) => void
+  searchMode: 'games' | 'dlc'
+  onSearchModeChange: (mode: 'games' | 'dlc') => void
   searching: boolean
   results: DepotSearchResult[]
+  searchResponse: DepotSearchResponse | null
   selected: DepotSearchResult | null
   onSelect: (r: DepotSearchResult) => void
 }): React.ReactElement {
   return (
     <div className="depot-wizard__panel depot-wizard__panel--fill">
       <p className="depot-wizard__help">
-        Search Steam for a game, then AchieveMe fetches its Hubcap manifest and downloads the
+        Search Steam for a game or DLC, then AchieveMe fetches its Hubcap manifest and downloads the
         selected depots with DepotDownloader.
       </p>
+
+      <div className="depot-wizard__mode-toggle">
+        <button
+          type="button"
+          className={`depot-wizard__mode-btn${searchMode === 'games' ? ' depot-wizard__mode-btn--active' : ''}`}
+          onClick={() => onSearchModeChange('games')}
+        >
+          Games
+        </button>
+        <button
+          type="button"
+          className={`depot-wizard__mode-btn${searchMode === 'dlc' ? ' depot-wizard__mode-btn--active' : ''}`}
+          onClick={() => onSearchModeChange('dlc')}
+        >
+          DLC
+        </button>
+      </div>
+
       <div className="depot-wizard__search-wrap">
         <AppSearchInput
           type="search"
           value={query}
           onChange={(e) => onQueryChange(e.target.value)}
-          placeholder="Search games…"
+          placeholder={searchMode === 'dlc' ? 'Search game name to find its DLC…' : 'Search games…'}
           autoFocus
           autoComplete="off"
         />
         {searching && <span className="depot-wizard__muted depot-wizard__search-hint">Searching…</span>}
       </div>
+
+      {searchMode === 'dlc' && searchResponse?.baseGame && (
+        <div className="depot-wizard__base-game-band">
+          {searchResponse.baseGame.headerImageUrl && (
+            <img src={searchResponse.baseGame.headerImageUrl} alt="" className="depot-wizard__thumb depot-wizard__thumb--sm" />
+          )}
+          <span className="depot-wizard__game-name">{searchResponse.baseGame.gameName}</span>
+          <span className="depot-wizard__game-meta">Base game · AppID {searchResponse.baseGame.gameId}</span>
+          {searchResponse.label && (
+            <span className="depot-wizard__muted">{searchResponse.label}</span>
+          )}
+        </div>
+      )}
+
+      {searchMode === 'dlc' && !searchResponse?.baseGame && query.trim() && !searching && (
+        <p className="depot-wizard__muted depot-wizard__dlc-hint">
+          Type the base game title (e.g. "Ace Combat 8") to list all its DLC packages.
+        </p>
+      )}
+
       <ul className="depot-wizard__list">
         {results.map((r) => (
           <li key={r.gameId}>
@@ -695,12 +760,18 @@ function SearchStep({
                 <span className="depot-wizard__game-meta">
                   AppID {r.gameId}
                   {r.releaseYear ? ` · ${r.releaseYear}` : ''}
+                  {r.type === 'dlc' ? ' · DLC' : ''}
                 </span>
               </span>
             </button>
           </li>
         ))}
-        {!searching && query.trim() && results.length === 0 && (
+        {!searching && query.trim() && results.length === 0 && searchResponse && (
+          <li className="depot-wizard__muted">
+            {searchResponse.label || (searchMode === 'dlc' ? 'No DLC found.' : 'No results found.')}
+          </li>
+        )}
+        {!searching && query.trim() && results.length === 0 && !searchResponse && (
           <li className="depot-wizard__muted">No results found.</li>
         )}
       </ul>
