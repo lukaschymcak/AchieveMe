@@ -150,10 +150,11 @@ function nameMatchesGame(process: ProcessInfo, game: PlaytimeGameCandidate): boo
   if (!exePath) return true
 
   const launchExe = game.launchExe.trim()
-  if (launchExe && pathsEqual(exePath, launchExe)) return true
+  if (launchExe && !isIgnoredPlaytimeExe(launchExe) && pathsEqual(exePath, launchExe)) return true
   const root = game.scanRoot.trim()
   if (root && isPathUnderRoot(exePath, root)) return true
-  return exeBasenameNoExt(exePath) === image
+  const launchName = exeBasenameNoExt(launchExe)
+  return Boolean(launchName) && !isIgnoredPlaytimeName(launchName) && image === launchName
 }
 
 /**
@@ -178,7 +179,7 @@ const findProcessForGame = (
   }
 
   const launchExe = game.launchExe.trim()
-  if (launchExe) {
+  if (launchExe && !isIgnoredPlaytimeExe(launchExe)) {
     const byLaunch = processes.find(
       (p) => !claimedPids.has(p.pid) && pathsEqual(p.executablePath, launchExe)
     )
@@ -186,13 +187,15 @@ const findProcessForGame = (
   }
 
   const root = game.scanRoot.trim()
-  if (root) {
+  const names = candidateImageNames(game)
+  if (root && names.size > 0) {
     const byRoot = processes.find(
       (p) =>
         !claimedPids.has(p.pid) &&
         Boolean(p.executablePath.trim()) &&
         !isIgnoredPlaytimeExe(p.executablePath) &&
-        isPathUnderRoot(p.executablePath, root)
+        isPathUnderRoot(p.executablePath, root) &&
+        names.has(processImageName(p))
     )
     if (byRoot) return byRoot
   }

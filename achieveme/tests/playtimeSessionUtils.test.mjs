@@ -150,6 +150,80 @@ test('matchRunningGames: same basename different folders do not collide via laun
   assert.equal(matched.get('2')?.pid, 5)
 })
 
+test('matchRunningGames: GOG Galaxy helper is not a running game', () => {
+  const processes = [
+    {
+      pid: 18972,
+      name: 'QtWebEngineProcess',
+      executablePath: 'C:\\Program Files\\GOG Galaxy\\QtWebEngineProcess.exe'
+    },
+    {
+      pid: 19000,
+      name: 'GalaxyClient',
+      executablePath: 'C:\\Program Files\\GOG Galaxy\\GalaxyClient.exe'
+    }
+  ]
+  const games = [
+    {
+      appid: '1091500',
+      launchExe: 'D:\\Games\\Cyberpunk 2077\\bin\\x64\\Cyberpunk2077.exe',
+      scanRoot: 'C:\\Program Files\\GOG Galaxy',
+      extraBasenames: ['cyberpunk2077', 'qtwebengineprocess', 'galaxyclient']
+    }
+  ]
+  assert.equal(matchRunningGames(processes, games).size, 0)
+})
+
+test('matchRunningGames: saved launch exe that is a launcher helper does not count', () => {
+  const processes = [
+    {
+      pid: 18972,
+      name: 'QtWebEngineProcess',
+      executablePath: 'C:\\Program Files\\GOG Galaxy\\QtWebEngineProcess.exe'
+    }
+  ]
+  const games = [
+    {
+      appid: '1091500',
+      launchExe: 'C:\\Program Files\\GOG Galaxy\\QtWebEngineProcess.exe',
+      scanRoot: 'C:\\Program Files\\GOG Galaxy'
+    }
+  ]
+  assert.equal(matchRunningGames(processes, games).size, 0)
+})
+
+test('matchRunningGames: unrelated exe under the install root is not play', () => {
+  const processes = [{ pid: 7, name: 'Setup', executablePath: 'D:\\Games\\Title\\Setup.exe' }]
+  const games = [
+    {
+      appid: '9',
+      launchExe: 'D:\\Games\\Title\\Game.exe',
+      scanRoot: 'D:\\Games\\Title',
+      extraBasenames: ['game']
+    }
+  ]
+  assert.equal(matchRunningGames(processes, games).size, 0)
+})
+
+test('matchRunningGames: known game exe under its folder still matches', () => {
+  const processes = [
+    {
+      pid: 4,
+      name: 'Cyberpunk2077',
+      executablePath: 'D:\\Games\\Cyberpunk 2077\\bin\\x64\\Cyberpunk2077.exe'
+    }
+  ]
+  const games = [
+    {
+      appid: '1091500',
+      launchExe: 'D:\\Games\\Cyberpunk 2077\\bin\\x64\\Cyberpunk2077.exe',
+      scanRoot: 'D:\\Games\\Cyberpunk 2077',
+      extraBasenames: ['cyberpunk2077']
+    }
+  ]
+  assert.equal(matchRunningGames(processes, games).get('1091500')?.pid, 4)
+})
+
 test('matchRunningGames: ignores crash handlers under root', () => {
   const processes = [
     { pid: 7, executablePath: 'D:\\Games\\Title\\UnityCrashHandler64.exe' }

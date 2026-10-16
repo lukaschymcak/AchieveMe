@@ -28,7 +28,19 @@ export const PLAYTIME_IGNORED_BASENAMES = new Set([
   'vc_redist.x64',
   'vc_redist.x86',
   'dxsetup',
-  'dxwebsetup'
+  'dxwebsetup',
+  'qtwebengineprocess',
+  'galaxyclient',
+  'galaxyclient helper',
+  'galaxyclient service',
+  'galaxyupdater',
+  'steam',
+  'steamwebhelper',
+  'steamservice',
+  'steamerrorreporter',
+  'gameoverlayui',
+  'epicgameslauncher',
+  'epicwebhelper'
 ])
 
 /**

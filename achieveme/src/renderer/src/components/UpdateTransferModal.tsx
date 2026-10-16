@@ -50,6 +50,7 @@ export default function UpdateTransferModal({
     session.steamlessExe?.trim() || ''
   )
   const [goldbergDll, setGoldbergDll] = useState(session.goldbergDllPath?.trim() || '')
+  const [includeGoldbergAchievements, setIncludeGoldbergAchievements] = useState(true)
   const [steamlessFolderMissing, setSteamlessFolderMissing] = useState(false)
   const [reapplyCompleted, setReapplyCompleted] = useState<ReapplyToolId[]>([])
   const [currentTool, setCurrentTool] = useState<ReapplyToolId | null>(null)
@@ -64,7 +65,7 @@ export default function UpdateTransferModal({
     if (logRef.current) {
       logRef.current.scrollTop = logRef.current.scrollHeight
     }
-  }, [reapplyLogs, session.label])
+  }, [reapplyLogs, session.logs, session.label])
 
   useEffect(() => {
     if (phase !== 'pick_depots') return
@@ -199,7 +200,8 @@ export default function UpdateTransferModal({
         appid: session.appid,
         dllPath: goldbergDll.trim(),
         installEmuDll: true,
-        denuvoOfflineActivated: false
+        denuvoOfflineActivated: false,
+        includeAchievements: includeGoldbergAchievements
       })
       window.api.offGoldbergLog()
       const after = [...fromCompleted, 'goldberg' as const]
@@ -295,6 +297,14 @@ export default function UpdateTransferModal({
                 />
               </div>
               <p className="update-transfer__muted">{Math.round(session.pct)}%</p>
+              <div className="update-transfer__log update-transfer__log--depot" ref={logRef} aria-live="polite">
+                {(session.logs ?? []).length === 0 && (
+                  <span className="update-transfer__muted">Waiting for DepotDownloader output…</span>
+                )}
+                {(session.logs ?? []).map((line, i) => (
+                  <div key={`${i}-${line.slice(0, 24)}`}>{line}</div>
+                ))}
+              </div>
               {session.error && (
                 <p className="update-transfer__error" role="alert">
                   {session.error}
@@ -396,6 +406,25 @@ export default function UpdateTransferModal({
                       >
                         Browse…
                       </Chip>
+                      <p className="update-transfer__help">Include achievements?</p>
+                      <label className="update-transfer__check">
+                        <input
+                          type="radio"
+                          name="goldberg-achievements"
+                          checked={includeGoldbergAchievements}
+                          onChange={() => setIncludeGoldbergAchievements(true)}
+                        />
+                        <span>Yes</span>
+                      </label>
+                      <label className="update-transfer__check">
+                        <input
+                          type="radio"
+                          name="goldberg-achievements"
+                          checked={!includeGoldbergAchievements}
+                          onChange={() => setIncludeGoldbergAchievements(false)}
+                        />
+                        <span>No</span>
+                      </label>
                     </>
                   )}
                 </div>

@@ -197,6 +197,8 @@ export interface ActiveUpdateSession {
   goldbergDllPath: string
   /** Optional header art for modal chrome. */
   headerImageUrl?: string
+  /** DepotDownloader lines for the update log, newest kept at the end. */
+  logs?: string[]
 }
 
 // One row in the `games` SQLite table
@@ -385,6 +387,8 @@ export interface GoldbergApplyRequest {
    * after replace (Denuvo offline-activated games).
    */
   denuvoOfflineActivated: boolean
+  /** When false, install the emulator and steam_appid.txt only. */
+  includeAchievements: boolean
 }
 
 export interface LibraryUpdatedPayload {
@@ -534,6 +538,8 @@ export interface DepotDownloadStartRequest {
   steamUsername?: string
   maxDownloads: number
   channelId: string
+  /** When true, pass `-validate` so existing files are checksummed. */
+  validate?: boolean
 }
 
 /** Progress / log event pushed from main to renderer during a depot download. */

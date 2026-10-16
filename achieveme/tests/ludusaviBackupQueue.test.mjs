@@ -49,6 +49,42 @@ function makeGame(appid, overrides = {}) {
   }
 }
 
+test('recoverInterruptedBackups marks a stale running backup failed', () => {
+  const statuses = []
+  const notified = []
+  const queue = createLudusaviBackupQueue({
+    loadSettings: () => baseSettings(),
+    getAllGames: () => [
+      makeGame('1091500', { backup_status: 'running', backup_at: 1 }),
+      makeGame('570', { backup_status: 'ok', backup_at: 50 })
+    ],
+    getGame: (appid) => makeGame(appid),
+    updateGameBackupStatus: (appid, update) => {
+      statuses.push({ appid, ...update })
+    },
+    notifyLibraryUpdated: (appid) => {
+      notified.push(appid)
+    },
+    validateLudusaviPath: (p) => p,
+    findTitleBySteamId: async () => null,
+    backupGame: async () => ({ ok: true }),
+    restoreGame: async () => ({ ok: false, error: 'unexpected restore' }),
+    nowSeconds: () => 200
+  })
+
+  queue.recoverInterruptedBackups()
+
+  assert.deepEqual(statuses, [
+    {
+      appid: '1091500',
+      status: 'failed',
+      at: 200,
+      error: 'Backup was interrupted.'
+    }
+  ])
+  assert.deepEqual(notified, ['1091500'])
+})
+
 test('two schedule calls for same appid run once', async () => {
   const backupCalls = []
   const statuses = []

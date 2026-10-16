@@ -38,10 +38,6 @@ export const EMULATOR_SOURCES: EmulatorSourceHelp[] = [
 ]
 
 export const TOOLTIPS = {
-  refreshLibrary:
-    'Rescan all emulator folders, re-read save files, refetch Steam metadata, and remove games whose saves are gone — except depot installs with stored GIDs or an install path, and AppIDs you deleted (ignored). Updates the entire library.',
-  refreshGameDetail:
-    'Rescan and refresh the entire library (not just this game). Hold a library card for per-game refresh.',
   refreshGameMenu: 'Re-read this game’s save files and refetch Steam metadata for this title only.',
   sortLeast: 'Sort by lowest completion percentage first.',
   sortMost: 'Sort by most unlocked achievements first.',
@@ -85,11 +81,11 @@ export const TOOLTIPS = {
 export const EMPTY_STATES = {
   noGames: {
     title: 'No games found yet',
-    body: 'AchieveMe discovers games automatically by scanning emulator save folders. Each game needs a numeric Steam App ID folder with an achievement file inside (for example Goldberg\\123456\\achievements.json). Check Settings → Library, confirm your save paths exist, then click Refresh.'
+    body: 'AchieveMe discovers games automatically by scanning emulator save folders. Each game needs a numeric Steam App ID folder with an achievement file inside (for example Goldberg\\123456\\achievements.json). Check Settings → Library, confirm your save paths exist, then right-click a game and choose Refresh.'
   },
   noSearchMatch: 'No games match your search.',
   noMonthlyActivity:
-    'Unlock achievements in your games — monthly totals come from save file timestamps. Open Library and click Refresh to resync.',
+    'Unlock achievements in your games — monthly totals come from save file timestamps. Open Library and right-click a game → Refresh to resync.',
   noNewsReleases:
     'No popular Steam releases in this window right now. Try the other tab or Refresh later.',
   noNewsReleasesFiltered:
@@ -106,7 +102,7 @@ export const EMPTY_STATES = {
   noAchievementsFetchFailed:
     'Could not load Steam achievement schema for this game. Check your API key and network connection, then Refresh.',
   noApiKeyExtra:
-    'Cover art and global unlock percentages still load without a key. You can also set the key in Settings — remember to click Refresh in Library after saving there.'
+    'Cover art and global unlock percentages still load without a key. You can also set the key in Settings — saving it rescans the library.'
 } as const
 
 /**
@@ -127,8 +123,8 @@ export const FIRST_RUN = {
     'AchieveMe tracks Steam achievements from emulator save files on your PC. It does not unlock achievements in games and is not a Steam client — progress comes from Goldberg, GSE, CODEX, and other save folders.',
   bullets: [
     'Set a Steam Web API key to show achievement names, icons, and descriptions.',
-    'Games appear automatically when save folders are found — click Refresh to rescan.',
-    'Progress updates live when save files change; use Refresh to force a full resync.',
+    'Games appear automatically when save folders are found. Right-click a card and choose Refresh to resync that game.',
+    'Progress updates live when save files change. Right-click a card → Refresh to resync that game.',
     'Hold a library card (~0.5s) or right-click for per-game actions: Play, Open, Open folder, Refresh, or Delete.'
   ],
   dismiss: 'Got it'
@@ -179,7 +175,7 @@ export const HELP_SECTIONS: HelpSection[] = [
     title: 'Where games come from',
     paragraphs: [
       'Games are discovered automatically from enabled emulator sources and custom watch folders. Each game must live at {emulator root}/{Steam App ID}/{achievement file} with a numeric App ID (e.g. 570, 1245620).',
-      'If saves exist but the library is empty, check Settings → Library and paths, then click Refresh in Library.'
+      'If saves exist but the library is empty, check Settings → Library and paths, then right-click a game and choose Refresh.'
     ]
   },
   {
@@ -198,9 +194,8 @@ export const HELP_SECTIONS: HelpSection[] = [
     title: 'Sync: automatic vs Refresh',
     paragraphs: [
       'On every launch, a branded splash prunes obsolete AppData caches, then warms the library over the network (schema and covers when stale, images when missing, Metacritic when stale, rarities / reviews / news always fresh). The UI opens only when that warm finishes (fail-soft on individual failures).',
-      'The file watcher updates the library within about a second when achievement save files change on disk. No Refresh needed during normal play.',
-      'Library Refresh rescans all sources, re-reads every save file, refetches Steam metadata (bypassing durable cache), and removes games whose saves are gone.',
-      'Game detail Refresh does the same full-library sync. For one game only, right-click its card → Refresh.'
+      'The file watcher updates the library within about a second when achievement save files change on disk.',
+      'Right-click a library card and choose Refresh to re-read that game’s saves and refetch its Steam metadata. Saving a Steam API key still rescans the library.'
     ]
   },
   {
@@ -209,7 +204,7 @@ export const HELP_SECTIONS: HelpSection[] = [
     paragraphs: [
       'The key loads achievement schema: display names, descriptions, icons, and hidden flags. That Steam schema is the achievement catalog; emulator saves only mark which ones you unlocked.',
       'Without a key (and with no prior cached schema), games still appear from save files but the achievement list stays empty. Cover art and global unlock percentages still load from public Steam endpoints. After a successful fetch, Refresh redownloads schema; if the network fails, the last cache is kept.',
-      'Get a free key at steamcommunity.com/dev/apikey. Saving in Settings does not rescan — click Refresh in Library afterward.'
+      'Get a free key at steamcommunity.com/dev/apikey. Saving the key rescans the library.'
     ]
   },
   {
@@ -284,7 +279,7 @@ export const HELP_SECTIONS: HelpSection[] = [
       'Hidden toggle reveals descriptions for unearned hidden achievements only. Global rarity is Steam-wide, not friends-only.',
       'Edge arrows move through the library in your current sort/search order.',
       'A fail-soft hunter strip under the hero shows a Metacritic score box (green / yellow / red bands) and Steam review sentiment (for example Very Positive) in Steam-like colors, plus review count when available, with an Open on Steam link to the right. Metacritic and reviews are read from local cache on Detail open (instant). They refresh during boot warm, when you open Library (missing or stale entries), and on Refresh. Missing Metacritic from Steam omits the box. Reference info only — not a storefront download. Playtime hours (HowLongToBeat) are not included yet.',
-      'Update / Validate / Check for update and build status show only when depot GIDs are stored. Update and Validate open a transfer modal (pick depots, live progress). Cancel in the modal or the Transfers dock stops DepotDownloader. Closing hides the modal without stopping; reopen it from the dock on any page. The dock hides the row for a modal that is already open. After a successful Update, Steamless/Goldberg reapply (when previously applied) is a phase of that same modal so leaving Game Detail cannot drop the prompt.'
+      'Update / Validate and build status show only when depot GIDs are stored. Check for update is in the ⋮ menu. Update and Validate open a transfer modal (pick depots, live progress). Cancel in the modal or the Transfers dock stops DepotDownloader. Closing hides the modal without stopping; reopen it from the dock on any page. The dock hides the row for a modal that is already open. After a successful Update, Steamless/Goldberg reapply (when previously applied) is a phase of that same modal so leaving Game Detail cannot drop the prompt.'
     ]
   },
   {
@@ -305,7 +300,7 @@ export const HELP_SECTIONS: HelpSection[] = [
     paragraphs: [
       'For games not yet discovered: search → pick steam_api.dll → choose whether to also apply the Goldberg emulator → apply → Done → Refresh library.',
       'Always installs steam_settings and seeds achievements. Optionally backs up and replaces the Steam API DLL with the Goldberg regular build. Does not launch the game.',
-      'Enable Play games from launcher on the Library toolbar to show Play on library cards and on game detail. Detail labels: Set install folder (no path), Select exe (path but no exe), or Play (exe saved). Library Play launches when an exe is saved; otherwise it opens detail to set up. The exe picker ranks Suggested games first and keeps crash/redist tools under Other. Optional launch args are saved on detail (used on spawn; ignored on UAC openPath fallback). Picking an executable only saves it — Play launches later. With a path, AchieveMe walks up from the steam DLL folder until a parent name matches the game title. Ambiguous folder names ask you to confirm. Use the chevron for Change executable.'
+      'Enable Play games from launcher on the Library toolbar to show Play on library cards and on game detail. Detail labels: Set install folder (no path), Select exe (path but no exe), or Play (exe saved). Library Play launches when an exe is saved; otherwise it opens detail to set up. The exe picker ranks Suggested games first and keeps crash/redist tools under Other. Optional launch args are saved on detail (used on spawn; ignored on UAC openPath fallback). Picking an executable only saves it — Play launches later. With a path, AchieveMe walks up from the steam DLL folder until a parent name matches the game title. Ambiguous folder names ask you to confirm. Use the chevron for Change executable. In that picker, Change folder beside the path picks a new install folder, and the executable list scrolls when it is longer than the dialog.'
     ]
   },
   {
@@ -323,8 +318,8 @@ export const HELP_SECTIONS: HelpSection[] = [
       'Tools sits between News and Settings. Link a Steamless release folder in Settings → Tools (must include Steamless.CLI.exe and Plugins).',
       'Open the Steamless wizard to pick a library game, then choose the .exe from the install folder (same list as Select executable — never auto-runs launch_exe or a previous Game.exe.unpacked.exe). Or Search for executable on disk, then run Steamless.CLI. Output is typically Game.exe.unpacked.exe beside the original; Play is not changed automatically.',
       'Depot Downloader searches Steam, fetches a Hubcap manifest ZIP, lets you pick depots, and runs DepotDownloader.dll (dotnet required). Concurrent ZIP fetches for the same cache file share one download. Closing the wizard during a download keeps it running — reopen from the Transfers dock. The dock hides while the wizard is open, and stays after download so Set up achievements is not dropped. After download you can optionally set up Goldberg achievements (DLL scan, emulator install, Denuvo preserve).',
-      'Scan for installed games walks Settings → Library → Install folders (separate from Save folders, depth ≤ 8) for steam_appid.txt or numeric folders that contain steam_api*.dll. Add selected sets install_path (and a suggested exe when ranked), then fetches Hubcap manifest GIDs — Windows and DLC depots auto-keep; Linux/mac depots are dropped; ambiguous depots queue a depot picker. Does not open Set up achievements — use Game Detail. Refresh keeps rows that have an install path.',
-      'Update / Validate / Check for update and build status appear on Game Detail only when depot GIDs are stored. Successful Steamless (from Tools, with a library game selected) or Goldberg apply stores flags and last paths. After a successful Update, if either flag is set, the Update transfer modal asks to reapply — you pick paths and Apply; Steamless runs before Goldberg, stops on failure, and offers Retry. Existing games stay unset until those tools succeed again.'
+      'Scan for installed games walks Settings → Library → Install folders (separate from Save folders, depth ≤ 8) for steam_appid.txt or numeric folders that contain steam_api*.dll. Add selected sets install_path (and a suggested exe when ranked), then fetches Hubcap manifest GIDs — Windows and DLC depots auto-keep; Linux/mac depots are dropped; ambiguous depots queue a depot picker. Does not open Set up achievements — use Game Detail → Reapply Goldberg. Refresh keeps rows that have an install path.',
+      'Update, Validate, and build status appear on Game Detail only when depot GIDs are stored. Check for update and Reapply Goldberg are in the ⋮ menu. Successful Steamless (from Tools, with a library game selected) or Goldberg apply stores flags and last paths. After a successful Update, if either flag is set, the Update transfer modal asks to reapply — you pick paths and whether Goldberg should include achievements, then Apply. Steamless runs before Goldberg, stops on failure, and offers Retry. Existing games stay unset until those tools succeed again.'
     ]
   },
   {

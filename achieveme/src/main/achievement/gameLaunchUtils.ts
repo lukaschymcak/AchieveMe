@@ -303,6 +303,13 @@ export async function launchGameExe(
   if (!fs.existsSync(resolved) || !fs.statSync(resolved).isFile()) {
     throw new Error(`Executable was not found: ${resolved}`)
   }
+  if (!hasMzHeader(resolved)) {
+    throw new Error(
+      `"${path.basename(resolved)}" is not a valid Windows executable. ` +
+        `The file is on disk but it is empty or corrupt, which happens when an update ` +
+        `keeps a placeholder of the right size. Run Update again so the real file is downloaded.`
+    )
+  }
 
   try {
     const pid = await spawnDetached(resolved, args, spawnImpl)
@@ -391,5 +398,28 @@ export function formatSpawnLaunchError(exePath: string, err: unknown): string {
     )
   }
 
+  if (code === 'UNKNOWN' || /\bUNKNOWN\b/.test(message)) {
+    return `Cannot launch "${path.basename(exePath)}" (${exePath}). Windows rejected the process (spawn UNKNOWN).`
+  }
+
   return message || `Failed to launch ${exePath}`
+}
+
+/**
+ * True when the file starts with the DOS/PE `MZ` signature.
+ *
+ * @param filePath - Absolute path
+ */
+function hasMzHeader(filePath: string): boolean {
+  let fd: number | undefined
+  try {
+    fd = fs.openSync(filePath, 'r')
+    const buf = Buffer.alloc(2)
+    const read = fs.readSync(fd, buf, 0, 2, 0)
+    return read === 2 && buf[0] === 0x4d && buf[1] === 0x5a
+  } catch {
+    return false
+  } finally {
+    if (fd !== undefined) fs.closeSync(fd)
+  }
 }

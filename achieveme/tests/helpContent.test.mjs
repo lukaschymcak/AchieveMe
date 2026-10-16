@@ -36,9 +36,7 @@ describe('helpContent', () => {
     assert.match(goldberg.notes ?? '', /write-back/i)
   })
 
-  it('defines refresh tooltips for library and game detail', () => {
-    assert.match(TOOLTIPS.refreshLibrary, /entire library/i)
-    assert.match(TOOLTIPS.refreshGameDetail, /entire library/i)
+  it('defines the per-game refresh tooltip', () => {
     assert.match(TOOLTIPS.refreshGameMenu, /this game/i)
   })
 
@@ -127,10 +125,6 @@ describe('helpContent', () => {
   it('playGamesFromLauncher tooltip mentions Library Play', () => {
     assert.match(TOOLTIPS.playGamesFromLauncher, /Library/i)
     assert.match(TOOLTIPS.playGamesFromLauncher, /Play/i)
-  })
-
-  it('refresh tooltip mentions ignored and depot retain', () => {
-    assert.match(TOOLTIPS.refreshLibrary, /ignored|GIDs|install path/i)
   })
 
   it('defines news refresh tooltip and empty states', () => {

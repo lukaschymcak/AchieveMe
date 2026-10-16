@@ -224,7 +224,8 @@ export function registerDepotHandlers(): void {
           outputPath: contentDir,
           steamUsername,
           maxDownloads: 20,
-          channelId
+          channelId,
+          validate: true
         },
         win,
         epochAtStart

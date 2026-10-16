@@ -1,5 +1,6 @@
 import fs from 'node:fs'
 import path from 'node:path'
+import { goldbergReapplySteps } from '../../shared/goldbergReapplyUtils.ts'
 import type { GoldbergProgress, SteamApiDllInfo } from '../../shared/types'
 
 export function resolveGameDir(gameDir: string): string {
@@ -79,12 +80,9 @@ export function goldbergSetupSteps(
   seedAchievements: boolean
   addToLibrary: true
 } {
-  const empty = isEmptyAchievementCatalog(schema)
+  const steps = goldbergReapplySteps(true, appid, schema)
   return {
-    skipGenerator: empty,
-    generatorArgs: goldbergGeneratorArgs(appid, schema),
-    copySteamSettings: !empty,
-    seedAchievements: !empty,
+    ...steps,
     addToLibrary: true
   }
 }

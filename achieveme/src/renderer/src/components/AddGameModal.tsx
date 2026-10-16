@@ -135,7 +135,8 @@ export default function AddGameModal({
         appid: selected.appid,
         dllPath: dllInfo.path,
         installEmuDll,
-        denuvoOfflineActivated
+        denuvoOfflineActivated,
+        includeAchievements: true
       })
       setApplyState('done')
     } catch (err) {

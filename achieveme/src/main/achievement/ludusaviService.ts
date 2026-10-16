@@ -191,13 +191,19 @@ export function validateRclonePath(rclonePath: string): string {
   return resolved
 }
 
+/** Stop a Ludusavi CLI run that never exits so the save spinner cannot sit forever. */
+export const LUDUSAVI_COMMAND_TIMEOUT_MS = 15 * 60 * 1000
+
 /**
  * Default spawn-based command runner for Ludusavi CLI.
  *
  * @param exe - Absolute path to ludusavi.exe.
- * @param argv - Arguments after the executable (subcommand + flags).
+ * @param timeoutMs - Kill the process and reject after this many milliseconds.
  */
-export function createDefaultLudusaviRunner(exe: string): LudusaviCommandRunner {
+export function createDefaultLudusaviRunner(
+  exe: string,
+  timeoutMs: number = LUDUSAVI_COMMAND_TIMEOUT_MS
+): LudusaviCommandRunner {
   return (argv) =>
     new Promise((resolve, reject) => {
       const child = spawn(exe, argv, {
@@ -207,15 +213,31 @@ export function createDefaultLudusaviRunner(exe: string): LudusaviCommandRunner 
 
       let stdout = ''
       let stderr = ''
+      let settled = false
+      const finish = (settle: () => void): void => {
+        if (settled) return
+        settled = true
+        clearTimeout(timer)
+        settle()
+      }
+      const timer = setTimeout(() => {
+        finish(() => {
+          child.kill()
+          reject(new Error('Ludusavi timed out.'))
+        })
+      }, timeoutMs)
+
       child.stdout?.on('data', (chunk: Buffer | string) => {
         stdout += chunk.toString()
       })
       child.stderr?.on('data', (chunk: Buffer | string) => {
         stderr += chunk.toString()
       })
-      child.on('error', reject)
+      child.on('error', (err) => {
+        finish(() => reject(err))
+      })
       child.on('close', (code) => {
-        resolve({ code: code ?? 1, stdout, stderr })
+        finish(() => resolve({ code: code ?? 1, stdout, stderr }))
       })
     })
 }

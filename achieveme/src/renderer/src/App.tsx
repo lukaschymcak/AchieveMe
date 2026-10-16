@@ -24,7 +24,6 @@ import ChangelogModal from './components/ChangelogModal'
 import DepotWizard from './components/DepotWizard'
 import TransfersDock from './components/TransfersDock'
 import UpdateTransferModal from './components/UpdateTransferModal'
-import AddGameModal from './components/AddGameModal'
 import InstalledGamesScanModal from './components/InstalledGamesScanModal'
 import UpdateBanner from './components/UpdateBanner'
 import { shouldShowFirstRun } from './lib/helpStorage'
@@ -48,7 +47,6 @@ export default function App(): React.ReactElement {
   const [bootError, setBootError] = useState<string | null>(null)
   const [page, setPage] = useState<AppPage>('dashboard')
   const [selectedAppid, setSelectedAppid] = useState<string | null>(null)
-  const [refreshing, setRefreshing] = useState(false)
   const [libraryGames, setLibraryGames] = useState<GameSummary[]>([])
   const [transitionDir, setTransitionDir] = useState<TransitionDir>(null)
   const [showFirstRun, setShowFirstRun] = useState(() => shouldShowFirstRun())
@@ -60,11 +58,6 @@ export default function App(): React.ReactElement {
   const [scanInstalledOpen, setScanInstalledOpen] = useState(false)
   const [updateModalOpen, setUpdateModalOpen] = useState(false)
   const [transfersExpanded, setTransfersExpanded] = useState(false)
-  const [addGamePrefill, setAddGamePrefill] = useState<{
-    appid: string
-    name: string
-    installPath?: string
-  } | null>(null)
   const [newsPayload, setNewsPayload] = useState<NewsPayload | null>(null)
   const [newsError, setNewsError] = useState<string | null>(null)
   const [newsLoadState, setNewsLoadState] = useState<NewsLoadState>('loading')
@@ -199,11 +192,6 @@ export default function App(): React.ReactElement {
     setActiveDepotSession(session)
   }, [])
 
-  function handleRefresh(): void {
-    setRefreshing(true)
-    window.api.refresh().finally(() => setRefreshing(false))
-  }
-
   function dismissSessionRecap(): void {
     setSessionRecap(null)
     window.api.sessionRecapDone()
@@ -304,10 +292,6 @@ export default function App(): React.ReactElement {
     }
   }, [])
 
-  function handleSetupAchievements(appid: string, name: string, installPath?: string): void {
-    setAddGamePrefill({ appid, name, installPath })
-  }
-
   const handleOpenUpdateTransfer = useCallback(
     (input: OpenUpdateTransferInput): void => {
       const prev = updateSessionRef.current
@@ -340,7 +324,8 @@ export default function App(): React.ReactElement {
         goldbergApplied: input.goldbergApplied,
         steamlessExe: input.steamlessExe,
         goldbergDllPath: input.goldbergDllPath,
-        headerImageUrl: input.headerImageUrl
+        headerImageUrl: input.headerImageUrl,
+        logs: []
       }
       setUpdateManifestGidsJson(input.manifestGidsJson)
       handleUpdateSessionChange(session)
@@ -388,7 +373,8 @@ export default function App(): React.ReactElement {
         label: mode === 'validate' ? 'Preparing validate…' : 'Fetching manifest…',
         error: '',
         phase: 'running',
-        selectedDepots
+        selectedDepots,
+        logs: []
       })
 
       const handleManifestProgress = (payload: {
@@ -421,14 +407,18 @@ export default function App(): React.ReactElement {
         status?: string
         error?: string
         done?: boolean
+        log?: string
       }): void => {
         if (finished) return
         if (payload.channelId && payload.channelId !== channelId) return
         if (payload.done) return
+        const logLines = payload.log?.split('\n').filter(Boolean) ?? []
+        const prevLogs = updateSessionRef.current?.logs ?? []
         patch({
           ...(typeof payload.pct === 'number' ? { pct: payload.pct } : {}),
           ...(payload.status ? { label: payload.status } : {}),
-          error: payload.error || ''
+          error: payload.error || '',
+          ...(logLines.length > 0 ? { logs: [...prevLogs, ...logLines].slice(-400) } : {})
         })
       }
 
@@ -519,18 +509,6 @@ export default function App(): React.ReactElement {
     setUpdateManifestGidsJson('')
     setUpdateModalOpen(false)
   }, [handleUpdateSessionChange])
-
-  const addGameOverlay = addGamePrefill ? (
-    <AddGameModal
-      prefill={addGamePrefill}
-      onClose={() => setAddGamePrefill(null)}
-      onGameAdded={() => {
-        void window.api.getAllGames().then(setLibraryGames)
-        void window.api.refresh()
-        setAddGamePrefill(null)
-      }}
-    />
-  ) : null
 
   const recapOverlay = sessionRecap ? (
     <SessionRecapModal payload={sessionRecap} onDismiss={dismissSessionRecap} />
@@ -674,7 +652,6 @@ export default function App(): React.ReactElement {
         {changelogOverlay}
         {depotOverlay}
         {updateOverlay}
-        {addGameOverlay}
         <div className="app-shell app-shell--game-detail">
           <main className="app-main">
             <GameDetailPage
@@ -682,15 +659,10 @@ export default function App(): React.ReactElement {
               transitionDir={transitionDir}
               activeUpdateSession={activeUpdateSession}
               onOpenUpdateTransfer={handleOpenUpdateTransfer}
-              onSetupAchievements={(name, installPath) =>
-                handleSetupAchievements(selectedAppid, name, installPath)
-              }
               onBack={() => {
                 setTransitionDir(null)
                 setSelectedAppid(null)
               }}
-              onRefresh={handleRefresh}
-              refreshing={refreshing}
               onPrev={
                 prevAppid
                   ? () => {
@@ -730,8 +702,6 @@ export default function App(): React.ReactElement {
               onSelect={setSelectedAppid}
               onGoToSettings={() => setPage('settings')}
               onGoToHelp={() => setPage('help')}
-              onRefresh={handleRefresh}
-              refreshing={refreshing}
               onDisplayedGamesChange={setLibraryGames}
               onOpenDepotWizard={(prefill) => {
                 if (prefill) {

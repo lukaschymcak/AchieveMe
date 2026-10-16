@@ -37,6 +37,7 @@ import { cloudSavesLog } from '../achievement/cloudSavesDebugLog'
 import {
   configureLudusaviBackupQueue,
   getBackupQueueSnapshot,
+  recoverInterruptedBackups,
   scheduleGameBackup,
   scheduleGameRestore,
   scheduleLibraryBackup
@@ -89,6 +90,7 @@ export function initBackupQueue(): void {
       await pruneOldLudusaviSnapshots(gameDir, LUDUSAVI_FULL_BACKUP_LIMIT)
     }
   })
+  recoverInterruptedBackups()
 }
 
 export function registerBackupHandlers(): void {

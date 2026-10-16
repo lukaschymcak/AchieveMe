@@ -62,6 +62,8 @@ export interface LudusaviBackupQueue {
   scheduleGameBackup: (appid: string, reason: LudusaviBackupReason) => void
   scheduleGameRestore: (appid: string, backupId: string) => void
   scheduleLibraryBackup: (reason: 'startup' | 'manual') => void
+  /** Marks `running` rows failed after a restart left no live Ludusavi process. */
+  recoverInterruptedBackups: () => void
   getBackupQueueSnapshot: () => LudusaviBackupQueueSnapshot
   /** Drains the queue (tests). */
   drain: () => Promise<void>
@@ -330,6 +332,23 @@ export function createLudusaviBackupQueue(deps: LudusaviBackupQueueDeps): Ludusa
         // Never throw to callers
       }
     },
+    recoverInterruptedBackups() {
+      try {
+        if (runningAppid || pending.length > 0) return
+        const at = nowSeconds()
+        for (const game of deps.getAllGames()) {
+          if (String(game.backup_status || '').trim().toLowerCase() !== 'running') continue
+          deps.updateGameBackupStatus(game.appid, {
+            status: 'failed',
+            at,
+            error: 'Backup was interrupted.'
+          })
+          deps.notifyLibraryUpdated(game.appid)
+        }
+      } catch {
+        // Never throw to callers
+      }
+    },
     getBackupQueueSnapshot() {
       return {
         runningAppid,
@@ -397,6 +416,11 @@ export function scheduleLibraryBackup(reason: 'startup' | 'manual'): void {
 
 export function getBackupQueueSnapshot(): LudusaviBackupQueueSnapshot {
   return requireQueue().getBackupQueueSnapshot()
+}
+
+/** Clears save-backup spinners left behind when the app quit mid-backup. */
+export function recoverInterruptedBackups(): void {
+  requireQueue().recoverInterruptedBackups()
 }
 
 /** Test helper — replace the singleton queue. */

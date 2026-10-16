@@ -107,6 +107,17 @@ test('launchGameExe throws when file is missing', async () => {
   )
 })
 
+test('launchGameExe rejects an empty placeholder exe', async () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'achieveme-launch-'))
+  try {
+    const exe = path.join(tmp, 'Game.exe')
+    fs.writeFileSync(exe, Buffer.alloc(128))
+    await assert.rejects(() => launchGameExe(exe), /not a valid Windows executable/)
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true })
+  }
+})
+
 test('launchGameExe throws when path is not an exe', async () => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'achieveme-launch-'))
   try {
@@ -122,7 +133,7 @@ test('launchGameExe spawn-first returns pid and passes args', async () => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'achieveme-launch-'))
   try {
     const exe = path.join(tmp, 'Game.exe')
-    fs.writeFileSync(exe, 'x')
+    fs.writeFileSync(exe, 'MZ')
     let seenArgs
     let seenFile
     const result = await launchGameExe(exe, {
@@ -150,7 +161,7 @@ test('launchGameExe falls back to openPath on EACCES', async () => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'achieveme-launch-'))
   try {
     const exe = path.join(tmp, 'Game.exe')
-    fs.writeFileSync(exe, 'x')
+    fs.writeFileSync(exe, 'MZ')
     let openPathSeen = ''
     const result = await launchGameExe(exe, {
       args: ['-ignored'],
@@ -180,7 +191,7 @@ test('launchGameExe rejects when openPath returns an error string after EACCES',
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'achieveme-launch-'))
   try {
     const exe = path.join(tmp, 'Game.exe')
-    fs.writeFileSync(exe, 'x')
+    fs.writeFileSync(exe, 'MZ')
     await assert.rejects(
       () =>
         launchGameExe(exe, {

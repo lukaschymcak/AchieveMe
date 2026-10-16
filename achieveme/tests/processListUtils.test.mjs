@@ -63,6 +63,20 @@ test('isIgnoredPlaytimeExe covers tools and crash handlers', () => {
   assert.equal(exeBasenameNoExt('C:\\x\\DOTNET.EXE'), 'dotnet')
 })
 
+test('isIgnoredPlaytimeExe covers store launchers and browser helpers', () => {
+  assert.equal(
+    isIgnoredPlaytimeExe('C:\\Program Files\\GOG Galaxy\\QtWebEngineProcess.exe'),
+    true
+  )
+  assert.equal(isIgnoredPlaytimeExe('C:\\Program Files\\GOG Galaxy\\GalaxyClient.exe'), true)
+  assert.equal(
+    isIgnoredPlaytimeExe('C:\\Program Files\\GOG Galaxy\\GalaxyClient Helper.exe'),
+    true
+  )
+  assert.equal(isIgnoredPlaytimeExe('C:\\Program Files (x86)\\Steam\\steamwebhelper.exe'), true)
+  assert.equal(isIgnoredPlaytimeExe('D:\\Games\\Cyberpunk 2077\\bin\\x64\\Cyberpunk2077.exe'), false)
+})
+
 test('normalizePathForMatch strips trailing slashes', () => {
   assert.equal(normalizePathForMatch('C:\\Games\\Title\\'), 'c:\\games\\title')
 })

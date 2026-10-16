@@ -12,6 +12,12 @@ import type {
   GameData
 } from '../../shared/types'
 import { depotCancelEpoch, isDepotCancelStale, requestDepotCancel } from '../../shared/depotCancel'
+import { removeZeroPlaceholderFiles } from '../../shared/depotPlaceholderUtils'
+import {
+  applyDepotValidateArg,
+  DEPOT_STALL_MAX_RETRIES,
+  isDepotStalled
+} from '../../shared/depotStallUtils'
 import { manifestFilePath } from './manifestZipService'
 
 const execFileAsync = promisify(execFile)
@@ -42,6 +48,10 @@ type RuntimeState = {
   healthState: DepotHealthState
   lastHealthMessage?: string
   retryTimestamps: number[]
+  /** Epoch ms of the last downloader line or disk/network byte change. */
+  lastActivityMs: number
+  /** Set when this run is killed because it stopped making progress. */
+  stallKill: boolean
 }
 
 type ActiveDownload = {
@@ -62,6 +72,14 @@ export class DownloadCanceledError extends Error {
   constructor(message = 'Download canceled.') {
     super(message)
     this.name = 'DownloadCanceledError'
+  }
+}
+
+/** DepotDownloader produced no output and no bytes for the stall window. */
+export class DepotStallError extends Error {
+  constructor(message = 'DepotDownloader stopped making progress.') {
+    super(message)
+    this.name = 'DepotStallError'
   }
 }
 
@@ -202,14 +220,64 @@ export async function startDownload(
         '-max-downloads',
         String(request.maxDownloads || 20),
         '-dir',
-        outputDir,
-        '-validate'
+        outputDir
       ]
       if (request.steamUsername) {
         args.splice(1, 0, '-username', request.steamUsername, '-remember-password')
       }
 
-      await runProcess(dotnet, args, request.channelId, window, emit, epochAtStart)
+      let validate = Boolean(request.validate)
+      let stallRetries = 0
+      while (true) {
+        ensureNotCanceled(state, request.channelId, epochAtStart)
+        const removed = removeZeroPlaceholderFiles(outputDir)
+        if (removed.length > 0) {
+          pushLog(
+            state,
+            request.channelId,
+            window,
+            emit,
+            `Removed ${removed.length} empty file(s) left by a stalled update so they can be downloaded again.`,
+            true
+          )
+        }
+        const attemptArgs = applyDepotValidateArg(args, validate)
+        try {
+          await runProcess(dotnet, attemptArgs, request.channelId, window, emit, epochAtStart)
+          break
+        } catch (err) {
+          if (!(err instanceof DepotStallError)) throw err
+          state.runtime.telemetry.knownPct = 0
+          if (validate) {
+            validate = false
+            pushLog(
+              state,
+              request.channelId,
+              window,
+              emit,
+              `Checksum validation stalled on depot ${depotId}. Retrying without -validate…`,
+              true
+            )
+            emitWeightedProgress(state, request.channelId, request.gameData, emit)
+            continue
+          }
+          stallRetries += 1
+          if (stallRetries > DEPOT_STALL_MAX_RETRIES) {
+            throw new Error(
+              `DepotDownloader made no progress for 2 minutes. Retried ${DEPOT_STALL_MAX_RETRIES} times.`
+            )
+          }
+          pushLog(
+            state,
+            request.channelId,
+            window,
+            emit,
+            `No progress for 2 minutes. Retrying depot ${depotId} (${stallRetries}/${DEPOT_STALL_MAX_RETRIES})…`,
+            true
+          )
+          emitWeightedProgress(state, request.channelId, request.gameData, emit)
+        }
+      }
       flushLogs(state, request.channelId, window, emit)
       ensureNotCanceled(state, request.channelId, epochAtStart)
 
@@ -336,6 +404,8 @@ async function runProcess(
   const state = active.get(channelId)
   if (!state) throw new Error(`No active download state for ${channelId}.`)
   ensureNotCanceled(state, channelId, epochAtStart)
+  state.runtime.lastActivityMs = Date.now()
+  state.runtime.stallKill = false
 
   return new Promise<void>((resolve, reject) => {
     const proc = spawn(command, args, { windowsHide: true })
@@ -388,6 +458,11 @@ async function runProcess(
       finish()
       if (state.cancelRequested || isDepotCancelStale(channelId, epochAtStart)) {
         reject(new DownloadCanceledError())
+        return
+      }
+      if (state.runtime.stallKill) {
+        state.runtime.stallKill = false
+        reject(new DepotStallError())
         return
       }
       if (code === 0) resolve()
@@ -463,7 +538,9 @@ function createRuntime(
     logBuffer: [],
     charBuffer: [],
     healthState: 'stable',
-    retryTimestamps: []
+    retryTimestamps: [],
+    lastActivityMs: Date.now(),
+    stallKill: false
   }
 }
 
@@ -543,9 +620,14 @@ function handleDownloaderOutput(
   if (match) {
     const pct = Number.parseFloat(match[1])
     if (Number.isFinite(pct)) {
+      if (pct !== state.runtime.telemetry.knownPct) {
+        state.runtime.lastActivityMs = Date.now()
+      }
       state.runtime.telemetry.knownPct = Math.max(0, Math.min(100, pct))
       emitWeightedProgress(state, channelId, undefined, emit)
     }
+  } else {
+    state.runtime.lastActivityMs = Date.now()
   }
 
   updateHealthFromLine(state, line)
@@ -653,6 +735,19 @@ function startTelemetryLoop(
   state.runtime.telemetry.smoothSpeedBps = 0
 
   state.runtime.telemetry.interval = setInterval(() => {
+    const current = active.get(channelId)
+    if (
+      current &&
+      current.running &&
+      !current.cancelRequested &&
+      !current.runtime.stallKill &&
+      isDepotStalled(Date.now(), current.runtime.lastActivityMs)
+    ) {
+      current.runtime.stallKill = true
+      void terminateProcessTree(current.pid ?? current.proc?.pid)
+      return
+    }
+
     void (async () => {
       const live = active.get(channelId)
       if (!live || !live.running || live.cancelRequested) return
@@ -667,6 +762,10 @@ function startTelemetryLoop(
       const rxDelta =
         rxBytes === null ? 0 : Math.max(0, rxBytes - live.runtime.telemetry.lastRxBytes)
       live.runtime.telemetry.lastRxBytes = rxBytes ?? live.runtime.telemetry.lastRxBytes
+
+      if (diskDelta > 0) {
+        live.runtime.lastActivityMs = Date.now()
+      }
 
       const instantSpeed = live.paused ? 0 : rxDelta
       const prev = live.runtime.telemetry.smoothSpeedBps

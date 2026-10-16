@@ -19,6 +19,17 @@ const {
   pathToFileURL(path.join(rootDir, '../src/main/achievement/ludusaviService.ts')).href
 )
 
+test('createDefaultLudusaviRunner rejects when the command exceeds the timeout', { timeout: 3_000 }, async () => {
+  const { createDefaultLudusaviRunner } = await import(
+    pathToFileURL(path.join(rootDir, '../src/main/achievement/ludusaviService.ts')).href
+  )
+  const run = createDefaultLudusaviRunner(process.execPath, 150)
+  await assert.rejects(
+    () => run(['-e', 'setTimeout(() => {}, 30000)']),
+    /timed out/i
+  )
+})
+
 test('validateRclonePath accepts rclone.exe file', () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'rclone-svc-'))
   const exe = path.join(dir, 'rclone.exe')

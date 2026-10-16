@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import type {
   Achievement,
   ActiveUpdateSession,
@@ -21,6 +21,8 @@ import {
 } from '../../../shared/ludusaviApiUtils.ts'
 import HelpTip from '../components/HelpTip'
 import GameHunterStatsStrip from '../components/GameHunterStatsStrip'
+import ReapplyGoldbergDialog from '../components/ReapplyGoldbergDialog'
+import { shouldShowReapplyGoldberg } from '../../../shared/goldbergReapplyUtils.ts'
 import { TOOLTIPS, getEmptyAchievementsMessage } from '../lib/helpContent'
 import {
   type ActiveFilter,
@@ -53,14 +55,11 @@ export interface OpenUpdateTransferInput {
 interface Props {
   appid: string
   onBack: () => void
-  onRefresh: () => void
-  refreshing: boolean
   onPrev: (() => void) | null
   onNext: (() => void) | null
   transitionDir: 'next' | 'prev' | null
   activeUpdateSession: ActiveUpdateSession | null
   onOpenUpdateTransfer: (input: OpenUpdateTransferInput) => void
-  onSetupAchievements: (name: string, installPath?: string) => void
 }
 
 type TierVarKey = TrophyTier | 'platinum'
@@ -273,13 +272,9 @@ function CloudSaveIcon({ crossed }: { crossed?: boolean }): React.ReactElement {
 
 function GameDetailHeroBar({
   onBack,
-  onRefresh,
-  refreshing,
   actions
 }: {
   onBack: () => void
-  onRefresh: () => void
-  refreshing: boolean
   actions?: React.ReactNode
 }): React.ReactElement {
   return (
@@ -290,20 +285,7 @@ function GameDetailHeroBar({
         </span>
         Library
       </button>
-      <div className="game-detail__hero-bar-right">
-        {actions}
-        <span className="game-detail__refresh-wrap">
-          <button
-            type="button"
-            className="game-detail__pill game-detail__hero-action"
-            onClick={onRefresh}
-            disabled={refreshing}
-          >
-            {refreshing ? 'Refreshing…' : 'Refresh all'}
-          </button>
-          <HelpTip content={TOOLTIPS.refreshGameDetail} label="Refresh library help" />
-        </span>
-      </div>
+      <div className="game-detail__hero-bar-right">{actions}</div>
     </div>
   )
 }
@@ -348,18 +330,14 @@ function GameDetailNavArrows({
 }
 
 function GameDetailSkeletonContent({
-  onBack,
-  onRefresh,
-  refreshing
+  onBack
 }: {
   onBack: () => void
-  onRefresh: () => void
-  refreshing: boolean
 }): React.ReactElement {
   return (
     <>
       <header className="game-detail__hero">
-        <GameDetailHeroBar onBack={onBack} onRefresh={onRefresh} refreshing={refreshing} />
+        <GameDetailHeroBar onBack={onBack} />
         <div className="game-detail__hero-content">
           <div className="game-detail__hero-left">
             <div className="game-detail__skeleton game-detail__skeleton--title" />
@@ -554,14 +532,11 @@ function renderListItem(
 export default function GameDetailPage({
   appid,
   onBack,
-  onRefresh,
-  refreshing,
   onPrev,
   onNext,
   transitionDir,
   activeUpdateSession,
-  onOpenUpdateTransfer,
-  onSetupAchievements
+  onOpenUpdateTransfer
 }: Props): React.ReactElement {
   const [detail, setDetail] = useState<GameDetail | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -586,6 +561,9 @@ export default function GameDetailPage({
   const [updateError, setUpdateError] = useState('')
   const [openingTransfer, setOpeningTransfer] = useState(false)
   const [saveModalOpen, setSaveModalOpen] = useState(false)
+  const [reapplyOpen, setReapplyOpen] = useState(false)
+  const [moreMenuOpen, setMoreMenuOpen] = useState(false)
+  const moreMenuRef = useRef<HTMLDivElement>(null)
   const [saveModalStep, setSaveModalStep] = useState<'main' | 'pick'>('main')
   const [savePickMode, setSavePickMode] = useState<'restore' | 'upload'>('restore')
   const [saveSnapshots, setSaveSnapshots] = useState<LudusaviSnapshot[]>([])
@@ -791,6 +769,18 @@ export default function GameDetailPage({
     showExePicker(folder, list)
   }
 
+  async function handleChangeInstallFolder(): Promise<void> {
+    if (playBusy) return
+    setPlayBusy(true)
+    try {
+      await browseAndListExecutables()
+    } catch (err) {
+      setExePickerError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setPlayBusy(false)
+    }
+  }
+
   async function openExeResolveFlow(acceptedRoot?: string): Promise<void> {
     setExePickerError('')
     setPlayMenuOpen(false)
@@ -959,11 +949,28 @@ export default function GameDetailPage({
   }
 
   useEffect(() => {
+    if (!moreMenuOpen) return
+    function onPointerDown(event: MouseEvent): void {
+      if (!moreMenuRef.current?.contains(event.target as Node)) setMoreMenuOpen(false)
+    }
+    function onKeyDown(event: KeyboardEvent): void {
+      if (event.key === 'Escape') setMoreMenuOpen(false)
+    }
+    document.addEventListener('mousedown', onPointerDown)
+    document.addEventListener('keydown', onKeyDown)
+    return () => {
+      document.removeEventListener('mousedown', onPointerDown)
+      document.removeEventListener('keydown', onKeyDown)
+    }
+  }, [moreMenuOpen])
+
+  useEffect(() => {
     setError(null)
     setDetail(null)
     setActiveFilter('all')
     setExePickerOpen(false)
     setPlayMenuOpen(false)
+    setMoreMenuOpen(false)
     setRootConfirmPath(null)
     setIsLaunching(false)
     setUpdateStatus('')
@@ -993,7 +1000,7 @@ export default function GameDetailPage({
         setUpdateStatus(next?.game.update_status ?? '')
         setLaunchArgsDraft(next?.game.launch_args ?? '')
       })
-      .catch(() => setError('Could not load game details. Try Refresh all from the toolbar.'))
+      .catch(() => setError('Could not load game details.'))
   }, [appid])
 
   useEffect(() => {
@@ -1035,7 +1042,7 @@ export default function GameDetailPage({
           setUpdateStatus(next?.game.update_status ?? '')
           setLaunchArgsDraft(next?.game.launch_args ?? '')
         })
-        .catch(() => setError('Could not load game details. Try Refresh all from the toolbar.'))
+        .catch(() => setError('Could not load game details.'))
       void window.api.getGameHunterStats(appid).then(setHunterStats).catch(() => undefined)
     }
 
@@ -1157,7 +1164,7 @@ export default function GameDetailPage({
           {error ? (
             <>
               <header className="game-detail__hero game-detail__hero--compact">
-                <GameDetailHeroBar onBack={onBack} onRefresh={onRefresh} refreshing={refreshing} />
+                <GameDetailHeroBar onBack={onBack} />
               </header>
               <div className="game-detail__body">
                 <p className="game-detail__error" role="alert">
@@ -1166,18 +1173,12 @@ export default function GameDetailPage({
               </div>
             </>
           ) : !detail ? (
-            <GameDetailSkeletonContent
-              onBack={onBack}
-              onRefresh={onRefresh}
-              refreshing={refreshing}
-            />
+            <GameDetailSkeletonContent onBack={onBack} />
           ) : (
             <>
               <header className="game-detail__hero">
                 <GameDetailHeroBar
                   onBack={onBack}
-                  onRefresh={onRefresh}
-                  refreshing={refreshing}
                   actions={
                     <div className="game-detail__update-row game-detail__update-row--hero">
                       {showDepotUpdateUi && (
@@ -1292,28 +1293,50 @@ export default function GameDetailPage({
                             : 'Validate'}
                         </button>
                       )}
-                      {game?.total_achievements === 0 && (
-                        <button
-                          type="button"
-                          className="game-detail__pill game-detail__update-btn"
-                          onClick={() =>
-                            onSetupAchievements(game.name, game.install_path || undefined)
-                          }
-                          aria-label="Set up achievements for this game"
-                        >
-                          Set up achievements
-                        </button>
-                      )}
-                      {showDepotUpdateUi && (
-                        <button
-                          type="button"
-                          className="game-detail__pill game-detail__update-btn"
-                          onClick={() => void handleCheckForUpdate()}
-                          disabled={updateChecking || jobLocked}
-                          aria-label="Check for update"
-                        >
-                          {updateChecking ? 'Checking…' : 'Check for update'}
-                        </button>
+                      {(shouldShowReapplyGoldberg(game?.install_path) || showDepotUpdateUi) && (
+                        <div className="game-detail__more-wrap" ref={moreMenuRef}>
+                          <button
+                            type="button"
+                            className="game-detail__pill game-detail__more-btn"
+                            onClick={() => setMoreMenuOpen((open) => !open)}
+                            aria-label="More actions"
+                            aria-expanded={moreMenuOpen}
+                            aria-haspopup="menu"
+                          >
+                            ⋮
+                          </button>
+                          {moreMenuOpen && (
+                            <div className="game-detail__more-menu" role="menu">
+                              {shouldShowReapplyGoldberg(game?.install_path) && (
+                                <button
+                                  type="button"
+                                  role="menuitem"
+                                  className="game-detail__more-menu-item"
+                                  onClick={() => {
+                                    setMoreMenuOpen(false)
+                                    setReapplyOpen(true)
+                                  }}
+                                >
+                                  Reapply Goldberg
+                                </button>
+                              )}
+                              {showDepotUpdateUi && (
+                                <button
+                                  type="button"
+                                  role="menuitem"
+                                  className="game-detail__more-menu-item"
+                                  onClick={() => {
+                                    setMoreMenuOpen(false)
+                                    void handleCheckForUpdate()
+                                  }}
+                                  disabled={updateChecking || jobLocked}
+                                >
+                                  {updateChecking ? 'Checking…' : 'Check for update'}
+                                </button>
+                              )}
+                            </div>
+                          )}
+                        </div>
                       )}
                     </div>
                   }
@@ -1533,6 +1556,19 @@ export default function GameDetailPage({
           )}
         </div>
       </div>
+
+      {reapplyOpen && game && (
+        <ReapplyGoldbergDialog
+          appid={appid}
+          installPath={game.install_path ?? ''}
+          savedDllPath={game.goldberg_dll_path ?? ''}
+          onClose={() => setReapplyOpen(false)}
+          onApplied={() => {
+            setReapplyOpen(false)
+            void reloadDetail()
+          }}
+        />
+      )}
 
       {saveModalOpen && (
         <div
@@ -1996,59 +2032,72 @@ export default function GameDetailPage({
                 ×
               </button>
             </div>
-            <p className="game-detail__exe-modal-help">
-              Suggested executables are ranked for this game. Other tools and crash handlers stay
-              available if you need them. Picking an exe saves it — it does not launch.
-            </p>
             {exeRootLabel && (
-              <p className="game-detail__exe-modal-path" title={exeRootLabel}>
-                {exeRootLabel}
+              <div className="game-detail__exe-modal-path-row">
+                <p className="game-detail__exe-modal-path" title={exeRootLabel}>
+                  {exeRootLabel}
+                </p>
+                <button
+                  type="button"
+                  className="game-detail__pill"
+                  disabled={playBusy}
+                  onClick={() => void handleChangeInstallFolder()}
+                  aria-label="Change install folder"
+                >
+                  Change folder
+                </button>
+              </div>
+            )}
+            <div className="game-detail__exe-modal-scroll">
+              <p className="game-detail__exe-modal-help">
+                Suggested executables are ranked for this game. Other tools and crash handlers stay
+                available if you need them. Picking an exe saves it — it does not launch.
               </p>
-            )}
-            {exePickerError && (
-              <p className="game-detail__exe-modal-error">{exePickerError}</p>
-            )}
-            {(() => {
-              const suggestedList = exeOptions.filter((e) => e.suggested === true)
-              const otherList = exeOptions.filter((e) => e.suggested !== true)
-              const renderList = (items: GameExecutable[]) => (
-                <ul className="game-detail__exe-list">
-                  {items.map((exe) => (
-                    <li key={exe.absolutePath}>
-                      <button
-                        type="button"
-                        className="game-detail__exe-option"
-                        disabled={playBusy}
-                        onClick={() => void handlePickExecutable(exe)}
-                      >
-                        <span className="game-detail__exe-option-name">{exe.name}</span>
-                        {exe.relativePath !== exe.name && (
-                          <span className="game-detail__exe-option-path">{exe.relativePath}</span>
-                        )}
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              )
-              return (
-                <>
-                  {suggestedList.length > 0 && (
-                    <div className="game-detail__exe-group">
-                      <h4 className="game-detail__exe-group-title">Suggested</h4>
-                      {renderList(suggestedList)}
-                    </div>
-                  )}
-                  {otherList.length > 0 && (
-                    <div className="game-detail__exe-group">
-                      <h4 className="game-detail__exe-group-title">
-                        {suggestedList.length > 0 ? 'Other executables' : 'Executables'}
-                      </h4>
-                      {renderList(otherList)}
-                    </div>
-                  )}
-                </>
-              )
-            })()}
+              {exePickerError && (
+                <p className="game-detail__exe-modal-error">{exePickerError}</p>
+              )}
+              {(() => {
+                const suggestedList = exeOptions.filter((e) => e.suggested === true)
+                const otherList = exeOptions.filter((e) => e.suggested !== true)
+                const renderList = (items: GameExecutable[]) => (
+                  <ul className="game-detail__exe-list">
+                    {items.map((exe) => (
+                      <li key={exe.absolutePath}>
+                        <button
+                          type="button"
+                          className="game-detail__exe-option"
+                          disabled={playBusy}
+                          onClick={() => void handlePickExecutable(exe)}
+                        >
+                          <span className="game-detail__exe-option-name">{exe.name}</span>
+                          {exe.relativePath !== exe.name && (
+                            <span className="game-detail__exe-option-path">{exe.relativePath}</span>
+                          )}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )
+                return (
+                  <>
+                    {suggestedList.length > 0 && (
+                      <div className="game-detail__exe-group">
+                        <h4 className="game-detail__exe-group-title">Suggested</h4>
+                        {renderList(suggestedList)}
+                      </div>
+                    )}
+                    {otherList.length > 0 && (
+                      <div className="game-detail__exe-group">
+                        <h4 className="game-detail__exe-group-title">
+                          {suggestedList.length > 0 ? 'Other executables' : 'Executables'}
+                        </h4>
+                        {renderList(otherList)}
+                      </div>
+                    )}
+                  </>
+                )
+              })()}
+            </div>
           </div>
         </div>
       )}

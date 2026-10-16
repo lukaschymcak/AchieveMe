@@ -12,7 +12,6 @@ import GameCardMenu, {
   type GameCardMenuMode,
   type MenuPosition
 } from '../components/GameCardMenu'
-import HelpTip from '../components/HelpTip'
 import LibraryCoachMark from '../components/LibraryCoachMark'
 import {
   AppChrome,
@@ -46,8 +45,6 @@ interface Props {
   onGoToHelp?: () => void
   page: AppPage
   onNavigate: (page: AppPage) => void
-  onRefresh: () => void
-  refreshing: boolean
   onDisplayedGamesChange?: (games: GameSummary[]) => void
   onOpenDepotWizard?: (prefill?: { appid: string; name: string }) => void
 }
@@ -64,8 +61,6 @@ export default function LibraryPage({
   onGoToHelp,
   page,
   onNavigate,
-  onRefresh,
-  refreshing,
   onDisplayedGamesChange,
   onOpenDepotWizard
 }: Props): React.ReactElement {
@@ -361,12 +356,6 @@ export default function LibraryPage({
           <>
             <span className="app-chrome__count library-chrome__count" aria-live="polite">
               {displayedGames.length + (displayedGames.length === 1 ? ' game' : ' games')}
-            </span>
-            <span className="app-chrome__refresh-wrap library-chrome__refresh-wrap">
-              <Chip variant="action" onClick={onRefresh} disabled={refreshing}>
-                {refreshing ? 'Refreshing…' : 'Refresh'}
-              </Chip>
-              <HelpTip content={TOOLTIPS.refreshLibrary} label="Refresh library help" />
             </span>
           </>
         }

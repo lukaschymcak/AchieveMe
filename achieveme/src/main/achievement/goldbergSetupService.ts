@@ -15,9 +15,9 @@ import {
   getGame
 } from '../db/repository'
 import type { GoldbergApplyRequest } from '../../shared/types'
+import { goldbergReapplySteps } from '../../shared/goldbergReapplyUtils.ts'
 import { expandEnv } from './savePathUtils'
 import {
-  goldbergSetupSteps,
   installGoldbergEmuDll,
   seedGoldbergAchievementSave,
   validateDllPath,
@@ -236,7 +236,7 @@ export async function applyGoldberg(
   log: (line: string) => void
 ): Promise<void> {
   generatorCancelled = false
-  const { appid, dllPath, installEmuDll, denuvoOfflineActivated } = request
+  const { appid, dllPath, installEmuDll, denuvoOfflineActivated, includeAchievements } = request
   if (!/^\d+$/.test(appid)) {
     throw new Error(`Invalid AppID: ${appid}`)
   }
@@ -259,22 +259,30 @@ export async function applyGoldberg(
     settings?.gseUsername?.trim()
       ? { username: settings.gseUsername.trim(), password: settings.gsePassword?.trim() || '' }
       : DEFAULT_GSE_CREDENTIALS
-  log(`[catalog] Checking Steam achievement schema for AppID ${appid}...`)
-  const catalog = await fetchSchema(getDb(), appid, settings?.steamApiKey?.trim() || '', true)
-  const catalogDesc =
-    catalog === null
-      ? 'null (failed fetch or no API key)'
-      : catalog.length === 0
-        ? '[] (empty catalog — unreleased or unpublished)'
-        : `[...] (${catalog.length} achievements published)`
-  log(`[catalog] Result: ${catalogDesc}`)
-  const steps = goldbergSetupSteps(appid, catalog)
+  let catalog: Awaited<ReturnType<typeof fetchSchema>> = null
+  if (includeAchievements) {
+    log(`[catalog] Checking Steam achievement schema for AppID ${appid}...`)
+    catalog = await fetchSchema(getDb(), appid, settings?.steamApiKey?.trim() || '', true)
+    const catalogDesc =
+      catalog === null
+        ? 'null (failed fetch or no API key)'
+        : catalog.length === 0
+          ? '[] (empty catalog — unreleased or unpublished)'
+          : `[...] (${catalog.length} achievements published)`
+    log(`[catalog] Result: ${catalogDesc}`)
+  } else {
+    log('Skipping achievement catalog — reapply without achievements.')
+  }
+  const steps = goldbergReapplySteps(includeAchievements, appid, catalog)
   log(`[generator] skipGenerator=${steps.skipGenerator} seedAchievements=${steps.seedAchievements}`)
 
   const settingsTarget = path.join(gameDir, 'steam_settings')
 
   if (steps.skipGenerator) {
-    log('Skipping generator (no published achievement data) — writing minimal steam_settings...')
+    const reason = includeAchievements
+      ? 'no published achievement data'
+      : 'achievements were not requested'
+    log(`Skipping generator (${reason}) — writing minimal steam_settings...`)
     writeMinimalSteamSettings(gameDir, appid)
     log(`Wrote steam_appid.txt to: ${settingsTarget}`)
   } else {

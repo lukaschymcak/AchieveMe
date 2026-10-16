@@ -386,7 +386,8 @@ export default function DepotWizard({
         appid: local.appId,
         dllPath: dllInfo.path,
         installEmuDll,
-        denuvoOfflineActivated
+        denuvoOfflineActivated,
+        includeAchievements: true
       })
       setApplyState('done')
       patchSession({ phase: 'complete', status: 'Game added' })
