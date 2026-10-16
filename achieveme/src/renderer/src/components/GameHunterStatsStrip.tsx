@@ -7,10 +7,11 @@ import {
   shouldShowHunterStatsStrip,
   steamReviewTone
 } from '../../../shared/hunterStatsUtils.ts'
-import { getSteamStoreAppUrl } from '../../../shared/steamUrls.ts'
+import { getNexusModsSearchUrl, getSteamStoreAppUrl } from '../../../shared/steamUrls.ts'
 
 interface Props {
   appid: string
+  gameName: string
   stats: GameHunterStats
 }
 
@@ -19,18 +20,23 @@ interface Props {
  */
 export default function GameHunterStatsStrip({
   appid,
+  gameName,
   stats
 }: Props): React.ReactElement | null {
   const storeUrl = getSteamStoreAppUrl(appid)
+  const nexusUrl = getNexusModsSearchUrl(gameName)
   const showStats = shouldShowHunterStatsStrip(stats)
-  if (!showStats && !storeUrl) return null
+  if (!showStats && !storeUrl && !nexusUrl) return null
 
   const tone = steamReviewTone(stats.reviewSummary)
   const band =
     stats.metacritic !== null ? metacriticBand(stats.metacritic) : null
+  const linkLabel = [storeUrl ? 'Open on Steam' : '', nexusUrl ? 'Open on Nexus Mods' : '']
+    .filter(Boolean)
+    .join('; ')
   const ariaLabel = showStats
-    ? `${formatHunterStatsLine(stats) || 'Store ratings'}; Open on Steam`
-    : 'Open on Steam'
+    ? `${formatHunterStatsLine(stats) || 'Store ratings'}; ${linkLabel}`
+    : linkLabel
 
   return (
     <div
@@ -82,6 +88,17 @@ export default function GameHunterStatsStrip({
           aria-label="Open game on Steam Store"
         >
           Steam
+        </a>
+      ) : null}
+      {nexusUrl ? (
+        <a
+          className="game-detail__steam-link"
+          href={nexusUrl}
+          target="_blank"
+          rel="noreferrer"
+          aria-label="Open game on Nexus Mods"
+        >
+          Nexus
         </a>
       ) : null}
     </div>

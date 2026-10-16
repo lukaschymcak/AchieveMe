@@ -1,0 +1,60 @@
+{
+  "$schema": "https://www.raycast.com/schemas/extension.json",
+  "name": "achieveme-library",
+  "title": "AchieveMe Library",
+  "description": "Browse and launch your AchieveMe game library. Search games, see achievements and playtime.",
+  "icon": "icon.png",
+  "author": "luka",
+  "platforms": [
+    "macOS",
+    "Windows"
+  ],
+  "categories": [
+    "Games",
+    "Productivity"
+  ],
+  "license": "MIT",
+  "commands": [
+    {
+      "name": "search-library",
+      "title": "Search Library",
+      "subtitle": "AchieveMe",
+      "description": "Search and launch games from your AchieveMe library",
+      "mode": "view"
+    }
+  ],
+  "preferences": [
+    {
+      "name": "dbPath",
+      "title": "AchieveMe Database Path",
+      "description": "Path to achieveme.db. Leave blank to auto-detect from %APPDATA%\\achieveme\\achieveme.db",
+      "type": "file",
+      "required": false,
+      "placeholder": "Auto-detect"
+    },
+    {
+      "name": "achievemeExe",
+      "title": "AchieveMe.exe",
+      "description": "Path to AchieveMe.exe. Leave blank to use the installed app in Local AppData.",
+      "type": "file",
+      "required": false
+    }
+  ],
+  "dependencies": {
+    "@raycast/api": "^1.90.0",
+    "@raycast/utils": "^1.19.0"
+  },
+  "devDependencies": {
+    "@raycast/eslint-config": "^1.0.11",
+    "@types/react": "^19.0.10",
+    "typescript": "^5.4.0"
+  },
+  "scripts": {
+    "build": "ray build",
+    "dev": "ray develop",
+    "fix-lint": "ray lint --fix",
+    "lint": "ray lint",
+    "prepublishOnly": "echo 'Use `npm run publish` to publish.' && exit 1",
+    "publish": "npx @raycast/api@latest publish"
+  }
+}

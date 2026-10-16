@@ -1,4 +1,4 @@
-import { execFile, spawn, type ChildProcessWithoutNullStreams } from 'node:child_process'
+import { execFile, execFileSync, spawn, type ChildProcessWithoutNullStreams } from 'node:child_process'
 import fs from 'node:fs'
 import fsp from 'node:fs/promises'
 import os from 'node:os'
@@ -11,6 +11,7 @@ import type {
   DepotHealthState,
   GameData
 } from '../../shared/types'
+import { depotCancelEpoch, isDepotCancelStale, requestDepotCancel } from '../../shared/depotCancel'
 import { manifestFilePath } from './manifestZipService'
 
 const execFileAsync = promisify(execFile)
@@ -57,7 +58,7 @@ type ActiveDownload = {
 
 const active = new Map<string, ActiveDownload>()
 
-class DownloadCanceledError extends Error {
+export class DownloadCanceledError extends Error {
   constructor(message = 'Download canceled.') {
     super(message)
     this.name = 'DownloadCanceledError'
@@ -98,7 +99,8 @@ export function findDotnet(): string | null {
  */
 export async function startDownload(
   request: DepotDownloadStartRequest,
-  window: BrowserWindow
+  window: BrowserWindow,
+  epochAtStart = depotCancelEpoch(request.channelId)
 ): Promise<void> {
   const dotnet = findDotnet()
   if (!dotnet) throw new Error('dotnet not found. Install the .NET runtime to use DepotDownloader.')
@@ -162,7 +164,7 @@ export async function startDownload(
 
   try {
     for (let index = 0; index < depots.length; index++) {
-      ensureNotCanceled(state)
+      ensureNotCanceled(state, request.channelId, epochAtStart)
       state.runtime.currentDepotBytes = depotSizes[index] || 0
       state.runtime.telemetry.knownPct = 0
 
@@ -207,9 +209,9 @@ export async function startDownload(
         args.splice(1, 0, '-username', request.steamUsername, '-remember-password')
       }
 
-      await runProcess(dotnet, args, request.channelId, window, emit)
+      await runProcess(dotnet, args, request.channelId, window, emit, epochAtStart)
       flushLogs(state, request.channelId, window, emit)
-      ensureNotCanceled(state)
+      ensureNotCanceled(state, request.channelId, epochAtStart)
 
       state.runtime.completedBytes += state.runtime.currentDepotBytes
       state.runtime.telemetry.knownPct = 0
@@ -243,7 +245,7 @@ export async function startDownload(
         terminalReason: 'canceled',
         indeterminate: false
       })
-      return
+      throw new DownloadCanceledError()
     }
     const message = err instanceof Error ? err.message : String(err)
     window.webContents.send(request.channelId, { error: message, log: `ERROR: ${message}` })
@@ -289,10 +291,23 @@ export async function startDownload(
 /**
  * Cancels an active DepotDownloader session.
  */
+/**
+ * Kills every DepotDownloader process this app started.
+ * Synchronous so quit can finish the kill before the process exits.
+ */
+export function stopAllDepotDownloads(): void {
+  for (const [channelId, state] of active) {
+    requestDepotCancel(channelId)
+    state.cancelRequested = true
+    killProcessTreeSync(state.pid ?? state.proc?.pid)
+  }
+}
+
 export async function cancelDownload(
   channelId: string,
   mode: DepotCancelMode = 'keep'
 ): Promise<void> {
+  requestDepotCancel(channelId)
   const state = active.get(channelId)
   if (!state) return
   state.cancelRequested = true
@@ -315,11 +330,12 @@ async function runProcess(
   args: string[],
   channelId: string,
   window: BrowserWindow,
-  emit: (payload: Record<string, unknown>) => void
+  emit: (payload: Record<string, unknown>) => void,
+  epochAtStart = 0
 ): Promise<void> {
   const state = active.get(channelId)
   if (!state) throw new Error(`No active download state for ${channelId}.`)
-  ensureNotCanceled(state)
+  ensureNotCanceled(state, channelId, epochAtStart)
 
   return new Promise<void>((resolve, reject) => {
     const proc = spawn(command, args, { windowsHide: true })
@@ -362,14 +378,15 @@ async function runProcess(
       clearTimeout(timer)
       flushLogs(state, channelId, window, emit)
       finish()
-      if (state.cancelRequested) reject(new DownloadCanceledError())
-      else reject(err)
+      if (state.cancelRequested || isDepotCancelStale(channelId, epochAtStart)) {
+        reject(new DownloadCanceledError())
+      } else reject(err)
     })
     proc.on('close', (code) => {
       clearTimeout(timer)
       flushLogs(state, channelId, window, emit)
       finish()
-      if (state.cancelRequested) {
+      if (state.cancelRequested || isDepotCancelStale(channelId, epochAtStart)) {
         reject(new DownloadCanceledError())
         return
       }
@@ -450,8 +467,23 @@ function createRuntime(
   }
 }
 
-function ensureNotCanceled(state: ActiveDownload): void {
-  if (state.cancelRequested) throw new DownloadCanceledError()
+function ensureNotCanceled(state: ActiveDownload, channelId: string, epochAtStart: number): void {
+  if (state.cancelRequested || isDepotCancelStale(channelId, epochAtStart)) {
+    state.cancelRequested = true
+    throw new DownloadCanceledError()
+  }
+}
+
+function killProcessTreeSync(pid: number | undefined): void {
+  if (!pid) return
+  try {
+    execFileSync('taskkill', ['/PID', String(pid), '/T', '/F'], {
+      windowsHide: true,
+      stdio: 'ignore'
+    })
+  } catch {
+    // Best effort. The process may already be gone.
+  }
 }
 
 function isCanceledError(err: unknown): boolean {

@@ -10,6 +10,7 @@ interface Props {
   onSessionChange: (session: ActiveUpdateSession | null) => void
   onConfirmDepots: (selectedDepots: string[]) => void
   onClose: () => void
+  onCancel: () => void
   onDismissComplete: () => void
 }
 
@@ -32,6 +33,7 @@ export default function UpdateTransferModal({
   onSessionChange,
   onConfirmDepots,
   onClose,
+  onCancel,
   onDismissComplete
 }: Props): React.ReactElement {
   const phase = session.phase
@@ -444,7 +446,12 @@ export default function UpdateTransferModal({
             </>
           )}
 
-          {phase === 'running' && <Chip onClick={onClose}>Hide</Chip>}
+          {phase === 'running' && (
+            <>
+              <Chip onClick={onCancel}>Cancel</Chip>
+              <Chip onClick={onClose}>Hide</Chip>
+            </>
+          )}
 
           {phase === 'error' && (
             <>

@@ -108,8 +108,9 @@ export function buildTransferDockRows(input: {
       pct: Math.max(0, Math.min(100, update.pct ?? 0)),
       statusLabel: update.label?.trim() || update.error?.trim() || update.phase || modeLabel,
       openTarget: 'update',
-      // No cancel IPC exists for updates; dismissing the row only clears the session.
-      cancellable: false
+      // Running Update/Validate owns a DepotDownloader process and can be killed.
+      // Reapply is interactive; the X only dismisses that row.
+      cancellable: update.phase === 'running'
     })
   }
 

@@ -29,6 +29,14 @@ export function nextUpdatePhaseAfterSuccess(input: {
 }
 
 /**
+ * DepotDownloader channel for an Update or Validate job.
+ * Must match the channel passed to `startDownload`.
+ */
+export function updateDepotChannelId(appid: string, mode: 'update' | 'validate'): string {
+  return `depot:${String(appid || '').trim()}:${mode}`
+}
+
+/**
  * Whether the update modal phase should keep the session in the Transfers dock
  * after `busy` becomes false.
  *

@@ -8,6 +8,7 @@ const {
   normalizeSteamIconUrl,
   getSteamLibraryHeroUrl,
   getSteamStoreAppUrl,
+  getNexusModsSearchUrl,
   STEAM_WEB_API_KEY_URL
 } = await import(
   pathToFileURL(path.join(rootDir, '../src/shared/steamUrls.ts')).href
@@ -61,4 +62,12 @@ test('getSteamStoreAppUrl builds store product URL', () => {
   assert.equal(getSteamStoreAppUrl('570'), 'https://store.steampowered.com/app/570')
   assert.equal(getSteamStoreAppUrl(''), '')
   assert.equal(getSteamStoreAppUrl('not-numeric'), '')
+})
+
+test('getNexusModsSearchUrl searches Nexus games by title', () => {
+  assert.equal(
+    getNexusModsSearchUrl("Dragon's Dogma 2"),
+    "https://www.nexusmods.com/games?keyword=Dragon's%20Dogma%202"
+  )
+  assert.equal(getNexusModsSearchUrl('  '), '')
 })

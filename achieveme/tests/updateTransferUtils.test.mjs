@@ -4,7 +4,7 @@ import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 
 const rootDir = path.dirname(fileURLToPath(import.meta.url))
-const { nextUpdatePhaseAfterSuccess, updatePhaseKeepsDock } = await import(
+const { nextUpdatePhaseAfterSuccess, updateDepotChannelId, updatePhaseKeepsDock } = await import(
   pathToFileURL(path.join(rootDir, '../src/shared/updateTransferUtils.ts')).href
 )
 
@@ -35,6 +35,11 @@ test('updatePhaseKeepsDock keeps error and reapply phases', () => {
   assert.equal(updatePhaseKeepsDock('reapply_pick'), true)
   assert.equal(updatePhaseKeepsDock('reapply_run'), true)
   assert.equal(updatePhaseKeepsDock('running'), true)
+})
+
+test('updateDepotChannelId matches the depot runner channel', () => {
+  assert.equal(updateDepotChannelId('570', 'validate'), 'depot:570:validate')
+  assert.equal(updateDepotChannelId(' 730 ', 'update'), 'depot:730:update')
 })
 
 test('updatePhaseKeepsDock excludes pick_depots and done', () => {

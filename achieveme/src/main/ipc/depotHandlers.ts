@@ -7,7 +7,13 @@ import { loadSettings } from '../settings'
 import { notifyLibraryUpdated } from '../achievement/libraryNotifyService'
 import { downloadManifest, searchDepotGames } from '../achievement/hubcapService'
 import { processZip } from '../achievement/manifestZipService'
-import { cancelDownload, startDownload } from '../achievement/depotRunnerService'
+import { depotCancelEpoch, isDepotCancelStale } from '../../shared/depotCancel'
+import { updateDepotChannelId } from '../../shared/updateTransferUtils'
+import {
+  cancelDownload,
+  DownloadCanceledError,
+  startDownload
+} from '../achievement/depotRunnerService'
 import { scanSteamApiDll } from '../achievement/depotScanUtils'
 import { checkGameUpdate, runManifestChecker, runStartupUpdateCheck } from '../achievement/manifestCheckerService'
 import { parseManifestGidsJson, pickManifestGids } from '../../shared/manifestUpdateUtils'
@@ -138,11 +144,13 @@ export function registerDepotHandlers(): void {
 
       const cacheDir = path.join(app.getPath('userData'), 'manifest_cache')
       const zipPath = path.join(cacheDir, `${clean}.zip`)
+      const channelId = updateDepotChannelId(clean, 'update')
+      const epochAtStart = depotCancelEpoch(channelId)
       await downloadManifest(clean, zipPath, `manifest:update-game:progress:${clean}`, win)
+      assertUpdateNotCanceled(channelId, epochAtStart)
       const gameData = await processZip(zipPath)
 
       const contentDir = resolveDepotOutputDir(outDir, game.name || gameData.gameName)
-      const channelId = `depot:${clean}:update`
       await startDownload(
         {
           gameData,
@@ -153,8 +161,10 @@ export function registerDepotHandlers(): void {
           maxDownloads: 20,
           channelId
         },
-        win
+        win,
+        epochAtStart
       )
+      assertUpdateNotCanceled(channelId, epochAtStart)
 
       const gids = pickManifestGids(gameData.manifests, selectedDepots)
       if (!Object.keys(gids).length) throw new Error('No manifest GIDs for selected depots.')
@@ -194,11 +204,14 @@ export function registerDepotHandlers(): void {
 
       const cacheDir = path.join(app.getPath('userData'), 'manifest_cache')
       const zipPath = path.join(cacheDir, `${clean}.zip`)
+      const channelId = updateDepotChannelId(clean, 'validate')
+      const epochAtStart = depotCancelEpoch(channelId)
 
       // Use cached ZIP if available; download fresh only if missing
       if (!fs.existsSync(zipPath)) {
         await downloadManifest(clean, zipPath, `manifest:validate-game:progress:${clean}`, win)
       }
+      assertUpdateNotCanceled(channelId, epochAtStart)
 
       const gameData = await processZip(zipPath)
       const contentDir = resolveDepotOutputDir(outDir, game.name || gameData.gameName)
@@ -211,10 +224,12 @@ export function registerDepotHandlers(): void {
           outputPath: contentDir,
           steamUsername,
           maxDownloads: 20,
-          channelId: `depot:${clean}:validate`
+          channelId
         },
-        win
+        win,
+        epochAtStart
       )
+      assertUpdateNotCanceled(channelId, epochAtStart)
 
       // Repair only — do not change manifest_gids or update_status
       notifyLibraryUpdated(clean)
@@ -225,4 +240,8 @@ export function registerDepotHandlers(): void {
   ipcMain.handle('manifest:startup-update-check', async (): Promise<void> => {
     void runStartupUpdateCheck(getDb()).catch(() => undefined)
   })
+}
+
+function assertUpdateNotCanceled(channelId: string, epochAtStart: number): void {
+  if (isDepotCancelStale(channelId, epochAtStart)) throw new DownloadCanceledError()
 }

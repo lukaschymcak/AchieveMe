@@ -36,7 +36,7 @@ import {
   shouldShowUpdateInDock,
   type TransferDockRow
 } from '../../shared/transfersDockUtils'
-import { nextUpdatePhaseAfterSuccess } from '../../shared/updateTransferUtils'
+import { nextUpdatePhaseAfterSuccess, updateDepotChannelId } from '../../shared/updateTransferUtils'
 
 type TransitionDir = 'next' | 'prev' | null
 
@@ -475,6 +475,12 @@ export default function App(): React.ReactElement {
       } catch (err) {
         finished = true
         const message = err instanceof Error ? err.message : String(err)
+        if (/canceled/i.test(message)) {
+          handleUpdateSessionChange(null)
+          setUpdateModalOpen(false)
+          setUpdateManifestGidsJson('')
+          return
+        }
         const prev = updateSessionRef.current
         if (prev) {
           handleUpdateSessionChange({
@@ -553,6 +559,16 @@ export default function App(): React.ReactElement {
     setUpdateModalOpen(true)
   }
 
+  function cancelActiveUpdate(): void {
+    const session = updateSessionRef.current
+    if (session?.phase === 'running') {
+      void window.api.depotCancelDownload(updateDepotChannelId(session.appid, session.mode), 'keep')
+    }
+    handleUpdateSessionChange(null)
+    setUpdateManifestGidsJson('')
+    setUpdateModalOpen(false)
+  }
+
   function handleCancelTransferRow(row: TransferDockRow): void {
     if (row.openTarget === 'depot') {
       const session = activeDepotSession
@@ -563,7 +579,10 @@ export default function App(): React.ReactElement {
       setDepotWizardOpen(false)
       return
     }
-    // Updates have no cancel IPC; dismissing the row drops the session.
+    if (row.cancellable) {
+      cancelActiveUpdate()
+      return
+    }
     handleUpdateSessionChange(null)
     setUpdateManifestGidsJson('')
     setUpdateModalOpen(false)
@@ -607,6 +626,7 @@ export default function App(): React.ReactElement {
             void runUpdateJob(selected)
           }}
           onClose={handleCloseUpdateModal}
+          onCancel={cancelActiveUpdate}
           onDismissComplete={handleDismissUpdateComplete}
         />
       )}

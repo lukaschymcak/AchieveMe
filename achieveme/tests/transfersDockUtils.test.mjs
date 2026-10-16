@@ -136,8 +136,19 @@ test('depot download rows are cancellable, manifest fetch rows are not', () => {
   assert.equal(fetching.cancellable, false)
 })
 
-test('update rows are never cancellable', () => {
-  const [row] = buildTransferDockRows({ update: makeUpdate() })
+test('running update and validate rows can be canceled', () => {
+  const [updateRow] = buildTransferDockRows({ update: makeUpdate() })
+  assert.equal(updateRow.cancellable, true)
+  const [validateRow] = buildTransferDockRows({
+    update: makeUpdate({ mode: 'validate', label: 'Validating…' })
+  })
+  assert.equal(validateRow.cancellable, true)
+})
+
+test('reapply update rows are dismiss-only', () => {
+  const [row] = buildTransferDockRows({
+    update: makeUpdate({ busy: false, phase: 'reapply_ask', label: '' })
+  })
   assert.equal(row.cancellable, false)
 })
 

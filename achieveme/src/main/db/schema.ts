@@ -65,6 +65,9 @@ export function migrateSchema(db: Database.Database): void {
   if (!columnExists(db, 'games', 'cloud_saves_enabled')) {
     db.exec('ALTER TABLE games ADD COLUMN cloud_saves_enabled INTEGER NOT NULL DEFAULT 0')
   }
+  if (!columnExists(db, 'games', 'nexus_domain')) {
+    db.exec("ALTER TABLE games ADD COLUMN nexus_domain TEXT NOT NULL DEFAULT ''")
+  }
   db.exec(`
     CREATE TABLE IF NOT EXISTS ignored_appids (
       appid       TEXT    PRIMARY KEY,
@@ -107,6 +110,7 @@ export function createTables(db: Database.Database): void {
       goldberg_applied      INTEGER NOT NULL DEFAULT 0,
       steamless_exe         TEXT    NOT NULL DEFAULT '',
       goldberg_dll_path     TEXT    NOT NULL DEFAULT '',
+      nexus_domain          TEXT    NOT NULL DEFAULT '',
       playtime_session_started_at INTEGER NOT NULL DEFAULT 0,
       playtime_last_flush_at INTEGER NOT NULL DEFAULT 0
     );

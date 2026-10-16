@@ -44,3 +44,14 @@ export function getSteamStoreAppUrl(appid: string): string {
   if (!/^\d+$/.test(id)) return ''
   return `https://store.steampowered.com/app/${encodeURIComponent(id)}`
 }
+
+/**
+ * Nexus Mods games search for a library title. Empty when the name is blank.
+ *
+ * @param gameName - Library game title.
+ */
+export function getNexusModsSearchUrl(gameName: string): string {
+  const name = String(gameName ?? '').trim()
+  if (!name) return ''
+  return `https://www.nexusmods.com/games?keyword=${encodeURIComponent(name)}`
+}

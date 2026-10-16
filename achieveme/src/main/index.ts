@@ -1,4 +1,6 @@
 import { app, BrowserWindow, shell } from 'electron'
+import fs from 'node:fs'
+import os from 'node:os'
 import path from 'node:path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { initDb, getDb } from './db/database'
@@ -11,6 +13,9 @@ import { registerIpcHandlers } from './ipc/handlers'
 import { destroyTray, initTray, isQuitting, setQuitting } from './trayService'
 import { shouldQuitForMissingInstanceLock } from './singleInstance'
 import { shouldStartHidden, syncLoginItemSettings } from './loginItemService'
+import { launchGame } from './achievement/gameLaunchService'
+import { readIncomingLaunchAppId, readLaunchAppId, type LaunchAppIdPayload } from '../shared/launchAppId'
+import { stopAllDepotDownloads } from './achievement/depotRunnerService'
 import { runStartupUpdateCheck } from './achievement/manifestCheckerService'
 import {
   registerImageCacheProtocol,
@@ -56,7 +61,7 @@ function createWindow(): void {
   })
 
   mainWindow.on('ready-to-show', () => {
-    if (!shouldStartHidden(process.argv)) {
+    if (!shouldStartHidden(process.argv) && !readLaunchAppId(process.argv)) {
       mainWindow?.show()
     }
     void runStartupUpdateCheck(getDb()).catch(() => undefined)
@@ -99,8 +104,27 @@ function showMainWindowAndNavigate(appid: string): void {
  * Registers app lifecycle handlers and creates the main window.
  * Only called when this process holds the single-instance lock.
  */
+function noteLaunchRequest(source: string, appid: string | null, argv: readonly string[]): void {
+  try {
+    fs.appendFileSync(
+      path.join(os.tmpdir(), 'achieveme-launch.log'),
+      `${new Date().toISOString()} ${source} appid=${appid ?? '-'} argv=${JSON.stringify(argv)}\n`
+    )
+  } catch {
+    // Logging must not block launch.
+  }
+}
+
 function bootApp(): void {
-  app.on('second-instance', () => {
+  app.on('second-instance', (_event, argv: string[], _workingDirectory, additionalData) => {
+    const appid = readIncomingLaunchAppId(additionalData, argv)
+    noteLaunchRequest('second-instance', appid, argv)
+    if (appid) {
+      void launchGame(getDb(), appid).catch((err) => {
+        console.error('Launch from second instance failed:', err)
+      })
+      return
+    }
     showMainWindow()
   })
 
@@ -112,6 +136,13 @@ function bootApp(): void {
     })
 
     initDb()
+    const launchAppId = readLaunchAppId(process.argv)
+    noteLaunchRequest('startup', launchAppId, process.argv)
+    if (launchAppId) {
+      void launchGame(getDb(), launchAppId).catch((err) => {
+        console.error('Launch from command line failed:', err)
+      })
+    }
     checkPendingChangelog()
     registerImageCacheProtocol()
     registerIpcHandlers()
@@ -134,6 +165,7 @@ function bootApp(): void {
 
   app.on('before-quit', () => {
     setQuitting(true)
+    stopAllDepotDownloads()
     stopPlaytimeTracker()
     cleanupUnlockNotifications()
     destroyTray()
@@ -145,7 +177,10 @@ function bootApp(): void {
   })
 }
 
-const gotLock = app.requestSingleInstanceLock()
+const startupLaunchAppId = readLaunchAppId(process.argv)
+const gotLock = app.requestSingleInstanceLock(
+  startupLaunchAppId ? ({ launchAppId: startupLaunchAppId } satisfies LaunchAppIdPayload) : undefined
+)
 if (shouldQuitForMissingInstanceLock(gotLock)) {
   app.quit()
 } else {

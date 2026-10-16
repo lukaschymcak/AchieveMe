@@ -1433,17 +1433,10 @@ export default function GameDetailPage({
               </header>
 
               {hunterStats && (
-                <GameHunterStatsStrip appid={appid} stats={hunterStats} />
+                <GameHunterStatsStrip appid={appid} gameName={game?.name ?? ''} stats={hunterStats} />
               )}
 
               <div className="game-detail__body">
-                <div className="game-detail__toolbar">
-                  <h3 className="game-detail__section-title">
-                    Achievements
-                    <span className="game-detail__section-count">{achievements.length}</span>
-                  </h3>
-                </div>
-
                 {achievements.length > 0 && (
                   <div className="game-detail__filter-bar" role="group" aria-label="Filter achievements by tier">
                     {visibleFilters.map((opt) => {

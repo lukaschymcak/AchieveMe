@@ -1,0 +1,14 @@
+{
+  "compilerOptions": {
+    "lib": ["ES2022"],
+    "module": "CommonJS",
+    "target": "ES2022",
+    "jsx": "react-jsx",
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "strict": true,
+    "allowJs": false,
+    "isolatedModules": true,
+    "noEmit": true
+  }
+}
